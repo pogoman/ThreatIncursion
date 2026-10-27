@@ -19,7 +19,9 @@ threatinc_strikeMinSize,Strike Min Hive Size,Int,4,A hive world must be this siz
 threatinc_strikeStrengthMult,Strike Strength,Double,1.0,Multiplier on the size of every Threat strike fleet.,0.5,10
 threatinc_playerGraceDays,Grace Between Strikes on You,Double,120,Fewest days between strikes aimed at your colonies.,0,720
 threatinc_strikeSaturationEnabled,Strikes Raze Instead of Landing,Boolean,false,Off: strikes land armies. On: they saturation-bombard the worlds they reach.,,
-threatinc_conquestConverts,Conquest Seeds a Hive,Boolean,true,A world the swarm takes on the ground becomes a hive. Off: it decivilises.,,
+threatinc_conquestConverts,Conquest Seeds a Hive,Boolean,true,A world the swarm takes on the ground becomes a hive. Off: it decivilises. Only with Occupation off.,,
+threatinc_occupationEnabled,Occupation,Boolean,true,"The swarm never takes a human world: its landing claims the world's industries one by one, eats their output and grows on it; the owner keeps the world until the landing is pushed off. Off: a ground victory seeds a hive or decivilises the world.",,
+threatinc_occupationClaimDays,Days per Industry Claimed,Double,30,Days the swarm's landing takes to claim the next industry of a world it holds a district of.,1,365
 threatinc_convertDecivWorlds,Swarm Settles Dead Worlds,Boolean,true,Worlds the swarm decivilises become its next colonies.,,
 threatinc_fleetArchetypes,Fleet Archetypes,Boolean,true,"Threat fleets come in types (Host, Vanguard, Battery, Tide, Hunter, Scout) with their own hull mix.",,
 threatinc_raiderEnabled,Hive Raiders,Boolean,true,Hives detach swarms to hunt convoys passing near them.,,

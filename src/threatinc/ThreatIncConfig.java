@@ -420,6 +420,14 @@ public class ThreatIncConfig {
 	public static boolean conquestConverts()  { return b("threatinc_conquestConverts", true); }
 	/** Size of the hive seeded on a conquered world. */
 	public static int conquestHiveSize()      { return i("threatinc_conquestHiveSize"); }
+	/** THE OCCUPATION (2026-10-27, docs/occupation.md): a Threat ground victory occupies the world - claims, eats, buds - and never takes it. */
+	public static boolean occupationEnabled() { return b("threatinc_occupationEnabled", true); }
+	/** Days the swarm's front takes to claim the next industry of a world it holds a district of. */
+	public static float occupationClaimDays() { return f("threatinc_occupationClaimDays"); }
+	/** Strata a day the swarm grows per output unit the industries it has claimed make. */
+	public static float occupationStrataPerUnit() { return f("threatinc_occupationStrataPerUnit"); }
+	/** Fleet points a fully held world's pool buds a swarm at; 0 never buds. */
+	public static float occupationBudFP()     { return f("threatinc_occupationBudFP"); }
 	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
 	// ---- hive sieges ----
@@ -557,7 +565,7 @@ public class ThreatIncConfig {
 	public static boolean threatFrontNeedsArms() { return b("threatinc_threatFrontNeedsArms", false); }
 	/** Defense multiplier of an entrenched (non-pushing) front against counter-attacks. */
 	public static float frontEntrenchDefenseBonus() { return f("threatinc_frontEntrenchDefenseBonus"); }
-	/** Days a front consolidates at each stratum checkpoint before pushing on by doctrine. */
+	/** Days a front regroups after each district taken before the doctrine picks its stance; 0 (the default since 2026-10-27) picks at once. */
 	public static float frontCheckpointDays() { return f("threatinc_frontCheckpointDays"); }
 	/** Days of armaments supply an NPC expedition's landing force carries. */
 	public static float npcFrontSupplyDays()  { return f("threatinc_npcFrontSupplyDays"); }

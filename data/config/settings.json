@@ -515,6 +515,17 @@
 	# a Threat ground victory seeds a hive of conquestHiveSize on the spot
 	"threatinc_conquestConverts": true,
 	"threatinc_conquestHiveSize": 2,
+	# THE OCCUPATION (2026-10-27, docs/occupation.md): the swarm never takes a human world.
+	# Its landing claims the world's industries one by one, one per occupationClaimDays while
+	# it holds a district; a claimed industry runs for the swarm (its output x0 to the market)
+	# and every unit it makes grows the landing occupationStrataPerUnit strata a day - troops
+	# while districts are contested, a swarm budded over the world at occupationBudFP fleet
+	# points once every district is held (0 never buds). A district retaken releases the
+	# newest claim. Off: the old end state (conquestConverts, or the world decivilises)
+	"threatinc_occupationEnabled": true,
+	"threatinc_occupationClaimDays": 30,
+	"threatinc_occupationStrataPerUnit": 1.0,
+	"threatinc_occupationBudFP": 60,
 
 	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive
 	# world's one figure is its strata - its size by a doubling table (strataSizeBase
@@ -748,7 +759,9 @@
 	# True restores the old rule exactly, final push and all.
 	"threatinc_threatFrontNeedsArms": false,
 	"threatinc_frontEntrenchDefenseBonus": 1.5,
-	"threatinc_frontCheckpointDays": 10,
+	# 0 since 2026-10-27: a district taken resolves the stance at once (push or dig in by
+	# doctrine). Set days > 0 for the old regroup pause after every district.
+	"threatinc_frontCheckpointDays": 0,
 	"threatinc_npcFrontSupplyDays": 120,
 
 	# The strategy layer (docs/strategy-layer.md). NPC factions stay vanilla

@@ -93,11 +93,11 @@ public class ThreatGroundFronts {
 	/** Assault the next stratum - ordered explicitly, reverts on completion. */
 	public static final String STANCE_PUSH = "push";
 	/**
-	 * The checkpoint after each stratum falls: the front consolidates, requests
-	 * reinforcement, and waits frontCheckpointDays for orders. Told nothing, it
-	 * pushes on by doctrine; ordered to entrench it stands fast until told
-	 * otherwise; or it can be pulled out entirely (which requires controlling
-	 * the space around the planet - the dock gating enforces that physically).
+	 * The checkpoint after each stratum falls: the front consolidates and waits
+	 * frontCheckpointDays for orders, then takes the doctrine's stance. The window
+	 * is 0 by default since 2026-10-27 (the user, Haven: a flat pause every
+	 * district for every side bought nothing), so this stance is only seen with
+	 * the knob set; a district taken then resolves the stance at once.
 	 */
 	public static final String STANCE_CONSOLIDATE = "consolidate";
 
@@ -187,6 +187,16 @@ public class ThreatGroundFronts {
 		public String defence;
 		/** Days the defenders have held fire and dug in: their cover ({@link #defenderCoverMult}), lost with a district. */
 		public float defenderEntrenchDays;
+		/** THE OCCUPATION (2026-10-27, ThreatOccupation): the industries the swarm's front has claimed, in claim order. */
+		public List<String> claims;
+		/** Days on the clock toward the next claim. */
+		public float claimDays;
+		/** Output units a day of the claimed industries, as the ground war condition last read them. */
+		public float eatenUnits;
+		/** Strata pooled toward a swarm once every district is held. */
+		public float budPool;
+		/** The World Occupied notice has been sent. */
+		public boolean occupiedAnnounced;
 
 		public boolean isPlayerOwned() {
 			return factionId == null || Factions.PLAYER.equals(factionId);
@@ -516,11 +526,16 @@ public class ThreatGroundFronts {
 				|| ThreatSiegeMalus.anyDisrupted(market)
 				|| ThreatRazing.saturated(market));
 		boolean wantsCondition = front;
+		// the occupation's visible card, while the swarm has claimed anything (2026-10-27)
+		boolean wantsCard = front && ThreatOccupation.showsCard(market);
 		boolean hasIndustry = market.hasIndustry(ThreatSiegeMalus.ID);
 		boolean hasCondition = market.hasCondition(ThreatGroundWarCondition.ID);
-		if (wantsIndustry == hasIndustry && wantsCondition == hasCondition) return false;
+		boolean hasCard = market.hasIndustry(ThreatInfestation.ID);
+		if (wantsIndustry == hasIndustry && wantsCondition == hasCondition && wantsCard == hasCard) return false;
 		if (wantsIndustry && !hasIndustry) market.addIndustry(ThreatSiegeMalus.ID);
 		if (!wantsIndustry && hasIndustry) market.removeIndustry(ThreatSiegeMalus.ID, null, false);
+		if (wantsCard && !hasCard) market.addIndustry(ThreatInfestation.ID);
+		if (!wantsCard && hasCard) market.removeIndustry(ThreatInfestation.ID, null, false);
 		if (wantsCondition && !hasCondition) market.addCondition(ThreatGroundWarCondition.ID);
 		if (!wantsCondition && hasCondition) market.removeCondition(ThreatGroundWarCondition.ID);
 		return true;
@@ -1539,7 +1554,7 @@ public class ThreatGroundFronts {
 	// counter-attacks with everything, as before.
 	// ------------------------------------------------------------------
 
-	/** The defenders' stance: STANCE_PUSH unless ordered to dig in (null on older saves is push). */
+	/** The defenders' stance: STANCE_PUSH unless ordered to dig in (null = no order yet, read as push until {@link #tickDefenderStance} picks one on a player colony). */
 	public static String defenderStance(GroundFront front) {
 		return front != null && STANCE_ENTRENCH.equals(front.defence) ? STANCE_ENTRENCH : STANCE_PUSH;
 	}
@@ -1681,11 +1696,19 @@ public class ThreatGroundFronts {
 	 * 2026-10-24): push while pushing moves the line toward them, hold fire and
 	 * dig in while it does not (humans play to win, 2026-10-04: a garrison does
 	 * not throw itself at a beachhead it cannot move). The player's colonies
-	 * keep their orders.
+	 * keep their orders; until the player gives one the doctrine picks ONCE, on
+	 * the first tick (the user, Arkoman and Haven 2026-10-27: an unset stance
+	 * read as push, so 183 marines pushed 1,252 troops from the day they landed).
 	 */
 	protected static void tickDefenderStance(GroundFront front, MarketAPI market, float elapsedDays) {
 		if (front == null || market == null || isHiveTarget(market)) return;
-		if (!market.isPlayerOwned()) {
+		if (market.isPlayerOwned()) {
+			if (front.defence == null) {
+				front.defence = doctrineDefendersPush(front, market) ? STANCE_PUSH : STANCE_ENTRENCH;
+				ThreatIncConfig.log("Marines of " + market.getName() + " " + defenderStanceLabel(front)
+						+ " until ordered: the line at " + String.format("%.2f", lineRate(front, market)));
+			}
+		} else {
 			boolean wins = doctrineDefendersPush(front, market);
 			boolean dugIn = STANCE_ENTRENCH.equals(front.defence);
 			if (wins && dugIn) {
@@ -2139,7 +2162,7 @@ public class ThreatGroundFronts {
 		burnDefenderArms(market, front, elapsedDays); // and burn armaments as a front does (2026-10-17)
 		tickDefenderStance(front, market, elapsedDays); // and choose: counter-attack or dig in (2026-10-17)
 		bleedHiveStrata(market, front, elapsedDays); // a hive's strata too: every troop lost is a stratum point gone for good (2026-10-24)
-		feedOnWorld(market, front, elapsedDays); // and the swarm's front on a human world eats it and grows (phase E)
+		ThreatOccupation.tick(front, market, elapsedDays); // and the swarm's front on a human world claims it, eats it and grows (THE OCCUPATION, 2026-10-27)
 		if (groundDown(front)) {
 			if (threatFront) {
 				ThreatNotice.titled("Threat Landing Destroyed").good()
@@ -2188,7 +2211,7 @@ public class ThreatGroundFronts {
 			suppressedAny |= suppressShield(market, rate * elapsedDays);
 		}
 	// districts held seize their share of the colony's industries, pinned while held
-	if (front.strataHeld > 0) {
+	if (front.strataHeld > 0 && !ThreatOccupation.occupies(front, market)) { // claims are eaten, not pinned (the occupation, 2026-10-27)
 		for (Industry ind : theatre.seizedStructures(market)) {
 			suppressedAny |= pin(ind, ThreatIncConfig.districtSeizeDays());
 		}
@@ -2199,7 +2222,7 @@ public class ThreatGroundFronts {
 		// told nothing, doctrine says push on - or stand fast if too weak
 		if (STANCE_CONSOLIDATE.equals(front.stance)) {
 			front.consolidateDaysLeft -= elapsedDays;
-			if (front.consolidateDaysLeft <= 0f) {
+			if (front.consolidateDaysLeft <= 0f || ThreatIncConfig.frontCheckpointDays() <= 0f) {
 				front.consolidateDaysLeft = 0f;
 			if (doctrinePushes(front, market)) {
 				front.stance = STANCE_PUSH;
@@ -2222,7 +2245,10 @@ public class ThreatGroundFronts {
 			front.pushProgress += line * elapsedDays;
 			float base = Math.max(1f, ThreatIncConfig.frontLineBaseDays());
 			if (front.pushProgress >= base) {
-				if (lastStratumProtected(front, market)) {
+				if (ThreatOccupation.holdsAll(front, market)) {
+					// every district held: nothing left to take, the world is occupied (2026-10-27)
+					front.pushProgress = 0f;
+				} else if (lastStratumProtected(front, market)) {
 					// the killing blow is refused: the swarm holds what it has
 					// and the siege stands until its armaments run out
 					front.pushProgress = 0f;
@@ -2327,6 +2353,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	if (!isHiveTarget(market)) ThreatMarineXP.colonyEarn(market, pressure, defenseStrength(front));
 	front.pushProgress = 0f;
 	front.strataHeld++;
+	ThreatOccupation.onDistrictTaken(front, market); // and an industry claimed with it (the occupation, 2026-10-27)
 	// a district changing hands resets both sides to 0, dug in or over-extended (the
 	// user, 2026-10-24: "full wiped if the side loses a strata/district", then "same
 	// thing if a district is taken - dug in or overextension all reset to 0")
@@ -2339,9 +2366,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			groundVictory(front, market);
 			return;
 		}
+		// the checkpoint window is 0 by default since 2026-10-27 (the user, Haven: "what is even the
+		// point of regrouping" - a flat pause every district, for every side): the doctrine's
+		// stance at once; with a window set, the old regroup
+		float window = ThreatIncConfig.frontCheckpointDays();
 		front.stance = STANCE_CONSOLIDATE;
-		front.consolidateDaysLeft = ThreatIncConfig.frontCheckpointDays();
+		front.consolidateDaysLeft = Math.max(0f, window);
 		reapply(front.marketId); // strata strip base defense and fabrication
+		if (window <= 0f) {
+			// after the strip: the doctrine reads the world's figure as it now stands
+			front.stance = doctrinePushes(front, market) ? STANCE_PUSH : STANCE_ENTRENCH;
+			front.pushProgress = 0f;
+		}
 		ThreatIncConfig.log("Front took stratum " + front.strataHeld + "/" + total
 				+ " at " + market.getName());
 		announceLayer(front, market, true);
@@ -2402,6 +2438,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		front.defenderEntrenchDays = 0f;
 		if (front.strataHeld > 0) {
 			front.strataHeld--;
+			ThreatOccupation.release(front, market); // and the newest claim with it (the occupation, 2026-10-27)
 			// a final push does not stop for a setback - it is spent either way
 			front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 			reapply(front.marketId);
@@ -2497,6 +2534,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * stratum, holding, until it withers.
 	 */
 	protected static void colonyGroundVictory(GroundFront front, MarketAPI market) {
+		// THE OCCUPATION (the user, 2026-10-27): the swarm never takes the world - the
+		// front stands on every district, claims and eats its industries, and the owner
+		// keeps the market until it pushes the front off (docs/occupation.md)
+		if (ThreatOccupation.occupies(front, market)) {
+			ThreatOccupation.occupy(front, market);
+			return;
+		}
 		float army = Math.max(0f, front.marines); // the strata that took the world seed the hive (phase E)
 		fronts().remove(front.marketId);
 		if (syncSiegeState(market)) market.reapplyIndustries(); // strip the malus/tooltip before the teardown
@@ -4631,20 +4675,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return Math.max(0f, Math.min(1f, front.strataHeld / (float) Math.max(1, market.getSize())));
 	}
 
-	/** Strata a day the swarm's front grows on what it eats of the world (infestShare). */
+	/**
+	 * Strata a day the swarm's front grows on what it eats of the world: under THE
+	 * OCCUPATION (2026-10-27) the claimed industries' output x occupationStrataPerUnit
+	 * (ThreatOccupation.growthPerDay); with it off, phase E's share of the world's size.
+	 */
 	public static float infestGrowthPerDay(MarketAPI market, GroundFront front) {
+		if (ThreatOccupation.occupies(front, market)) return ThreatOccupation.growthPerDay(front);
 		float share = infestShare(market, front);
 		if (share <= 0f) return 0f;
 		return Math.max(0f, ThreatIncConfig.coreStrataPerSizeMonth()) * market.getSize() * share / 30f
 				/ Math.max(0.01f, IncursionManager.timeScale());
-	}
-
-	/** One tick of that: the growth joins the front's strata (its troops). */
-	protected static void feedOnWorld(MarketAPI market, GroundFront front, float elapsedDays) {
-		float grow = infestGrowthPerDay(market, front) * elapsedDays;
-		if (grow <= 0f) return;
-		front.marines += grow;
-		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
 	}
 
 	/**

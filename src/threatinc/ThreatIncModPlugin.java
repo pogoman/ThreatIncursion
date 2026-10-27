@@ -37,6 +37,8 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 	@Override
 	public void configureXStream(XStream x) {
 		x.alias(PlanetaryShield.class.getName(), ThreatPlanetaryShield.class);
+		// the producing industries: ours over vanilla's for the occupation's image (2026-10-27)
+		ThreatOccupation.aliasPlugins(x);
 		x.alias(AnalyzeEntityIntelCreator.class.getName(), ThreatMissionFilter.AnalyzeEntity.class);
 		x.alias(SurveyPlanetIntelCreator.class.getName(), ThreatMissionFilter.SurveyPlanet.class);
 		x.alias(ProcurementMissionCreator.class.getName(), ThreatMissionFilter.Procurement.class);
@@ -51,6 +53,8 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 	public void onApplicationLoad() {
 		// LunaLib keeps stored values over changed defaults; move the ones this release changed
 		if (ThreatIncConfig.lunaAvailable()) LunaConfigBridge.migrateStoredDefaults();
+		// the producing industries' plugins are ours (the occupation's image) and the green images are loaded
+		ThreatOccupation.registerPlugins();
 	}
 
 	@Override

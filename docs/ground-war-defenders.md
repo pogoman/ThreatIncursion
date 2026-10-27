@@ -189,7 +189,7 @@ entrenchment bonus but its lost if they lose a strata if that makes sense. basic
 defending dynamic and interesting with strategy as well".
 
 A colony with an army on it has a stance of its own, carried on the front (`GroundFront.defence`,
-null on older saves = push, what every colony did before):
+null = no order given yet; it reads as push until the first tick picks one, below):
 
 - **Push** - the garrison counter-attacks on the cadence (`Theatre.COLONY.counterAttackInterval`:
   40 days / 1.5 with a military command / the force-ratio tempo, floored at `frontOverrunMusterDays`
@@ -219,6 +219,12 @@ own colony only). NPC colonies run `tickDefenderStance` each tick: since 2026-10
 user: marines handed to Sindria "to push back" sat dug in for a week) push while pushing moves the
 line toward them past `frontGrindBand`, dig in for the cover while it does not - unless dug in the
 line would move against them while pushing holds it (the mirror of the swarm's `doctrinePushes`).
+The player's colonies take the same pick ONCE, on the first tick after the swarm lands while no
+order has been given (`front.defence` null); after that only the player's buttons change it (the
+user, 2026-10-27, Arkoman 183 marines against 1,252 troops "pushing" from the day of the landing:
+an unset stance read as push and the player's worlds never ran the AI, so every player colony
+opened over-extending against a beachhead it could not move; log "Marines of X push / dug in
+until ordered"). A front already on a player world when a save loads gets the pick on its first tick.
 **Entrenchment is never worn by the enemy** (the user, 2026-10-24, reversing a "push wears cover"
 rule that lived for an hour): a side's entrenchment days run from -`frontEntrenchDays` to
 +`frontEntrenchDays`. They grow while dug in whatever the enemy does, are spent while pushing, and
@@ -490,6 +496,8 @@ an outpost has no market to blockade. Log: `Convoy holding off X: blockaded by t
 `Convoy runs in to X: blockade lifted after N days`, `Convoy gave up at X`.
 
 ### When the colony falls
+
+**THE OCCUPATION (the user, 2026-10-27, `docs/occupation.md`, built untested): with `occupationEnabled` (default) none of the below runs for the swarm.** `colonyGroundVictory` hands the front to `ThreatOccupation.occupy`: it stays on every district, the market keeps its faction, vanilla's deciv is held off, its claimed industries feed the swarm and a pool buds Infestation Swarms over the world; the owner reclaims it by pushing the front off. The conversion below is the knob-off path.
 
 `ThreatGroundFronts.colonyGroundVictory` (the colony theatre's `victory`): none of the
 hive bookkeeping applies. No `eradicate` (that is hive teardown), no free outpost, no
