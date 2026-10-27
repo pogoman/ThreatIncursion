@@ -3465,40 +3465,40 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatOccupation (615 lines)
-- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :72 - XStream:
-- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :88 - The alias's fallback:
-- `ThreatOccupation.registerPlugins()` :116 - At application load:
-- `ThreatOccupation.isClaimed(Industry ind)` :135 - Whether the swarm's front on the industry's world has claimed it.
-- `ThreatOccupation.image(Industry ind, String base)` :142 - The image a producing industry draws:
-- `ThreatOccupation.enabled()` :151
-- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :156 - Whether the front is the swarm's on a human world still in the economy:
-- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :162 - Whether the swarm holds every district:
-- `ThreatOccupation.showsCard(MarketAPI market)` :173 - Whether the colony screen shows the infestation card:
-- `ThreatOccupation.claims(GroundFront front)` :178 - The front's claims, in claim order (older saves hold none).
-- `ThreatOccupation.claimable(MarketAPI market)` :191 - The world's industries the swarm can claim, in a fixed order (by id) so the clock takes the same next one from poll to poll:
-- `ThreatOccupation.compare(Industry a, Industry b)` :205
-- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :213 - The claimed industries still on the market, in claim order.
-- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :224 - The next industry the clock claims;
-- `ThreatOccupation.daysToNextClaim(GroundFront front)` :234 - Days until the clock claims the next industry.
-- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :244 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
-- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :308 - Claims one industry per district held that is not yet claimed;
-- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :322 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
-- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :328 - The last district is the swarm's:
-- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :346 - A district retaken releases the newest claim (ThreatGroundFronts#loseStratum).
-- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :362
-- `ThreatOccupation.holdDeciv(MarketAPI market)` :377 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
-- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :385 - The share of the world's producers the swarm has claimed:
-- `ThreatOccupation.growthPerDay(GroundFront front)` :398 - Strata a day the occupation grows:
-- `ThreatOccupation.cap(MarketAPI market)` :410 - The most the occupation holds, all told:
-- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :415 - What the occupation holds:
-- `ThreatOccupation.buddedFP(MarketAPI market)` :424 - Fleet points of the swarms the pool budded that stand over the world.
-- `ThreatOccupation.standingFP(MarketAPI market)` :435 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
-- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :446 - Strata a day the occupation moves, either way:
-- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :456 - The troops the ground keeps standing:
-- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :477 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
-- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :547 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
-- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :584 - The strata risen become a swarm over the world, whole:
+## ThreatOccupation (622 lines)
+- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :79 - XStream:
+- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :95 - The alias's fallback:
+- `ThreatOccupation.registerPlugins()` :123 - At application load:
+- `ThreatOccupation.isClaimed(Industry ind)` :142 - Whether the swarm's front on the industry's world has claimed it.
+- `ThreatOccupation.image(Industry ind, String base)` :149 - The image a producing industry draws:
+- `ThreatOccupation.enabled()` :158
+- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :163 - Whether the front is the swarm's on a human world still in the economy:
+- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :169 - Whether the swarm holds every district:
+- `ThreatOccupation.showsCard(MarketAPI market)` :180 - Whether the colony screen shows the infestation card:
+- `ThreatOccupation.claims(GroundFront front)` :185 - The front's claims, in claim order (older saves hold none).
+- `ThreatOccupation.claimable(MarketAPI market)` :198 - The world's industries the swarm can claim, in a fixed order (by id) so the clock takes the same next one from poll to poll:
+- `ThreatOccupation.compare(Industry a, Industry b)` :212
+- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :220 - The claimed industries still on the market, in claim order.
+- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :231 - The next industry the clock claims;
+- `ThreatOccupation.daysToNextClaim(GroundFront front)` :241 - Days until the clock claims the next industry.
+- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :251 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
+- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :315 - Claims one industry per district held that is not yet claimed;
+- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :329 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
+- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :335 - The last district is the swarm's:
+- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :353 - A district retaken releases the newest claim (ThreatGroundFronts#loseStratum).
+- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :369
+- `ThreatOccupation.holdDeciv(MarketAPI market)` :384 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
+- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :392 - The share of the world's producers the swarm has claimed:
+- `ThreatOccupation.growthPerDay(GroundFront front)` :405 - Strata a day the occupation grows:
+- `ThreatOccupation.cap(MarketAPI market)` :417 - The most the occupation holds, all told:
+- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :422 - What the occupation holds:
+- `ThreatOccupation.buddedFP(MarketAPI market)` :431 - Fleet points of the swarms the pool budded that stand over the world.
+- `ThreatOccupation.standingFP(MarketAPI market)` :442 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
+- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :453 - Strata a day the occupation moves, either way:
+- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :463 - The troops the ground keeps standing:
+- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :484 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
+- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :554 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
+- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :591 - The strata risen become a swarm over the world, whole:
 
 ## ThreatOffensive (1060 lines)
 - `ThreatOffensive.startDay()` :126 - The campaign's start (the last launch), or NaN for none - never -1:
@@ -3808,7 +3808,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1938
 - `ThreatPosture.k(float fp)` :1950
 
-## ThreatPurgeFGI (3369 lines)
+## ThreatPurgeFGI (3413 lines)
 - `ThreatPurgeFGI.ThreatPurgeFGI(GenericRaidParams params, boolean playerCommissioned)` :115
 ### THE GRAND FLEET (ThreatGrandFleets, the user 2026-10-26)
 - `ThreatPurgeFGI.setGrandFleet(int leg)` :133 - The entity the next constructed expedition sails FROM in place of its source - a grand fleet's hop, the system it just fought in.
@@ -3917,49 +3917,50 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPurgeFGI.abstractFull()` :2223 - The expedition's allotment in abstract FP as it sailed, before route damage:
 - `ThreatPurgeFGI.abstractFlotilla()` :2234 - The part of the abstract flotilla not yet left over a landing as cover.
 - `ThreatPurgeFGI.siegePass(CampaignFleetAPI fleet, MarketAPI market)` :2249 - A live fleet over a hive:
-- `ThreatPurgeFGI.liveSlice(CampaignFleetAPI fleet, MarketAPI market)` :2298 - One live slice of the orbital siege by this fleet:
-- `ThreatPurgeFGI.orbitFP(MarketAPI market)` :2343 - The fleet points this expedition bombards the world with:
-- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market)` :2368 - Orbit has nothing more to give this expedition over the world (ThreatGroundFronts.orbitDone):
-- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market, float troops)` :2373 - As above for troops aboard:
-- `ThreatPurgeFGI.fightingFP()` :2390 - What the expedition fights with now:
-- `ThreatPurgeFGI.liveFP()` :2395 - The fleet points the expedition's live fleets hold now, wherever they are - what vanilla weighs against its abort line.
-- `ThreatPurgeFGI.razeReason()` :2406 - The unrest a razing raises is put down to the razer's bombardment, as vanilla names it.
-- `ThreatPurgeFGI.shortOfALevel(MarketAPI market)` :2415 - Whether the razing fuel aboard would not finish even the world's top level (ThreatRazing#shortOfALevel):
-- `ThreatPurgeFGI.razePass(CampaignFleetAPI fleet, MarketAPI market)` :2441 - One pass of the RAZE TASK over a world the expedition razes (IncursionManager.razeWorlds):
-- `ThreatPurgeFGI.squadron(MarketAPI market, String ourId, float orbit)` :2522 - The bombing squadron over this hive, {fleet points sent in, fleet points left}:
-- `ThreatPurgeFGI.abstractRaze(MarketAPI market)` :2543 - An expedition that never spawned razes the world in one go (#razeAbstract), its allotment less route damage standing in for the fleets;
-- `ThreatPurgeFGI.recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed)` :2571 - The razing, for the sitrep:
-- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason)` :2600 - A razing that never spawned (vanilla autoresolve) runs in one go:
-- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason, float downGoal)` :2606 - As above to a saturation days-down goal (downGoal, ThreatGroundFronts.saturationDone;
-- `ThreatPurgeFGI.abstractSiege(MarketAPI market)` :2664 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go (ThreatGroundFronts#abstractSiege), its allotted strength less route damage standing in for the fleets 
-- `ThreatPurgeFGI.advanceDaily()` :2723 - Runs the siege days the payload segment owes.
-- `ThreatPurgeFGI.takeDaily(SiegeRaidAction action, RouteSegment seg)` :2751 - Takes the payload for the daily siege, counting from the whole day the segment is at - an expedition in flight when an older save loads never catches up the days already past - and widens the segment 
-- `ThreatPurgeFGI.dailyWorldId()` :2768 - The world this siege is fighting over off-screen today, its fleets unspawned;
-- `ThreatPurgeFGI.dailyWorlds(SiegeRaidAction action)` :2777 - The worlds the daily siege takes in turn:
-- `ThreatPurgeFGI.dailyWorld(SiegeRaidAction action)` :2797 - The world the daily siege is over:
-- `ThreatPurgeFGI.dailyDay(SiegeRaidAction action, RouteSegment seg)` :2832 - One siege day over the world the daily siege is at:
-- `ThreatPurgeFGI.landStaying(SiegeRaidAction action, MarketAPI w, String why)` :3002 - A staying grand fleet's landing:
-- `ThreatPurgeFGI.stayWindow(RouteSegment seg)` :3015 - A staying grand fleet's segment never closes under it:
-- `ThreatPurgeFGI.endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes)` :3027 - Ends the daily siege of a world.
-- `ThreatPurgeFGI.dailyDone(SiegeRaidAction action, RouteSegment seg)` :3053 - Every world done with:
-- `ThreatPurgeFGI.dailyAutoresolve(SiegeRaidAction action)` :3068 - Vanilla's autoresolve, for a siege the daily siege has taken - from any of its entries:
-- `ThreatPurgeFGI.dailySummary(String name, int days, String outcome)` :3083 - The one line a world's daily siege ends with.
-- `ThreatPurgeFGI.resetWorld()` :3088
-- `ThreatPurgeFGI.dailyKey(MarketAPI w)` :3096
-- `ThreatPurgeFGI.whereName(SiegeRaidAction action)` :3100
-- `ThreatPurgeFGI.livePoints(List<CampaignFleetAPI> fleets)` :3106 - Fleet points of the fleets in the list still alive.
-- `ThreatPurgeFGI.addRouteLoss(float share)` :3115 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
-- `ThreatPurgeFGI.abstractTroops(MarketAPI market)` :3124 - The ground strength an unspawned expedition would land:
-- `ThreatPurgeFGI.ourFactionId()` :3130
-- `ThreatPurgeFGI.waitsInOrbit(MarketAPI market)` :3140 - Whether a pass here should wait rather than spend itself:
-- `ThreatPurgeFGI.combinedRaidStr(MarketAPI market, float fallback)` :3154 - The expedition's total ground strength against a market:
-- `ThreatPurgeFGI.raidWeight(String commodityId)` :3196 - What one unit of hive-wide availability of each commodity is worth taking away.
-- `ThreatPurgeFGI.pickRaidTarget(MarketAPI market)` :3227 - The industry whose disruption takes the most from the hive, scored on this world right now - the same reasoning the mission board applies:
-- `ThreatPurgeFGI.raidValue(MarketAPI market, Industry ind)` :3247 - This industry's raid value on this world, 0 for anything not worth a landing.
-- `ThreatPurgeFGI.estimateMarineLosses(MarketAPI market, float raidStr, boolean success)` :3289 - Casualty ESTIMATE for the after-action report - NPC ground actions are abstract (no marines are actually simulated), so this mirrors the shape of the player-side loss math:
-- `ThreatPurgeFGI.notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action)` :3310 - The sitrep goes out the moment the siege operations finish - when the payload action completes and the fleets turn for home - not when they arrive weeks later.
-- `ThreatPurgeFGI.notifyEnding()` :3322
-- `ThreatPurgeFGI.postSiegeReport()` :3334 - Posts the after-action sitrep once, however the expedition ended.
+- `ThreatPurgeFGI.satBombFirst(MarketAPI market, float fp)` :2303 - THE SAT BOMB (the user, 2026-10-27):
+- `ThreatPurgeFGI.liveSlice(CampaignFleetAPI fleet, MarketAPI market)` :2331 - One live slice of the orbital siege by this fleet:
+- `ThreatPurgeFGI.orbitFP(MarketAPI market)` :2381 - The fleet points this expedition bombards the world with:
+- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market)` :2406 - Orbit has nothing more to give this expedition over the world (ThreatGroundFronts.orbitDone):
+- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market, float troops)` :2411 - As above for troops aboard:
+- `ThreatPurgeFGI.fightingFP()` :2428 - What the expedition fights with now:
+- `ThreatPurgeFGI.liveFP()` :2433 - The fleet points the expedition's live fleets hold now, wherever they are - what vanilla weighs against its abort line.
+- `ThreatPurgeFGI.razeReason()` :2444 - The unrest a razing raises is put down to the razer's bombardment, as vanilla names it.
+- `ThreatPurgeFGI.shortOfALevel(MarketAPI market)` :2453 - Whether the razing fuel aboard would not finish even the world's top level (ThreatRazing#shortOfALevel):
+- `ThreatPurgeFGI.razePass(CampaignFleetAPI fleet, MarketAPI market)` :2479 - One pass of the RAZE TASK over a world the expedition razes (IncursionManager.razeWorlds):
+- `ThreatPurgeFGI.squadron(MarketAPI market, String ourId, float orbit)` :2560 - The bombing squadron over this hive, {fleet points sent in, fleet points left}:
+- `ThreatPurgeFGI.abstractRaze(MarketAPI market)` :2581 - An expedition that never spawned razes the world in one go (#razeAbstract), its allotment less route damage standing in for the fleets;
+- `ThreatPurgeFGI.recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed)` :2609 - The razing, for the sitrep:
+- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason)` :2638 - A razing that never spawned (vanilla autoresolve) runs in one go:
+- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason, float downGoal)` :2644 - As above to a saturation days-down goal (downGoal, ThreatGroundFronts.saturationDone;
+- `ThreatPurgeFGI.abstractSiege(MarketAPI market)` :2702 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go (ThreatGroundFronts#abstractSiege), its allotted strength less route damage standing in for the fleets 
+- `ThreatPurgeFGI.advanceDaily()` :2761 - Runs the siege days the payload segment owes.
+- `ThreatPurgeFGI.takeDaily(SiegeRaidAction action, RouteSegment seg)` :2789 - Takes the payload for the daily siege, counting from the whole day the segment is at - an expedition in flight when an older save loads never catches up the days already past - and widens the segment 
+- `ThreatPurgeFGI.dailyWorldId()` :2806 - The world this siege is fighting over off-screen today, its fleets unspawned;
+- `ThreatPurgeFGI.dailyWorlds(SiegeRaidAction action)` :2815 - The worlds the daily siege takes in turn:
+- `ThreatPurgeFGI.dailyWorld(SiegeRaidAction action)` :2835 - The world the daily siege is over:
+- `ThreatPurgeFGI.dailyDay(SiegeRaidAction action, RouteSegment seg)` :2870 - One siege day over the world the daily siege is at:
+- `ThreatPurgeFGI.landStaying(SiegeRaidAction action, MarketAPI w, String why)` :3046 - A staying grand fleet's landing:
+- `ThreatPurgeFGI.stayWindow(RouteSegment seg)` :3059 - A staying grand fleet's segment never closes under it:
+- `ThreatPurgeFGI.endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes)` :3071 - Ends the daily siege of a world.
+- `ThreatPurgeFGI.dailyDone(SiegeRaidAction action, RouteSegment seg)` :3097 - Every world done with:
+- `ThreatPurgeFGI.dailyAutoresolve(SiegeRaidAction action)` :3112 - Vanilla's autoresolve, for a siege the daily siege has taken - from any of its entries:
+- `ThreatPurgeFGI.dailySummary(String name, int days, String outcome)` :3127 - The one line a world's daily siege ends with.
+- `ThreatPurgeFGI.resetWorld()` :3132
+- `ThreatPurgeFGI.dailyKey(MarketAPI w)` :3140
+- `ThreatPurgeFGI.whereName(SiegeRaidAction action)` :3144
+- `ThreatPurgeFGI.livePoints(List<CampaignFleetAPI> fleets)` :3150 - Fleet points of the fleets in the list still alive.
+- `ThreatPurgeFGI.addRouteLoss(float share)` :3159 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
+- `ThreatPurgeFGI.abstractTroops(MarketAPI market)` :3168 - The ground strength an unspawned expedition would land:
+- `ThreatPurgeFGI.ourFactionId()` :3174
+- `ThreatPurgeFGI.waitsInOrbit(MarketAPI market)` :3184 - Whether a pass here should wait rather than spend itself:
+- `ThreatPurgeFGI.combinedRaidStr(MarketAPI market, float fallback)` :3198 - The expedition's total ground strength against a market:
+- `ThreatPurgeFGI.raidWeight(String commodityId)` :3240 - What one unit of hive-wide availability of each commodity is worth taking away.
+- `ThreatPurgeFGI.pickRaidTarget(MarketAPI market)` :3271 - The industry whose disruption takes the most from the hive, scored on this world right now - the same reasoning the mission board applies:
+- `ThreatPurgeFGI.raidValue(MarketAPI market, Industry ind)` :3291 - This industry's raid value on this world, 0 for anything not worth a landing.
+- `ThreatPurgeFGI.estimateMarineLosses(MarketAPI market, float raidStr, boolean success)` :3333 - Casualty ESTIMATE for the after-action report - NPC ground actions are abstract (no marines are actually simulated), so this mirrors the shape of the player-side loss math:
+- `ThreatPurgeFGI.notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action)` :3354 - The sitrep goes out the moment the siege operations finish - when the payload action completes and the fleets turn for home - not when they arrive weeks later.
+- `ThreatPurgeFGI.notifyEnding()` :3366
+- `ThreatPurgeFGI.postSiegeReport()` :3378 - Posts the after-action sitrep once, however the expedition ended.
 
 ## ThreatRaiders (372 lines)
 - `ThreatRaiders.homeName()` :60

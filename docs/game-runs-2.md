@@ -1291,3 +1291,9 @@ stopped before it ran, superseded by v3.
 
 Round 64 hw296 (set A) / hw297 (set B) from day 0 on the v3 jar 19:40:43: BACK TO VANILLA
 (`suppression-balance.md` 10) + the pool fix.
+
+**hw296 (round 64, set A, v3 jar 19:40:43, capped 21:02 at w2,759-3,116, 37-41 days a minute):** 283 / 220 / 180 hives, 29 / 40 / 36 worlds occupied, 0 swarm bombardment lines (the swarm lands on arrival), 1 / 1 / 18 besieged-hive break-ups (Thrinakia against the Tri-Tachyon front), relief sorties 83 / 502 / 307, buds 42 / 81 / 60, grand fleet sails 8 / 6 / 12, 0 exceptions. **Miss:** hives razed, 0 sat bombs - NPC expeditions raze through the siege path (`liveSlice` / the abstract daily siege), the branch sat in `razePass`; `satBombFirst` added to the siege path (paid from the ordnance, only when enough stays to raze the rest). hw297 (set B) not run on that jar.
+
+## 73. hw297 - round 65, the siege-path sat bomb (2026-10-27 21:02-)
+
+Set B from day 0 on jar 21:02:26 (satBombFirst + the merged occupied-industry images), driver run-seeds-24.ps1 (ThreatIncSeeds24 / WatchSeeds24), launched by handover-23-24.sh the moment hw296 ended. Verify: "Sat bomb vs" lines from expeditions over hives (price = 3 days of the tac raze x 5), "disrupts N industries", the rest of the hive still razed after it; 0 exceptions.
