@@ -259,6 +259,14 @@ vanilla's Fabricator sprite (`graphics/ships/threat/fabricator.png`, the ship at
 of the Fabrication Core image) alone; `commodities.csv` points at it, so the tooltip's
 production list shows the same ship.
 
+**Fix 6 (2026-10-27 evening, the user's save: Haven's Farming "says it's infested" but plain).**
+Vanilla's plugins swap the image by condition - Farming draws `farming_low/med/high` by
+farmland, Mining `mining_low` / `gas_giant_mining`, Light Industry `_low/_high` and the
+`light_industry_orbital*` set, Fuel Production `advanced_fuel_production` - and `image` only
+greens a file it has a copy of, so any variant drew vanilla's. All twenty now have a copy
+(`ThreatOccupation.IMAGES`), made by `tools/occupied-images.ps1` (the fix-5 recipe, committed;
+it reproduces the original nine byte for byte). A new vanilla variant goes in both lists.
+
 ## 6. THE HIVE POOL (2026-10-27 evening, the user's decision; built, untested)
 
 hw292 (round 62, set A from day 0, the first games on the occupation jar) ran clean - 0

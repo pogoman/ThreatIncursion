@@ -3465,39 +3465,39 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatOccupation (597 lines)
-- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :72 - XStream:
-- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :88 - The alias's fallback:
-- `ThreatOccupation.registerPlugins()` :116 - At application load:
-- `ThreatOccupation.isClaimed(Industry ind)` :135 - Whether the swarm's front on the industry's world has claimed it.
-- `ThreatOccupation.image(Industry ind, String base)` :142 - The image a producing industry draws:
-- `ThreatOccupation.enabled()` :151
-- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :156 - Whether the front is the swarm's on a human world still in the economy:
-- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :162 - Whether the swarm holds every district:
-- `ThreatOccupation.showsCard(MarketAPI market)` :173 - Whether the colony screen shows the infestation card:
-- `ThreatOccupation.claims(GroundFront front)` :178 - The front's claims, in claim order (older saves hold none).
-- `ThreatOccupation.claimable(MarketAPI market)` :191 - The world's industries the swarm can claim, in a fixed order (by id) so the clock takes the same next one from poll to poll:
-- `ThreatOccupation.compare(Industry a, Industry b)` :205
-- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :213 - The claimed industries still on the market, in claim order.
-- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :224 - The next industry the clock claims;
-- `ThreatOccupation.daysToNextClaim(GroundFront front)` :234 - Days until the clock claims the next industry.
-- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :244 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
-- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :308 - Claims one industry per district held that is not yet claimed;
-- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :322 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
-- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :328 - The last district is the swarm's:
-- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :346 - A district retaken releases the newest claim (ThreatGroundFronts#loseStratum).
-- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :362
-- `ThreatOccupation.holdDeciv(MarketAPI market)` :377 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
-- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :385 - The share of the world's producers the swarm has claimed:
-- `ThreatOccupation.growthPerDay(GroundFront front)` :398 - Strata a day the occupation grows:
-- `ThreatOccupation.cap(MarketAPI market)` :410 - The most the occupation holds, all told:
-- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :415 - What the occupation holds:
-- `ThreatOccupation.standingFP(MarketAPI market)` :421 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
-- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :432 - Strata a day the occupation moves, either way:
-- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :442 - The troops the ground keeps standing:
-- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :463 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
-- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :532 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
-- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :567 - The strata risen become a swarm over the world, whole:
+## ThreatOccupation (604 lines)
+- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :79 - XStream:
+- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :95 - The alias's fallback:
+- `ThreatOccupation.registerPlugins()` :123 - At application load:
+- `ThreatOccupation.isClaimed(Industry ind)` :142 - Whether the swarm's front on the industry's world has claimed it.
+- `ThreatOccupation.image(Industry ind, String base)` :149 - The image a producing industry draws:
+- `ThreatOccupation.enabled()` :158
+- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :163 - Whether the front is the swarm's on a human world still in the economy:
+- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :169 - Whether the swarm holds every district:
+- `ThreatOccupation.showsCard(MarketAPI market)` :180 - Whether the colony screen shows the infestation card:
+- `ThreatOccupation.claims(GroundFront front)` :185 - The front's claims, in claim order (older saves hold none).
+- `ThreatOccupation.claimable(MarketAPI market)` :198 - The world's industries the swarm can claim, in a fixed order (by id) so the clock takes the same next one from poll to poll:
+- `ThreatOccupation.compare(Industry a, Industry b)` :212
+- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :220 - The claimed industries still on the market, in claim order.
+- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :231 - The next industry the clock claims;
+- `ThreatOccupation.daysToNextClaim(GroundFront front)` :241 - Days until the clock claims the next industry.
+- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :251 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
+- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :315 - Claims one industry per district held that is not yet claimed;
+- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :329 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
+- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :335 - The last district is the swarm's:
+- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :353 - A district retaken releases the newest claim (ThreatGroundFronts#loseStratum).
+- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :369
+- `ThreatOccupation.holdDeciv(MarketAPI market)` :384 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
+- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :392 - The share of the world's producers the swarm has claimed:
+- `ThreatOccupation.growthPerDay(GroundFront front)` :405 - Strata a day the occupation grows:
+- `ThreatOccupation.cap(MarketAPI market)` :417 - The most the occupation holds, all told:
+- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :422 - What the occupation holds:
+- `ThreatOccupation.standingFP(MarketAPI market)` :428 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
+- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :439 - Strata a day the occupation moves, either way:
+- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :449 - The troops the ground keeps standing:
+- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :470 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
+- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :539 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
+- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :574 - The strata risen become a swarm over the world, whole:
 
 ## ThreatOffensive (1060 lines)
 - `ThreatOffensive.startDay()` :126 - The campaign's start (the last launch), or NaN for none - never -1:
