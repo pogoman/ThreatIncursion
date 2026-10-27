@@ -5474,4 +5474,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				.send();
 		ThreatIncConfig.log("Front evacuated: " + worldName(front));
 	}
+	/**
+	 * SAVE COMPATIBILITY ONLY (2026-10-27): the listener the swarm bombard holds put on every swarm fleet
+	 * until v3 (HoldRefund, deleted with the holds in phase 1b). Saves made before 22:24 carry one per
+	 * fleet and XStream needs the class to load them; it does nothing and arms nothing. Keep until the
+	 * next save-breaking release.
+	 */
+	public static class HoldRefund implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
+		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
+				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
+		}
+
+		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
+				com.fs.starfarer.api.campaign.BattleAPI battle) {
+		}
+	}
 }

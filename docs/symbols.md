@@ -2012,7 +2012,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundDefenses.isAvailableToBuild()` :68
 - `ThreatGroundDefenses.showWhenUnavailable()` :73
 
-## ThreatGroundFronts (5477 lines)
+## ThreatGroundFronts (5492 lines)
 - `ThreatGroundFronts.isPlayerOwned()` :205 - The World Occupied notice has been sent.
 - `ThreatGroundFronts.getFront(String marketId)` :220
 - `ThreatGroundFronts.hasFront(MarketAPI market)` :225
@@ -2382,6 +2382,8 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundFronts.announceCollapse(GroundFront front, MarketAPI market)` :5364 - A player's or faction's front is gone:
 - `ThreatGroundFronts.evacuate(GroundFront front, MarketAPI market)` :5385 - The colony died under the front.
 - `ThreatGroundFronts.evacuate(GroundFront front, ThreatOutposts.Outpost outpost, Vector2f hyperLoc)` :5389
+- `ThreatGroundFronts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :5484 - SAVE COMPATIBILITY ONLY (2026-10-27):
+- `ThreatGroundFronts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :5488
 
 ## ThreatGroundWarCondition (265 lines)
 - `ThreatGroundWarCondition.apply(String id)` :36 - THE INFESTATION.
