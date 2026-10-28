@@ -1393,3 +1393,32 @@ run-seeds-26.ps1's last round, 75 minutes to the cap.
 
 hw302 (round 70, the set B re-run of the lost hw299) follows on the absorb-room jar
 (`handover-26-27b.sh`: kill, rebuild, commit, launch).
+
+## 77. hw302 - round 70, set B three games on the absorb-room jar (2026-10-28 02:39-03:57)
+
+Set B (OceanPena / ZhiFarah / AphelionDysnomia, the lost hw299's games) from day 0 on jar
+02:39:18 (a9a25cd3: the gate jar + Fix 2c, a bud's own strata count as absorb room), driver
+run-seeds-27.ps1, 75 minutes to the cap. The watcher stopped at 03:01 on a `nograndfleet` signal
+(hw302a: no grand fleet sailed by w1,885 - six sailed by the cap); the figures are from the logs.
+
+| game | war day | hives | worlds occupied | districts retaken | grand fleet sails | sat bombs | stand-downs / absorbs | late war d/min (w2,800-3,750) | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw302a | 3,806 | 368 | 47 | 9 | 6 | 0 | 144 / 255 | 28 | 0 |
+| hw302b | 3,832 | 360 | 40 | 9 | 9 | 3 | 76 / 110 | 25 | 0 |
+| hw302c | 3,422 | 301 | 34 | 5 | 21 | 2 | 57 / 57 | 21 | 0 |
+
+- The absorb-room fix holds: absorbs now outnumber stand-downs (255 / 110 / 57 against 144 / 76
+  / 57; hw301 on the gate jar 14 / 29 / 121 against 14 / 30 / 96), every stand-down line reads
+  "holds >= cap" ("holds 3212 of 3200, pool 1939"; "holds 51200 of 51200, pool 48939" on
+  Chicomoztoc, size 8), none at an empty pool. Pools of a quiet size-8 world reach the cap
+  (51,200 strata) from the strike fleets parked over it - the user's "reabsorb so they help grow
+  the colony".
+- The war: 301-368 hives (set B's best yet: hw297 274-316, hw301 284-352), 34-47 worlds
+  occupied, 5-9 districts retaken, no world freed, grand fleets sail 6-21 times and come home, 0
+  exceptions, 0 "Daily strike ... bombarded". Late war 21-28 days a minute.
+
+**Overnight 2026-10-27/28 in one line:** four rounds (hw298 two games, hw300 / hw301 / hw302
+three each, 11 games) on the performance jar and its two occupation fixes - 258-394 hives at
+w3,400-3,900 in 75 minutes (hw296: w3,100-3,300), late war 13-41 days a minute (was 20), 0
+exceptions, no world ever freed, grand fleets sail and come home. hw299 was lost to a self-firing
+one-shot task (section 74) and re-run as hw302.
