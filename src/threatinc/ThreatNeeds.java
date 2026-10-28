@@ -190,7 +190,7 @@ public class ThreatNeeds {
 		boolean armsAsked = false;
 		if (army) {
 			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(id);
-			String word = ThreatGroundFronts.lineState(front, m, false);
+			String word = ThreatGroundFronts.stateWord(front, m, false);
 			float hold = Math.max(0f, ThreatGroundFronts.reliefNeed(m, 0f) - atSea[0]);
 			float back = Math.max(hold, ThreatGroundFronts.reliefNeed(m, ThreatIncConfig.frontPushBackRate()) - atSea[0]);
 			float over = Math.max(back, ThreatGroundFronts.reliefNeed(m, ThreatIncConfig.frontOverrunRate()) - atSea[0]);

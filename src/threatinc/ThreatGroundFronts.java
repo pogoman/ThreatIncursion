@@ -1280,6 +1280,59 @@ public class ThreatGroundFronts {
 		return bothPush ? LINE_GRINDING : LINE_STALLED;
 	}
 
+	/**
+	 * THE STATE WORD (the user, 2026-10-28 evening: "sub statuses like entrenched, dug in,
+	 * holding, breaking retreating overrun etc."): the fronts table's State from one side, by the
+	 * line's rate its way and, while it holds, its cover ({@link #stateWordOf}). The Objective
+	 * column carries the days; this is the word.
+	 */
+	public static String stateWord(GroundFront front, MarketAPI market, boolean fromLanding) {
+		if (front == null || market == null) return LINE_STALLED;
+		float rate = lineRate(front, market);
+		float r = fromLanding ? rate : -rate;
+		boolean pushes = fromLanding ? STANCE_PUSH.equals(front.stance) : defendersPush(front, market);
+		float cover = fromLanding ? entrenchFraction(front) : isHiveTarget(market) ? 1f : defenderEntrenchFraction(front);
+		return stateWordOf(r, pushes, cover);
+	}
+
+	/**
+	 * The word for a side whose line moves at {@code r} its way (positive = it gains), pushing or
+	 * not, at {@code cover} of frontEntrenchDays. Pushed back it is the same ladder for both:
+	 * breaking inside frontPushBackRate, retreating inside frontOverrunRate, overrun past it -
+	 * except a loss inside frontBreakRate (0.1: a district in 60 days or more), which a pushing side
+	 * reads as checked and a holding side as its cover. Pushing: overrunning past frontOverrunRate,
+	 * gaining past frontBreakRate, grinding while it gains more slowly, stalled at 0. Holding (hold
+	 * or regrouping) with the line standing or barely moving: entrenched past 2/3 of its cover
+	 * days, dug in past 1/3, holding below; advancing if the line somehow moves its way.
+	 */
+	public static String stateWordOf(float r, boolean pushes, float cover) {
+		float brk = Math.max(0f, ThreatIncConfig.frontBreakRate());
+		float retreat = Math.max(brk, ThreatIncConfig.frontPushBackRate());
+		float over = Math.max(retreat, ThreatIncConfig.frontOverrunRate());
+		if (r <= -over) return LINE_OVERRUN;
+		if (r < -retreat) return LINE_RETREATING;
+		if (r < -brk) return LINE_BREAKING;
+		if (pushes) {
+			if (r >= over) return LINE_OVERRUNNING;
+			if (r > brk) return LINE_GAINING;
+			if (r > 0.0001f) return LINE_GRINDING;
+			if (r > -0.0001f) return LINE_STALLED;
+			return LINE_CHECKED;
+		}
+		if (r > 0.0001f) return LINE_ADVANCING;
+		if (cover >= 0.67f) return LINE_ENTRENCHED;
+		if (cover >= 0.34f) return LINE_DUG_IN;
+		return LINE_HOLDING;
+	}
+
+	public static final String LINE_RETREATING = "retreating";
+	public static final String LINE_BREAKING = "breaking";
+	public static final String LINE_CHECKED = "checked";
+	public static final String LINE_ADVANCING = "advancing";
+	public static final String LINE_ENTRENCHED = "entrenched";
+	public static final String LINE_DUG_IN = "dug in";
+	public static final String LINE_HOLDING = "holding";
+
 	/** The suppression key the tick writes to front.state from the rate: HOLDING (key structures worn) while the landing gains, GRINDING (defence structures held) inside the band, FOOTHOLD (nothing) while it loses. */
 	public static String lineSuppressionState(float rate) {
 		float band = Math.max(0f, ThreatIncConfig.frontGrindBand());

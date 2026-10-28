@@ -179,7 +179,7 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		// THE LINE (2026-10-23): the word from the swarm's side and the next district
 		tooltip.addPara("The swarm is %s" + (change < 0f ? "" : "; next " + ThreatGroundFronts.layerName(market)
 				+ (rate > 0f ? " falls in " : " retaken in ") + days(change)) + ".", 3f,
-				rate > 0f ? neg : pos, ThreatGroundFronts.lineState(front, market, true));
+				rate > 0f ? neg : pos, ThreatGroundFronts.stateWord(front, market, true));
 
 		// What that defence figure is actually made of (2026-09-08). Vanilla's
 		// own Ground defenses readout on this screen shows the garrison stat

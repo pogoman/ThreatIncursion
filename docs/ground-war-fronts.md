@@ -63,7 +63,14 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   before the force bleeds out at its push losses (days to the district <= troops / losses a day x
   `doctrinePushBleedMargin` 1.0), else digs in; a push that only slows a loss digging in would not
   stop is made regardless; a garrison with no marines loses nothing and pushes for free.
-- **States** (`lineState`, from the reader's side): overrunning past `frontOverrunRate` 0.5,
+- **The State word** (`stateWord` / `stateWordOf`, 2026-10-28, the user: "sub statuses like
+  entrenched, dug in, holding, breaking retreating overrun"): the table's State cell from the
+  reader's side. Pushing: overrunning past `frontOverrunRate`, gaining past `frontBreakRate` (0.1),
+  grinding while gaining more slowly, stalled at 0, checked while pushed back inside the break rate.
+  Holding (hold or regrouping) inside the break rate: entrenched past 2/3 of its cover days, dug in
+  past 1/3, holding below. Pushed back, both sides: breaking inside `frontPushBackRate` (0.25),
+  retreating inside the overrun rate, overrun past it.
+- **States** (`lineState`, the rate-only word the push notices still use): overrunning past `frontOverrunRate` 0.5,
   gaining past `frontGrindBand` (0 since 2026-10-28: any movement shows its ETA, stalled means
   nobody pushes), grinding inside the band with both pushing, stalled inside
   it otherwise, losing and overrun the mirror. `front.state` (what the landing suppresses) is

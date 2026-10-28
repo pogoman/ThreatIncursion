@@ -447,7 +447,7 @@ public class ThreatWarBoard {
 			String ownerId = ThreatGroundFronts.ownerOf(f);
 			FactionAPI faction = Global.getSector().getFaction(ownerId);
 			String who = f.isPlayerOwned() ? "Your" : ThreatWarState.displayName(ownerId);
-			String state = ThreatGroundFronts.lineState(f, market, true); // the line from the landing's side
+			String state = ThreatGroundFronts.stateWord(f, market, true); // the line from the landing's side
 			Op op = new Op();
 			op.kind = "front";
 			op.faction = faction;
@@ -1025,10 +1025,13 @@ public class ThreatWarBoard {
 
 	/** The State cell's colour for a line word: gaining ground good, losing it bad, grinding highlighted, stalled plain. */
 	protected static Color lineColor(String line, Color pos, Color neg, Color h, Color text) {
-		if (ThreatGroundFronts.LINE_GAINING.equals(line) || ThreatGroundFronts.LINE_OVERRUNNING.equals(line)) return pos;
-		if (ThreatGroundFronts.LINE_LOSING.equals(line) || ThreatGroundFronts.LINE_OVERRUN.equals(line)) return neg;
-		if (ThreatGroundFronts.LINE_GRINDING.equals(line)) return h;
-		return text;
+		if (ThreatGroundFronts.LINE_GAINING.equals(line) || ThreatGroundFronts.LINE_OVERRUNNING.equals(line)
+				|| ThreatGroundFronts.LINE_ADVANCING.equals(line)) return pos;
+		if (ThreatGroundFronts.LINE_LOSING.equals(line) || ThreatGroundFronts.LINE_OVERRUN.equals(line)
+				|| ThreatGroundFronts.LINE_RETREATING.equals(line)) return neg;
+		if (ThreatGroundFronts.LINE_GRINDING.equals(line) || ThreatGroundFronts.LINE_CHECKED.equals(line)
+				|| ThreatGroundFronts.LINE_BREAKING.equals(line)) return h;
+		return text; // stalled, entrenched, dug in, holding
 	}
 
 	/**
@@ -1125,8 +1128,8 @@ public class ThreatWarBoard {
 		main.addTableHeaderTooltip(strengthCol, "Force: " + side + " strength, then the enemy's. "
 				+ "-> " + side + " attacking, <- the enemy attacking, <-> both, - neither. "
 				+ "A side gains ground by what it outweighs the other's cover by.");
-		main.addTableHeaderTooltip(strengthCol + 1, "The line from " + side + " side: gaining or losing "
-				+ "ground, grinding with both sides pushing, stalled, overrunning or overrun.");
+		main.addTableHeaderTooltip(strengthCol + 1, "State of " + side + " side: pushing - overrunning, gaining, "
+				+ "grinding, stalled, checked; holding - entrenched, dug in, holding; pushed back - breaking, retreating, overrun.");
 		main.addTableHeaderTooltip(strengthCol + 2, "Districts or strata: taken by " + side + " landing, "
 				+ "or still standing on " + side + " world.");
 		main.addTableHeaderTooltip(strengthCol + 3, "Stance of " + side + " side: push moves the line, "
@@ -1196,7 +1199,7 @@ public class ThreatWarBoard {
 			cells.add(Alignment.MID);
 			cells.add(text);
 			cells.add(force); i++;
-			String line = ThreatGroundFronts.lineState(f, m, weLanded); // THE LINE (2026-10-23), from this side
+			String line = ThreatGroundFronts.stateWord(f, m, weLanded); // THE STATE WORD (2026-10-28), from this side
 			cell(cells, Alignment.MID, lineColor(line, pos, neg, h, text), line); i++;
 			// Held from this side: what our landing has taken, or what still stands on our world
 			boolean hive = ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE;

@@ -516,6 +516,8 @@ public class ThreatIncConfig {
 	public static float frontOverrunRate()    { return f("threatinc_frontOverrunRate"); }
 	/** The rate toward the defenders a colony's marines ask is sized to (ThreatGroundFronts.reliefNeed): push the army back. */
 	public static float frontPushBackRate()   { return f("threatinc_frontPushBackRate"); }
+	/** THE STATE WORD (2026-10-28): the line rate inside which a loss reads as the side's cover (holding) or checked (pushing), and a gain reads grinding (ThreatGroundFronts.stateWordOf). */
+	public static float frontBreakRate()      { return f("threatinc_frontBreakRate"); }
 	/** THE SHARE RULE (2026-10-28): a pushing side gains its covered force x (its share of the field)^k (ThreatGroundFronts.lineRateOf); 1 keeps both-push as it was. */
 	public static float frontPushShareExponent() { return f("threatinc_frontPushShareExponent"); }
 	/** PRESSURE BREAKS COVER (2026-10-28): a dug-in side under an enemy push loses the force ratio x this in entrench days a day (ThreatGroundFronts.coverStep). */

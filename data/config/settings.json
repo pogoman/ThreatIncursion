@@ -621,6 +621,11 @@
 	# the rate toward its defenders a colony's marines ask (relief convoys, Reinforce, battle
 	# requests) is sized to: push the army back, between hold (0) and overrun (frontOverrunRate)
 	"threatinc_frontPushBackRate": 0.25,
+	# THE STATE WORD (the user, 2026-10-28: "sub statuses like entrenched, dug in, holding, breaking
+	# retreating overrun"): a loss inside this rate (0.1 = a district in 60 d or more) reads as the
+	# holding side's cover - entrenched / dug in / holding - or checked for a pusher; past it breaking,
+	# past frontPushBackRate retreating, past frontOverrunRate overrun; a push gains past it, grinds inside
+	"threatinc_frontBreakRate": 0.1,
 	# THE SHARE RULE (the user, Arkoman 2026-10-28: "pushing as inferior force should still gain
 	# ground just less ... proportionally less given the disadvantage in numbers ... both sides push
 	# is just one subtracted from the other"): a pushing side gains its covered force x (its share
