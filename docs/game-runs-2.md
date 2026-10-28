@@ -1477,3 +1477,34 @@ gutted and left ("lifts off"), the builder's restores, districts taken / retaken
 hw304 re-run on jar 09:37:17 (fix 1): hw305a = hw302a d1,293, hw305b = hw302b d1,263, 1,500 days, two
 games, driver run-seeds-30.ps1. Read: producers consumed (not only the military), lift-offs with a count,
 restores, districts retaken, the lifted swarms' fate.
+
+**hw305 cap (10:10, 1,500 days in 27 minutes, 55 d/min, two games, jar 09:37:17 = fix 1 only):**
+
+| game | war day | hives | consumed | lift-offs (industries eaten: n) | restores / holds | claims / reclaims | occupied / retaken | re-landings (< 180 d) | lifted FP / re-banked | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw305a | 2,804 | 247 | 89 | 29 (0: 2, 1: 4, 2: 7, 3: 5, 4: 7, 5: 3, 6: 1) | 32 / 57 | 106 / 10 | 19 / 10 | 12 (5) | 22,859 / 14,601 | 0 |
+| hw305b | 2,771 | 253 | 123 | 43 (0: 2, 1: 4, 2: 10, 3: 10, 4: 11, 5: 2, 6: 4) | 38 / 95 | 156 / 20 | 28 / 20 | 17 (5) | 25,221 / 14,741 | 0 |
+
+- **The cycle works:** a landing claims, eats the producers in id order over their build times
+  (Mining 17 / 22, Orbital Works 13 / 19, Light Industry 10 / 10, Farming 8 / 8, Heavy Industry 5 / 10,
+  Refining 3 / 8, Fuel Production 2 / 2, Aquaculture 1 / 0), then the military (Ground Defenses 10 / 10,
+  Patrol HQ 9 / 10, Heavy Batteries 7 / 14, Military Base 4 / 8, High Command 0 / 1), and lifts off -
+  29 / 43 worlds left in 1,500 days against 0 worlds freed in hw303. The pool and troops sail as one
+  Infestation Swarm bound for the nearest hive: 14.6k / 14.7k FP re-banked ("Ledger: Infestation
+  Swarm home") of 22.9k / 25.2k lifted, the rest in flight at the cap or lost on the way.
+- **The humans rebuild:** 32 / 38 restores (mining 8 / 11, patrolhq 5 / 5, grounddefenses 5 / 6,
+  lightindustry 5 / 4, farming 4 / 6, heavyindustry 2 / 0, heavybatteries 2 / 3, refining 0 / 1,
+  militarybase 0 / 1, aquaculture 1 / 0), 57 / 95 holds ("holds N supplies to restore X") where the
+  price waited on supplies.
+- **The swarm is not weaker for it:** 247 / 253 hives at d2,800 against hw303's 220 / 251.
+- **Re-landings at gutted worlds:** 12 / 17, five a game within the 180-day gutted hold (+3, +19 days:
+  strikes already in flight when the swarm lifted off - they land, take a district, find nothing and
+  lift off again; the rest 230-1,143 days later, the world restored). Open: an in-flight strike could
+  re-target.
+- **Two lift-offs a game with 0 eaten** (Tigra City with its Orbital Works under construction and
+  nothing else) - fix 3 counts a building producer and the pickers skip a world with nothing to eat.
+- The parallel cap (`consuming` <= `strataHeld`) could not be read from the dumps: the validation
+  copies hold only the first three monthly dumps (09:39-09:41) - to look at. Districts retaken 10 / 20
+  as before (the line's force terms, unchanged).
+- Fixes 2 + 3 (no Building label, the rebuild rule, building producers count, no strike for nothing,
+  buds re-banked) built as jar 10:10:43; **hw306 (round 74)** on it from 10:11, the same snapshots.
