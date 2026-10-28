@@ -7,7 +7,7 @@ import com.fs.starfarer.api.impl.campaign.econ.impl.Mining;
  * industry draws its dark-green image. No fields, XStream-aliased to vanilla's name and set as
  * the spec's plugin at load ({@link ThreatOccupation#registerPlugins}), so saves stay portable.
  */
-public class OccupiedMining extends Mining {
+public class OccupiedMining extends Mining implements OccupiedIndustry {
 
 	@Override
 	public String getCurrentImage() {
@@ -27,6 +27,10 @@ public class OccupiedMining extends Mining {
 	@Override
 	public boolean isUpgrading() {
 		return super.isUpgrading() || (!super.isBuilding() && ThreatOccupation.consuming(this));
+	}
+	/** Fix 4: vanilla's own building flag, for ThreatOccupation.producers (never isBuilding, which would recurse). */
+	public boolean underConstruction() {
+		return super.isBuilding();
 	}
 	@Override
 	public float getBuildOrUpgradeProgress() {

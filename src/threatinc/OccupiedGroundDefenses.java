@@ -7,7 +7,7 @@ import com.fs.starfarer.api.impl.campaign.econ.impl.GroundDefenses;
  * 2026-10-28: the military structures are consumed last). No fields, XStream-aliased to vanilla's
  * name and set as the spec's plugin at load ({@link ThreatOccupation#registerPlugins}), so saves stay portable.
  */
-public class OccupiedGroundDefenses extends GroundDefenses {
+public class OccupiedGroundDefenses extends GroundDefenses implements OccupiedIndustry {
 	@Override
 	public String getCurrentImage() {
 		return ThreatOccupation.image(this, super.getCurrentImage());
@@ -26,6 +26,10 @@ public class OccupiedGroundDefenses extends GroundDefenses {
 	@Override
 	public boolean isUpgrading() {
 		return super.isUpgrading() || (!super.isBuilding() && ThreatOccupation.consuming(this));
+	}
+	/** Fix 4: vanilla's own building flag, for ThreatOccupation.producers (never isBuilding, which would recurse). */
+	public boolean underConstruction() {
+		return super.isBuilding();
 	}
 	@Override
 	public float getBuildOrUpgradeProgress() {

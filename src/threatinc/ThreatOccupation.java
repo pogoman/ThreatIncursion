@@ -219,7 +219,7 @@ public class ThreatOccupation {
 			if (!ind.isIndustry()) continue;
 			// a producer under construction has no supply yet and is a producer still (fix 3, hw305: Tigra City's
 			// Orbital Works building, "nothing left to claim" after one district, a strike for nothing)
-			if (ind.getAllSupply().isEmpty() && !held.contains(ind.getId()) && !ind.isBuilding()) continue;
+			if (ind.getAllSupply().isEmpty() && !held.contains(ind.getId()) && !underConstruction(ind)) continue;
 			list.add(ind);
 		}
 		sortById(list);
@@ -256,6 +256,15 @@ public class ThreatOccupation {
 				return a.getId().compareTo(b.getId());
 			}
 		});
+	}
+	/**
+	 * Vanilla's building flag of an industry, never the Occupied plugins' overridden isBuilding (fix 4, 2026-10-28:
+	 * producers -> isBuilding -> consuming -> active -> producers recursed without end, the StackOverflowError
+	 * swallowed by consuming's catch, and the game hung at a tick - hw306a, hw308b).
+	 */
+	public static boolean underConstruction(Industry ind) {
+		if (ind instanceof OccupiedIndustry) return ((OccupiedIndustry) ind).underConstruction();
+		return ind != null && ind.isBuilding();
 	}
 	/** Whether a strike has anything to eat on the world: something claimable, or consumption off (fix 3: no strike for nothing). */
 	public static boolean worthEating(MarketAPI market) {
@@ -431,7 +440,7 @@ public class ThreatOccupation {
 		Industry ind = market.getIndustry(id);
 		String name = ind != null ? ind.getCurrentName() : id;
 		String rebuild = null;
-		if (ind != null && eatenDays != null && eatenDays > 0f && ind instanceof BaseIndustry && !ind.isBuilding()) {
+		if (ind != null && eatenDays != null && eatenDays > 0f && ind instanceof BaseIndustry && !underConstruction(ind)) {
 			float share = Math.max(0f, Math.min(1f, eatenDays / consumeTime(ind)));
 			ind.startBuilding();
 			((BaseIndustry) ind).setBuildProgress(Math.max(0f, ind.getBuildTime() * (1f - share)));
@@ -515,7 +524,9 @@ public class ThreatOccupation {
 			Float days = front.consumeDays != null ? front.consumeDays.get(ind.getId()) : null;
 			if (days != null && days > 0f) return true;
 			return active(front, ind.getMarket()).contains(ind.getId());
-		} catch (Throwable t) {
+		} catch (StackOverflowError e) {
+			throw e; // fix 4: never swallowed - it was the hang
+		} catch (RuntimeException e) {
 			return false;
 		}
 	}
