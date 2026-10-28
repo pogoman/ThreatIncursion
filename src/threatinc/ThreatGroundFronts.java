@@ -1127,13 +1127,76 @@ public class ThreatGroundFronts {
 		return lineRateOf(a, coverA, d, coverD, defenderPressure(front, market), landingPushes, worldPushes);
 	}
 
-	/** The line's arithmetic on bare figures ({@link #lineRate(GroundFront, MarketAPI, boolean, boolean)}): the landing a in coverA, the world d in coverD pushing with pressure. */
+	/**
+	 * The line's arithmetic on bare figures ({@link #lineRate(GroundFront, MarketAPI, boolean, boolean)}):
+	 * the landing a in coverA, the world d in coverD pushing with pressure. THE SHARE RULE (the
+	 * user, Arkoman 2026-10-28: "pushing as inferior force should still gain ground just less ...
+	 * proportionally less given the disadvantage in numbers ... both sides push is just one
+	 * subtracted from the other"): a pushing side gains its covered force times its share of the
+	 * field, to frontPushShareExponent k.
+	 * <pre>
+	 * a' = a x coverA, d' = d x coverD, p' = pressure x coverD
+	 * gainA = landingPushes ? a' x (a' / (a' + d'))^k : 0
+	 * gainD = worldPushes   ? p' x (p' / (p' + a'))^k : 0
+	 * rate  = (gainA - gainD) / (a + d)
+	 * </pre>
+	 * At k 1 with both pushing and p' = d' this is (a'^2 - d'^2) / (a' + d') = a' - d', the rule
+	 * of 2026-10-23 unchanged (a hive always pushes, so every hive fight and its sizing stand). A
+	 * lone pusher gains a'^2 / (a' + d') where before it gained max(0, a' - d'): an inferior force
+	 * takes ground slowly and the attrition rule bills it (equal forces, one pushing: a district in
+	 * 24 d; a half-strength pusher 54 d and dead in 33). A dug-in side never holds a push by cover
+	 * alone - cover slows it and cuts the losses; only a push back cancels it.
+	 */
 	public static float lineRateOf(float a, float coverA, float d, float coverD, float pressure,
 			boolean landingPushes, boolean worldPushes) {
-		float gainA = landingPushes ? Math.max(0f, a * coverA - d * coverD) : 0f;
-		float gainD = worldPushes ? Math.max(0f, pressure * coverD - a * coverA) : 0f;
+		float k = Math.max(0f, ThreatIncConfig.frontPushShareExponent());
+		float aC = Math.max(0f, a * coverA);
+		float dC = Math.max(0f, d * coverD);
+		float pC = Math.max(0f, pressure * coverD);
+		float gainA = landingPushes && aC > 0f ? aC * (float) Math.pow(aC / (aC + dC), k) : 0f;
+		float gainD = worldPushes && pC > 0f ? pC * (float) Math.pow(pC / (pC + aC), k) : 0f;
 		float rate = (gainA - gainD) / Math.max(1f, a + d);
 		return Math.max(-1f, Math.min(1f, rate));
+	}
+
+	/**
+	 * PRESSURE BREAKS COVER (the user, Arkoman 2026-10-28: "a dug in force should be breakeable
+	 * under enough pressure"): a side's entrench days after a tick. Pushing spends them as before
+	 * (past zero the push is over-extended). Dug in under an enemy push they are STRIPPED at the
+	 * force ratio a day ({@link #coverPressure}: the pusher's covered push figure over this side's
+	 * covered holding figure, x frontCoverStripMult) instead of growing, to 0 and no further -
+	 * broken cover is open ground, not over-extension; an over-extended side under a push still
+	 * recovers to 0 at a day a day. Dug in with nobody pushing they grow a day a day as before.
+	 * Arkoman's 1,248 pushing on the swarm's 1,413 strips its 21 days in 24; a 2:1 push strips 30
+	 * in 15; the cover regrows only once the push stops.
+	 */
+	protected static float coverStep(float days, boolean pushing, float enemyPressure, float elapsedDays) {
+		if (pushing) return days - elapsedDays;
+		if (enemyPressure <= 0f) return days + elapsedDays;
+		if (days > 0f) return Math.max(0f, days - enemyPressure * elapsedDays);
+		return Math.min(0f, days + elapsedDays);
+	}
+
+	/** The rate an enemy push strips cover at: its covered push figure over the covered figure it pushes against, x frontCoverStripMult; 0 with nothing pushing. */
+	protected static float coverPressure(float enemyPush, float ownForce) {
+		if (enemyPush <= 0f) return 0f;
+		return enemyPush / Math.max(1f, ownForce) * Math.max(0f, ThreatIncConfig.frontCoverStripMult());
+	}
+
+	/**
+	 * THE BLEED-OUT TEST (the user, 2026-10-28; under the share rule a lone push always gains, so
+	 * "does pushing move the line" no longer tells push from dig in): a push is worth its losses
+	 * while it takes the next district before the force bleeds out at its push losses -
+	 * (frontLineBaseDays - progress) / rate against troops / losses a day x
+	 * doctrinePushBleedMargin. A force that loses nothing a day (a garrison with no marines) always
+	 * pays; a push that gains nothing its way never does.
+	 */
+	protected static boolean pushPaysOff(float rate, float progress, float troops, float lossPerDay) {
+		if (rate <= 0f) return false;
+		float base = Math.max(1f, ThreatIncConfig.frontLineBaseDays());
+		float days = Math.max(0f, base - progress) / rate;
+		if (lossPerDay <= 0f) return true;
+		return days <= troops / lossPerDay * Math.max(0f, ThreatIncConfig.doctrinePushBleedMargin());
 	}
 
 	/** The line as the world's marines would push it (an order's quote): the rate at the landing's stance with the defenders pushing. */
@@ -1223,7 +1286,10 @@ public class ThreatGroundFronts {
 			digV = Math.min(standing(lineRate(front, market, false, true)),
 					standing(lineRate(front, market, false, false)));
 		}
-		return pushV > digV;
+		if (pushV <= digV) return false;
+		if (pushV <= 0f) return true; // pushing slows a loss digging in would not
+		// THE BLEED-OUT TEST (2026-10-28): the district before the force is gone
+		return pushPaysOff(pushV, front.pushProgress, front.marines, landingLossPerDay(front, market, true));
 	}
 
 	/** Whether a line rate moves the line at all: outside frontGrindBand either way; inside it the line stands (stalled / grinding). */
@@ -1584,7 +1650,11 @@ public class ThreatGroundFronts {
 			digV = Math.max(standing(lineRate(front, market, true, false)),
 					standing(lineRate(front, market, false, false)));
 		}
-		return pushV < digV;
+		if (pushV >= digV) return false;
+		if (pushV >= 0f) return true; // pushing slows a loss digging in would not
+		// THE BLEED-OUT TEST (2026-10-28), on the marines - a garrison with none pushes for free
+		float armed = ThreatReserves.armedMarines(market);
+		return pushPaysOff(-pushV, -front.pushProgress, armed, armed > 0f ? worldLossPerDay(market, front, armed) : 0f);
 	}
 
 	/** "push" / "dug in" - the marines' stance against a Threat landing, as the board names it (push = they move the line, dug in = they hold it from cover). */
@@ -1677,9 +1747,11 @@ public class ThreatGroundFronts {
 			}
 		}
 		// cover is dug while holding fire and spent going over the top - past zero the
-		// marines are over-extended, to the same degree (the user, 2026-10-24)
-		front.defenderEntrenchDays = clampEntrench(front.defenderEntrenchDays
-				+ (STANCE_ENTRENCH.equals(front.defence) ? elapsedDays : -elapsedDays));
+		// marines are over-extended, to the same degree (the user, 2026-10-24); under the
+		// landing's push it is stripped at the force ratio instead (coverStep, 2026-10-28)
+		float landingPush = STANCE_PUSH.equals(front.stance) ? effectiveStrength(front) * coverIfDugIn(front) : 0f;
+		front.defenderEntrenchDays = clampEntrench(coverStep(front.defenderEntrenchDays,
+				!STANCE_ENTRENCH.equals(front.defence), coverPressure(landingPush, defenderStrength(market)), elapsedDays));
 	}
 
 	/**
@@ -2140,8 +2212,11 @@ public class ThreatGroundFronts {
 	front.daysAlive += elapsedDays;
 	// cover is dug while holding, and spent while pushing - past zero the push is
 	// over-extended, to the same degree (the user, 2026-10-24); both ways bounded by
-	// frontEntrenchDays
-	front.entrenchDays = clampEntrench(front.entrenchDays + (pushing ? -elapsedDays : elapsedDays));
+	// frontEntrenchDays; under the world's push it is stripped at the force ratio
+	// instead (coverStep, 2026-10-28)
+	float worldPush = defendersPush(front, market) ? defenderPressure(front, market) * defenderCoverIfDugIn(front) : 0f;
+	front.entrenchDays = clampEntrench(coverStep(front.entrenchDays, pushing,
+			coverPressure(worldPush, effectiveStrength(front) * coverIfDugIn(front)), elapsedDays));
 
 		// THE LINE (2026-10-23): the rate both sides move it at, and the
 		// suppression key read off it - the landing wears the world's structures
@@ -2259,7 +2334,7 @@ public class ThreatGroundFronts {
 			} else if (STANCE_PUSH.equals(front.stance) && !doctrinePushes(front, market)) {
 				orderEntrench(front);
 				ThreatIncConfig.log((isThreatOwned(front) ? "Threat" : ownerOf(front)) + " front at "
-						+ market.getName() + " digs in: pushing moves nothing (line "
+						+ market.getName() + " digs in: the push does not pay (line "
 						+ String.format("%.2f", lineRate(front, market)) + ")");
 			}
 		}
@@ -5268,7 +5343,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float target = -Math.max(0f, rate);
 		float a = effectiveStrength(front);
 		boolean landingPushes = STANCE_PUSH.equals(front.stance);
-		boolean worldPushes = target < 0f || defendersPush(front, market);
+		boolean worldPushes = true; // under the share rule only a push back holds a push (2026-10-28)
 		// sized against the swarm at FULL cover whatever it stands at now (the user, Sindria 2026-10-24:
 		// marines that met the ask when handed over were short by the time the swarm had dug in for
 		// 30 days and the ask had grown) - a met ask stays met; a pushing swarm is exposed, so the

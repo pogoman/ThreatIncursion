@@ -24,9 +24,17 @@ which is a bit random ... state column with values gaining losing and grinding".
 front moves by the net of both sides' pressure, and the counter-attack cadence is gone
 (`docs/front-line-proposal.md` has the reasoning; this is what runs).
 
-- **The rate** (`ThreatGroundFronts.lineRate`, -1..1, positive toward the landing):
-  `gainA = landingPushes ? max(0, A x coverA - D x coverD) : 0`, `gainD = worldPushes ? max(0, D' x
-  coverD - A x coverA) : 0`, `rate = (gainA - gainD) / (A + D)`. A is `effectiveStrength`; D is the hive's
+- **The rate** (`ThreatGroundFronts.lineRate`, -1..1, positive toward the landing) - THE SHARE RULE
+  since 2026-10-28 (the user, Arkoman: "pushing as inferior force should still gain ground just
+  less ... both sides push is just one subtracted from the other"): with a' = A x coverA, d' = D x
+  coverD, p' = D' x coverD and k = `frontPushShareExponent` (1.0),
+  `gainA = landingPushes ? a' x (a' / (a' + d'))^k : 0`, `gainD = worldPushes ? p' x (p' / (p' +
+  a'))^k : 0`, `rate = (gainA - gainD) / (A + D)`. At k 1 both pushing is the old `a' - d'` exactly;
+  a lone pusher gains `a'^2 / (a' + d')` (before: `max(0, a' - d')`, so an inferior push gained
+  nothing): equal forces, one pushing, take a district in 24 d, a half-strength pusher in 54 d
+  (dead in 33 by the attrition rule). Dug in never holds a push by cover alone, it slows it and
+  cuts the losses; only a push back cancels it, so every hold figure (`deployWant`, the tooltip's
+  "Needs N marines pushing to hold") sizes marines pushing back. A is `effectiveStrength`; D is the hive's
   `defenderStrength`, or a colony's garrison plus armed marines at weight 1 (`colonyGarrison +
   colonyMarineDefense`); D' is `defenderPressure` - `counterAttackStrength` (the force
   figure itself; the military command x1.5 went 2026-10-24), or x `hiveCounterAttackPace`
@@ -40,8 +48,20 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   (`loseStratum`: a held layer, or "Beachhead Overrun" and the front is gone). A Push or Dig
   in order keeps negative progress and clears positive. Both sides earn XP per district change
   on the strengths of the day (`ThreatMarineXP.frontEarn` / `colonyEarn`).
+- **Cover under pressure** (`coverStep` / `coverPressure`, 2026-10-28, the user: "a dug in force
+  should be breakeable under enough pressure"): a side pushing spends its entrench days as
+  before; dug in under an enemy push it loses the force ratio (the pusher's covered push figure
+  over its own covered figure) x `frontCoverStripMult` (1.0) a day instead of gaining one, to 0
+  and never into over-extension; dug in with nobody pushing it gains a day a day. An equal push
+  strips 30 days in 30, a 2:1 push in 15; the cover regrows only once the push stops.
+- **Doctrine** (`doctrinePushes`, `doctrineDefendersPush`, `pushPaysOff`, 2026-10-28): since a
+  lone push always gains, NPC and swarm doctrine pushes while the push takes the next district
+  before the force bleeds out at its push losses (days to the district <= troops / losses a day x
+  `doctrinePushBleedMargin` 1.0), else digs in; a push that only slows a loss digging in would not
+  stop is made regardless; a garrison with no marines loses nothing and pushes for free.
 - **States** (`lineState`, from the reader's side): overrunning past `frontOverrunRate` 0.5,
-  gaining past `frontGrindBand` 0.1, grinding inside the band with both pushing, stalled inside
+  gaining past `frontGrindBand` (0 since 2026-10-28: any movement shows its ETA, stalled means
+  nobody pushes), grinding inside the band with both pushing, stalled inside
   it otherwise, losing and overrun the mirror. `front.state` (what the landing suppresses) is
   derived from the rate by `lineSuppressionState`: HOLDING (key structures worn) while it
   gains, GRINDING (defence structures held) inside the band, FOOTHOLD while it loses.

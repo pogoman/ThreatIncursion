@@ -600,18 +600,36 @@
 	# holding strength); off, the player's fronts push only when ordered
 	"threatinc_frontAutoPush": true,
 	# THE LINE (2026-10-23, the user: "do away with counter attack ... state column with values gaining
-	# losing and grinding"): one line per district moves by the net of both sides' pressure -
-	# each pushing side gains what its strength exceeds the other's cover by, read against the
-	# two strengths together (-1..1). This many days at rate 1 move a district either way
+	# losing and grinding"): one line per district moves by the net of both sides' pressure, read
+	# against the two strengths together (-1..1). This many days at rate 1 move a district either way
 	"threatinc_frontLineBaseDays": 6,
 	# inside this rate the front reads grinding (both pushing) or stalled and the landing holds
 	# the defence structures rather than wearing everything; past frontOverrunRate a side reads
-	# overrunning, the other overrun
-	"threatinc_frontGrindBand": 0.1,
+	# overrunning, the other overrun. 0 since the share rule (2026-10-28): any movement shows its
+	# ETA, stalled means nobody pushes (at 0.1 a slow inferior push read stalled and gained nothing)
+	"threatinc_frontGrindBand": 0,
 	"threatinc_frontOverrunRate": 0.5,
 	# the rate toward its defenders a colony's marines ask (relief convoys, Reinforce, battle
 	# requests) is sized to: push the army back, between hold (0) and overrun (frontOverrunRate)
 	"threatinc_frontPushBackRate": 0.25,
+	# THE SHARE RULE (the user, Arkoman 2026-10-28: "pushing as inferior force should still gain
+	# ground just less ... proportionally less given the disadvantage in numbers ... both sides push
+	# is just one subtracted from the other"): a pushing side gains its covered force x (its share
+	# of the field)^k, the other side's push subtracted. k 1: both pushing is the old a - d exactly
+	# (hive fights unchanged); a lone pusher gains a^2 / (a + d) - equal forces take a district in
+	# 24 d, a half-strength pusher in 54 (dead in 33 by the attrition rule). Dug in never holds a
+	# push by cover alone; only a push back cancels it. k 2 makes inferior pushes much slower
+	"threatinc_frontPushShareExponent": 1.0,
+	# PRESSURE BREAKS COVER (the user, 2026-10-28: "a dug in force should be breakeable under enough
+	# pressure"): a dug-in side under an enemy push loses the force ratio x this in entrench days a
+	# day instead of gaining one, to 0 (open ground, never over-extended); it regrows only once the
+	# push stops. 1: an equal push strips full cover in 30 d, a 2:1 push in 15
+	"threatinc_frontCoverStripMult": 1.0,
+	# THE BLEED-OUT TEST (the user, 2026-10-28): NPC and swarm doctrine pushes while the push takes
+	# the next district before the force bleeds out at its push losses (days to the district <=
+	# troops / losses a day x this), else digs in for the cover; a push that only slows a loss
+	# digging in would not stop is made regardless
+	"threatinc_doctrinePushBleedMargin": 1.0,
 	# THE ATTRITION RULE (the user, 2026-10-24): a side loses, a day, its troops /
 	# attritionTroopsPer x (the enemy's force / its own force) x 1 / its own cover
 	# x its veteran factor - both sides alike, forces as the board shows them. No

@@ -2864,6 +2864,7 @@ public class ThreatWarBoard {
 		if (s < 0f) {
 			tier = "hold";
 			target = -band;
+			if (forLanding) lp = true; else wp = true; // only a push back holds a push (the share rule, 2026-10-28)
 		} else if (s <= 0f) {
 			tier = "push";
 			target = band;
@@ -2876,6 +2877,7 @@ public class ThreatWarBoard {
 		if (!forLanding) target = -target;
 		float need = ThreatGroundFronts.troopsFor(f, m, forLanding, target, lp, wp);
 		if (need < 0f) return "";
+		if ("hold".equals(tier)) return " Needs " + n(need) + " " + unit + " pushing to hold.";
 		return " Needs " + n(need) + " " + unit + " to " + tier + ".";
 	}
 
