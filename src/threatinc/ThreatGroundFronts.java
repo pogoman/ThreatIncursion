@@ -2480,8 +2480,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		front.entrenchDays = 0f; // a district changing hands resets both sides (2026-10-24)
 		front.defenderEntrenchDays = 0f;
 		if (front.strataHeld > 0) {
-			front.strataHeld--;
+			// the claim goes first, while the slot it is consumed in still counts (Arkoman, 2026-10-28
+			// evening: decremented first, the release saw no active claim and freed the newest, Orbital
+			// Works, instead of the Mining being eaten); and a front holding no district holds no
+			// industry - every claim left goes with the last district, each rebuilt from its eaten share
 			ThreatOccupation.release(front, market); // and the newest claim with it (the occupation, 2026-10-27)
+			front.strataHeld--;
+			if (front.strataHeld <= 0) ThreatOccupation.releaseAll(front, market);
 			// a final push does not stop for a setback - it is spent either way
 			front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 			reapply(front.marketId);

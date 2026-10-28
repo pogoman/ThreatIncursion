@@ -400,6 +400,18 @@ public class ThreatOccupation {
 		return any;
 	}
 
+	/**
+	 * Every claim left goes (the last district retaken, {@link ThreatGroundFronts#loseStratum}; the user,
+	 * Arkoman 2026-10-28 evening, "we regained 5/5 but now mining is still green and stuck on consumed
+	 * 34 days left"): a front holding no district holds no industry - each is released as a retaken
+	 * district releases one, rebuilt from its eaten share.
+	 */
+	protected static void releaseAll(GroundFront front, MarketAPI market) {
+		if (!occupies(front, market)) return;
+		int guard = 64;
+		while (!claims(front).isEmpty() && guard-- > 0) release(front, market);
+	}
+
 	/** A district taken claims an industry on the spot ({@link ThreatGroundFronts#takeStratum}); the reapply follows there. */
 	protected static void onDistrictTaken(GroundFront front, MarketAPI market) {
 		if (!occupies(front, market)) return;
@@ -436,6 +448,9 @@ public class ThreatOccupation {
 		if (!occupies(front, market)) return;
 		List<String> claims = claims(front);
 		if (claims.isEmpty()) return;
+		// the slot is read BEFORE the district count drops (ThreatGroundFronts.loseStratum calls this first):
+		// Arkoman 2026-10-28 evening, one district held, Mining being eaten - decremented first, active
+		// read empty and the newest claim (Orbital Works) was freed, Mining stayed green at "34 days left"
 		List<String> active = active(front, market);
 		String id = active.isEmpty() ? claims.get(claims.size() - 1) : active.get(active.size() - 1);
 		claims.remove(id);
@@ -824,14 +839,33 @@ public class ThreatOccupation {
 			float want = hostile * Math.max(1f, ThreatIncConfig.systemDefenceMargin()) - standing;
 			if (want <= 0f) return;
 			float wantStrata = ThreatStrata.strataOf(Math.max(want, ThreatIncConfig.occupationBudFP()));
-			if (front.budRising + front.budPool < wantStrata) {
-				ThreatIncConfig.logQuiet("occshort:" + market.getId(), "Occupation: " + name + " cannot match "
-						+ (int) hostile + " FP over it (" + (int) standing + " FP standing, "
-						+ (int) ThreatStrata.fpOf(front.budPool + front.budRising)
-						+ " FP in the ground); the swarm stays in the ground");
-				return;
+			float have = front.budRising + front.budPool;
+			int lifted = 0;
+			if (have < wantStrata) {
+				// THE ARMY IS THE STRATA TOO (the user, Haven 2026-10-28 evening: "the threat have 3-4k
+				// units and still arent making a swarm to take out the battlestation" - the pool read 0,
+				// filled only by the lump under consumption, while thousands stood on the ground): what
+				// the front holds beyond what the ground needs (groundWant) rises off it at the flow,
+				// only if the army's spare and the pool together can match the force
+				float spare = Math.max(0f, front.marines - groundWant(front, market));
+				if (have + spare < wantStrata) {
+					ThreatIncConfig.logQuiet("occshort:" + market.getId(), "Occupation: " + name + " cannot match "
+							+ (int) hostile + " FP over it (" + (int) standing + " FP standing, "
+							+ (int) ThreatStrata.fpOf(have) + " FP in the ground, " + (int) spare
+							+ " troops spare on the front); the swarm stays in the ground");
+					return;
+				}
+				lifted = (int) Math.min(flow, Math.min(spare, wantStrata - have));
+				if (lifted > 0) {
+					front.marines -= lifted;
+					front.budRising += lifted;
+					ThreatBudding.visual(market, "Strata rising", ThreatStrata.fpOf(lifted), true);
+					ThreatIncConfig.logQuiet("occlift:" + market.getId(), "Occupation: " + name + " takes " + lifted
+							+ " troops off the front toward the orbit (" + (int) hostile + " FP over it; "
+							+ (int) front.marines + " stand, " + (int) spare + " were spare)");
+				}
 			}
-			float move = Math.min(flow, Math.min(front.budPool, wantStrata - front.budRising));
+			float move = Math.min(Math.max(0f, flow - lifted), Math.min(front.budPool, wantStrata - front.budRising));
 			if (move > 0f) {
 				front.budPool -= move;
 				front.budRising += move;

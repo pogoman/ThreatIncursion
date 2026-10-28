@@ -463,6 +463,32 @@ a front's relief passes the opening gates (`pickStrikeTarget` / `stagedCandidate
 the core-world phase, `warOpen`) - the war there is open, the army is on the ground. The pool's own
 only-if-enough rule is unchanged. Jar 17:23:36, untested.
 
+**Fix 6 (2026-10-28 21:29, the user's save - Arkoman: "my forces just took back district on arkoman
+and it says we regained 5/5 but now mining is still green and stuck on consumed 34 days left").** The
+log: one district held, Mining being eaten, Orbital Works claimed behind it; the retake logged
+"reclaims Orbital Works, 1 still claimed ... 0 held". Two faults. (1) `loseStratum` decremented
+`strataHeld` BEFORE `release`, so `active` (capped at the districts held, now 0) read empty and the
+release took "the newest claim" - Orbital Works - instead of the one being consumed; now the release
+runs first, while the slot it was eaten in still counts. (2) A front holding no district kept its
+leftover claims: `consuming` stayed true on Mining's clock (the card frozen at "Consumed: 34 days left"),
+`isClaimed` kept the green image, and nothing moved until the beachhead was overrun or the swarm
+retook ground. Now the last district retaken releases every claim left (`releaseAll`), each rebuilt
+from its eaten share as a retaken district rebuilds one - a front holding no district holds no
+industry. Mining at 26 of 60 days eaten rebuilds in 26 days ("Building: 26 days left", vanilla's bar),
+not 34: the rule is the eaten share (fix 2), the days left on the consumption bar are the other side
+of it.
+
+**The army rises against the force over it (same evening, Haven: "the threat have 3-4k units and
+still arent making a swarm to take out the battlestation").** The Up rule drew on the pool alone, and
+under consumption the pool fills only by the lump - Haven read "cannot match 281 FP over it (0 FP
+standing, 0 FP in the ground)" with thousands of troops on the front. Now, the pool and the rising
+short of the want, what the front holds beyond `groundWant` (the hold line and the counter-attack with
+margin, never under a stratum a district held) comes off the front into the rising at the flow
+(`shift`, log "takes N troops off the front toward the orbit"), and the only-if-enough test counts that
+spare: short even with it, "cannot match ... N troops spare on the front". The ground's own draw
+(`fabricateNeed`) still runs first each tick, so a front short on the line never lifts. Jar 21:29:36,
+untested.
+
 ## 8. THE LUMP (2026-10-28 12:50, the user: troops only once an industry is fully consumed)
 
 The user: "perhaps the threat only gets troops after it fully consumes the industry, so it's
