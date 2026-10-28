@@ -1533,3 +1533,28 @@ hw305, 1,500 days, two games, driver run-seeds-31.ps1.
   stood through three nudges, no exception, the last log lines ordinary (a grand fleet muster, a
   budding). The only earlier hang on record is hw296 (2026-10-27). Re-run as **hw307a** (round 75, the
   same snapshot, 10:52) to see whether it repeats on this jar.
+
+## 82. hw307a - round 75, the hung game re-run (2026-10-28 10:57-11:20)
+
+hw306a's snapshot (hw302a d1,293) on the same jar 10:10:43, alone, 1,500 days (a first launch at
+10:52 found no game window - the hung hw306a instance was still up - and was relaunched at 10:57).
+
+| game | war day | hives | consumed | lift-offs (eaten: n) | restores / holds | claims / reclaims / rebuilds | occupied / retaken | re-landings (< 180 d) | lifted FP / re-banked | d/min | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw307a | 2,798 | 241 | 121 | 41 (0: 1, 1: 1, 2: 10, 3: 10, 4: 10, 5: 6, 6: 3) | 48 / 57 | 169 / 27 / 17 | 27 / 27 | 27 (10) | 23,366 / 13,744 | 74 | 0 |
+
+- **No hang:** 1,500 days in 20 minutes through the day the hw306a instance froze. The freeze is not
+  reproducible from the same snapshot on the same jar - a one-off (the second on record after hw296),
+  not a loop in the consumption code. Noted, not chased; a third would be.
+- **The parallel cap holds:** 52 monthly dumps, 368 front rows, `consuming` never above `strataHeld`
+  (held 1: 1 eaten at once; held 3: 1-2; held 5: 1-2; the oldest claims, military waiting on the
+  producers). At the end 27 worlds carry 1-6 consumed industries not yet restored, 7 are gutted.
+- **The cycle, a game's worth:** 121 consumed (Mining 20, Orbital Works 15, Light Industry 14, Heavy
+  Industry 14, Ground Defenses 11, Heavy Batteries 10, Farming 10, Refining 8, Patrol HQ 8, Military
+  Base 5, Fuel Production 3, Aquaculture 2, High Command 1), 41 lift-offs, 48 restores + 57 holds, 17
+  rebuilds from the retaken districts, 27 re-landings (Athulf eaten and left five times; 10 within the
+  180-day hold from strikes in flight). Hives 241 (hw305a 247).
+- Open for the user: the swarm's own strata leave on every lift-off (23.4k FP lifted, 13.7k re-banked,
+  the rest in flight or lost) - the hive count is level with hw303's, so the drain is not biting yet;
+  the in-flight strikes on gutted worlds (a re-target on arrival would save them); the unconfirmed
+  defaults (Population / ports never eaten, consume time = build time, 180-day hold).
