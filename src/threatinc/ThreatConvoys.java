@@ -2307,13 +2307,22 @@ public class ThreatConvoys {
 		return wants;
 	}
 
-	/** What a Reinforce convoy from this donor carries at a load tier: the wants, capped by the donor's stock above its floor (and, for a player donor under the ledger, its own free hulls). */
+	/**
+	 * What a Reinforce convoy from this donor carries at a load tier: the wants, capped by the donor's stock above its
+	 * floor - a donor with a Threat army of its own keeps what its front wants ({@link #frontWorldSpare}: Arkoman,
+	 * 2026-10-28, sent Haven all 945 of the arms its own stalled front was burning) - and, for a player donor under
+	 * the ledger, its own free hulls.
+	 */
 	public static float[] reinforceLoad(MarketAPI donor, MarketAPI besieged, int tier) {
 		float[] load = new float[ThreatReserves.COMMODITIES.length];
 		if (donor == null || besieged == null) return load;
 		float[] wants = reinforceWants(besieged, tier);
+		boolean front = ThreatGroundFronts.hasFront(donor);
 		for (int i = 0; i < 2; i++) {
-			load[i] = Math.min(wants[i], ThreatReserves.available(donor, ThreatReserves.COMMODITIES[i]));
+			String id = ThreatReserves.COMMODITIES[i];
+			float spare = ThreatReserves.available(donor, id);
+			if (front) spare = Math.min(spare, frontWorldSpare(donor, id));
+			load[i] = Math.min(wants[i], spare);
 		}
 		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) {
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
@@ -2325,7 +2334,10 @@ public class ThreatConvoys {
 	 * The same-faction colony a Reinforce order would load at: the one whose
 	 * {@link #reinforceLoad} is worth the most (marines first, as cargoValue weighs), a colony
 	 * that is not itself a staging base before one that is; null when nothing can be spared.
-	 * No range for the player's hand orders (as {@link #stageDonor}).
+	 * A reinforcement is marines: a donor with none to spare is no donor, as ThreatAid.quoteBattle
+	 * rules for an ally (Haven, 2026-10-28: Max offered "0 marines and 945 heavy armaments" from
+	 * Arkoman, whose 1,548 all hold its own front). No range for the player's hand orders (as
+	 * {@link #stageDonor}).
 	 */
 	public static MarketAPI reinforceDonor(MarketAPI besieged, FactionAPI faction, int tier) {
 		if (besieged == null || faction == null || !ThreatIncConfig.convoyEnabled()) return null;
@@ -2338,6 +2350,7 @@ public class ThreatConvoys {
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					besieged.getStarSystem().getLocation()) > stockReachLY(donor)) continue;
 			float[] load = reinforceLoad(donor, besieged, tier);
+			if (load[0] < 1f) continue;
 			float value = cargoValue(load[0], load[1], 0f, 0f);
 			if (value <= 0f) continue;
 			boolean staging = stagingHive(donor) != null;
@@ -2365,7 +2378,15 @@ public class ThreatConvoys {
 		if (besieged != null && !ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) {
 			return "No Threat army on " + name + ".";
 		}
-		return "No colony of " + whose + " can spare marines or heavy armaments for " + name + ".";
+		String held = "";
+		if (besieged != null && besieged.getFaction() != null) {
+			for (MarketAPI m : ThreatReserves.marketsOf(besieged.getFaction().getId())) {
+				if (m == besieged || !ThreatGroundFronts.hasFront(m)) continue;
+				float kept = ThreatReserves.frontKeep(m, Commodities.MARINES);
+				if (kept >= 1f) held += " " + m.getName() + "'s " + Misc.getWithDGS((int) kept) + " hold its own front.";
+			}
+		}
+		return "No colony of " + whose + " can spare marines for " + name + "." + held;
 	}
 
 	/**
