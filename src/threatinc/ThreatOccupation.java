@@ -580,16 +580,25 @@ public class ThreatOccupation {
 		String id = ind.getId(), name = ind.getCurrentName();
 		List<String> gone = consumed(market, true);
 		if (!gone.contains(id)) gone.add(id);
+		// THE LUMP (the user, 2026-10-28 12:50: "the threat only gets troops after it fully consumes the
+		// industry, so it's kinda like a timer for the humans to fight back"): nothing while it chews, then
+		// what the stream would have paid over the chew - the industry's share of the hive rate x its
+		// consume days - into the pool, to the cap
+		float lump = lump(market, ind);
 		claims(front).remove(id);
 		consumeDays(front).remove(id);
 		market.removeIndustry(id, null, false);
+		float added = Math.min(lump, Math.max(0f, cap(market) - held(front, market)));
+		if (added > 0f) front.budPool += added;
 		int left = claimable(market).size();
 		ThreatNotice.titled("Industry Consumed").bad()
 				.line("The swarm has consumed %s on %s.", name, ThreatNotice.market(market))
 				.line("%s industries consumed, %s left to claim.", "" + gone.size(), "" + left)
+				.line("%s troops to the swarm's pool.", "" + (int) added)
 				.send();
 		ThreatIncConfig.log("Occupation: the swarm has consumed " + name + " on " + market.getName()
-				+ " (" + gone.size() + " consumed, " + left + " left to claim)");
+				+ " (" + gone.size() + " consumed, " + left + " left to claim; +" + (int) added + " of " + (int) lump
+				+ " troops to the pool, pool " + (int) front.budPool + ")");
 	}
 	/**
 	 * THE LIFT-OFF (the user, 2026-10-28: "if a world has no industries left they lift off
@@ -687,6 +696,8 @@ public class ThreatOccupation {
 	 */
 	public static float growthPerDay(GroundFront front) {
 		if (front == null) return 0f;
+		// under consumption nothing flows while the swarm chews: the lump at consumeIndustry replaces the stream
+		if (ThreatIncConfig.occupationConsume()) return 0f;
 		MarketAPI market = Global.getSector().getEconomy().getMarket(front.marketId);
 		if (market == null) return 0f;
 		float share = share(market, front);
@@ -696,6 +707,22 @@ public class ThreatOccupation {
 				/ Math.max(0.01f, IncursionManager.timeScale());
 	}
 
+	/** The hive rate a day the pool would grow fed in full: coreStrataPerSizeMonth x size x occupationRateMult, in game days. */
+	public static float ratePerDay(MarketAPI market) {
+		if (market == null) return 0f;
+		return Math.max(0f, ThreatIncConfig.coreStrataPerSizeMonth()) * Math.max(1, market.getSize()) / 30f
+				* Math.max(0f, ThreatIncConfig.occupationRateMult()) / Math.max(0.01f, IncursionManager.timeScale());
+	}
+	/**
+	 * THE LUMP a consumed industry pays the pool (the user, 2026-10-28: troops only once fully consumed):
+	 * the stream it would have fed over the chew - the hive rate x its share of the industries the world had
+	 * (claimable now + consumed) x its consume days; uncapped here (consumeIndustry caps at the pool).
+	 */
+	public static float lump(MarketAPI market, Industry ind) {
+		if (market == null || ind == null) return 0f;
+		int had = claimable(market).size() + consumed(market, false).size();
+		return ratePerDay(market) / Math.max(1, had) * consumeTime(ind);
+	}
 	/** The most the occupation holds, all told: the strata a hive of the world's size begins at (ThreatStrata.sizeAt). */
 	public static float cap(MarketAPI market) {
 		return ThreatStrata.sizeAt(Math.max(1, market.getSize()));

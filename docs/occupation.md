@@ -433,3 +433,25 @@ tick looped for good (jstack: 1,020 threatinc frames). `producers` and `release`
 flag through `OccupiedIndustry.underConstruction()` (each plugin: `super.isBuilding()`), and `consuming`
 rethrows a `StackOverflowError`. Rule: occupation code never asks an Occupied plugin's `isBuilding`,
 `isUpgrading` or `isFunctional` - they answer through `consuming`.
+
+## 8. THE LUMP (2026-10-28 12:50, the user: troops only once an industry is fully consumed)
+
+The user: "perhaps the threat only gets troops after it fully consumes the industry, so it's
+kinda like a timer for the humans to fight back"; of the two shapes offered (a lump the day it is
+eaten, or a digest stream after), **lump on completion** - this replaces section 7's "no lump,
+paid out over time" (rule 3 of the 09:30 decision).
+
+- **Nothing flows while the swarm chews:** `growthPerDay` is 0 under `occupationConsume` (the
+  fronts table's "+N/d" reads 0). The front lives on what it landed with and what is absorbed over
+  it. A district retaken mid-chew costs the swarm the whole industry, which rebuilds from the eaten
+  share (section 7 fix 2).
+- **The lump** (`ThreatOccupation.lump`, paid in `consumeIndustry`): what the stream would have paid
+  over the chew - the hive rate (`ratePerDay`: `coreStrataPerSizeMonth` x size / 30 x
+  `occupationRateMult`) x the industry's share of the industries the world had (claimable now +
+  consumed, military included) x its consume days - into `budPool`, capped at the pool cap less what
+  is held. Size 6, four producers, rate 40 a day: a Mining (60 d) pays 600, a Heavy Industry (90 d)
+  900, the whole world 3,000-4,000 over 300-400 days. The notice "Industry Consumed" carries "+N
+  troops to the swarm's pool"; the log line "Occupation: the swarm has consumed X on Y (... +N of M
+  troops to the pool, pool P)" shows the cap's cut (N < M).
+- Military structures pay a lump too (they fed nothing under the stream, which counted producers
+  only) - the user's words cover every industry; consumed last, they are the end of the timer.

@@ -502,8 +502,11 @@
 	"threatinc_occupationBudFP": 60,
 	# CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): a claimed industry is CONSUMED over its vanilla
 	# build time x occupationConsumeMult - as many at once as districts held, the oldest claims first, the
-	# military structures last (occupationConsumeMilitary) - and removed from the world; it feeds nothing after
-	# (no lump reward). The owner's builder restores what was eaten, quickest first (ThreatCoreBuild.restoreStep).
+	# military structures last (occupationConsumeMilitary) - and removed from the world. THE LUMP (the user, 12:50):
+	# nothing feeds the pool while the swarm chews - a timer for the humans to fight back - and the day an
+	# industry is eaten the pool gets what the stream would have paid over the chew (the hive rate x its share of
+	# the industries the world had x its consume days), to the cap. A district retaken mid-chew rebuilds the
+	# industry from the eaten share. The owner's builder restores what was eaten, quickest first (ThreatCoreBuild.restoreStep).
 	# A world with nothing left to claim is left: troops and pool re-embark for the nearest hive, and for
 	# occupationGuttedDays no strike targets the world and vanilla's deciv is held off.
 	"threatinc_occupationConsume": true,
