@@ -1343,3 +1343,31 @@ A, 00:00:08, on the rebuilt jar) and will run hw301 (set B); its watcher died wa
 as **hw302, round 70** (`run-seeds-27.ps1`, `handover-26-27.sh` starts it when hw301 ends).
 Rule: a one-shot task meant for `schtasks /run` gets a far-future start date (`/sd 01.01.2030`),
 never today's time.
+
+## 75. hw300 - round 68, set A three games on the stand-down-gate jar (2026-10-28 00:00-01:16)
+
+Set A (shifted: PoseidonDeimos / AresDaniels / AmaruDugas) from day 0 on jar 00:00:03 (7290e50f:
+the performance jar + the stand-down gate), driver run-seeds-26.ps1, 76 minutes to the 3,800-day
+cap with three games on the machine - the like-for-like read against hw296 (75 min to w3,100-3,300).
+
+| game | war day | hives | worlds occupied | districts retaken | grand fleet sails | sat bombs | stand-downs / absorbs | late war d/min (w3,200-3,650) | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw300a | 3,808 | 260 | 34 | 6 | 18 | 1 | 37 / 37 | 20 | 0 |
+| hw300b | 3,811 | 323 | 35 | 4 | 7 | 1 | 111 / 73 | 35 | 0 |
+| hw300c | 3,817 | 394 | 51 | 13 | 7 | 8 | 180 / 213 | 41 | 0 |
+
+- **Performance, like for like:** three games reach w3,800 in the 75 minutes hw296's three
+  needed for w3,100-3,300 (about a fifth more war an hour); the late war runs 20-41 days a minute
+  against hw296's 20. Strikes spawn as 3-74 fleets, the patrol census peaks at 44-48 out + 28-29
+  returning (was ~60 + 60). Not the 3x the profile's fleet count suggested: the vanilla fleet AI
+  cost is per fleet in range, and strikes still park 40+ fleets over a world for years.
+- **The war itself is the same:** 260-394 hives, 34-51 worlds occupied, 4-13 districts retaken,
+  no world freed, grand fleets sail 7-18 times and come home.
+- **The stand-down gate works but found the next bug:** "holds 3756 of 3200, pool 0", "holds
+  1675 of 3200, pool 180" - `held` counts the world's own buds above it, so a world "full" of its
+  buds had no absorb room and `standDown` sent them to the hive. Fix 2c (01:12, `occupation.md`):
+  a bud's own strata are added back to its room, the smallest swarm that fits is taken, parked
+  strike fleets still need real room. Scratch javac clean; `handover-26-27b.sh` rebuilds the jar
+  when hw301 ends and runs hw302 on it. hw301 (set B) runs on the gate jar meanwhile.
+- hw300c dropped 8 sat bombs (the others 1): the siege-path sat bomb fires where the hive has
+  industries to disrupt, and this game's targets had them.

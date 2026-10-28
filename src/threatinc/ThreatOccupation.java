@@ -558,16 +558,24 @@ public class ThreatOccupation {
 	 * the rest home.
 	 */
 	protected static boolean absorb(GroundFront front, MarketAPI market, float fp) {
-		fp = Math.min(fp, ThreatStrata.fpOf(Math.max(0f, cap(market) - held(front, market)))); // never above the cap
 		if (fp < 1f) return false;
+		// The cap binds on what the world holds - but a bud the pool raised is already counted in
+		// held, so taking it back costs no room (hw300: "holds 1675 of 3200, pool 180" sent two buds
+		// home). The smallest swarm that fits is taken.
+		float baseRoom = cap(market) - held(front, market);
 		CampaignFleetAPI pick = null;
+		float pickRoom = 0f;
 		for (ThreatSwarmDefend.Entry e : ThreatSwarmDefend.all()) {
 			if (e.fleet == null || !e.fleet.isAlive() || e.fleet.isExpired() || e.fleet.getBattle() != null) continue;
 			if (!market.getId().equals(e.marketId) || !Factions.THREAT.equals(e.factionId)) continue;
 			if (!ThreatGroundFronts.nearWorld(e.fleet, market)) continue;
-			if (pick == null || e.fleet.getFleetPoints() < pick.getFleetPoints()) pick = e.fleet;
+			float room = baseRoom;
+			if (e.fleet.getMemoryWithoutUpdate().getBoolean(BUD_KEY)) room += ThreatStrata.strataOf(e.fleet.getFleetPoints());
+			if (ThreatStrata.fpOf(Math.max(0f, room)) < 1f) continue;
+			if (pick == null || e.fleet.getFleetPoints() < pick.getFleetPoints()) { pick = e.fleet; pickRoom = room; }
 		}
 		if (pick == null) return false;
+		fp = Math.min(fp, ThreatStrata.fpOf(Math.max(0f, pickRoom))); // never above the cap
 		float have = pick.getFleetPoints();
 		String fleetName = pick.getName();
 		float got;
@@ -597,6 +605,7 @@ public class ThreatOccupation {
 	protected static boolean standDown(GroundFront front, MarketAPI market) {
 		int sent = 0;
 		float fp = 0f;
+		float holds = held(front, market);
 		for (ThreatSwarmDefend.Entry e : new ArrayList<ThreatSwarmDefend.Entry>(ThreatSwarmDefend.all())) {
 			if (e.fleet == null || !e.fleet.isAlive() || e.fleet.isExpired() || e.fleet.getBattle() != null) continue;
 			if (!market.getId().equals(e.marketId) || !Factions.THREAT.equals(e.factionId)) continue;
@@ -608,7 +617,7 @@ public class ThreatOccupation {
 		}
 		if (sent == 0) return false;
 		ThreatIncConfig.log("Occupation: " + market.getName() + " stands down " + sent + " swarm(s), " + (int) fp
-				+ " FP, quiet " + (int) front.orbitQuietDays + " d and the pool full (holds " + (int) held(front, market) + " of " + (int) cap(market)
+				+ " FP, quiet " + (int) front.orbitQuietDays + " d and the pool full (holds " + (int) holds + " of " + (int) cap(market)
 				+ " strata, pool " + (int) front.budPool + ")");
 		return true;
 	}
