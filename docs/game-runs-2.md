@@ -1655,3 +1655,29 @@ of the stream consumption exists for set A (hw309 / hw311 never ran), so the com
   (lift-off strata drain, in-flight strikes on gutted worlds, the unconfirmed defaults).
 - The watcher stopped at 14:10 in hw312 on a `grandidle` signal (5 grand fleets sailed, 0 legs done by
   war 1,786 - read on each time since hw284) and never watched hw313; `grandidle` joins the ignore list.
+
+## 87. hw314-hw315 - rounds 82-83, day-0 seeds on the merged jar 22:29:54 (2026-10-28 22:31-)
+
+The general seed test after the pull (the user: "pull and build jar then run general seed test
+monitoring the recent changes in particular"). Local main fast-forwarded 2b332641 -> fece9daa (fourteen
+commits from the other machine), jar rebuilt here 22:29:54. Driver `run-seeds-36.ps1`, hw314 set B
+(OceanPena / ZhiFarah / AphelionDysnomia), hw315 set A, from day 0 `-Days 3800 -Snapshots 300`, 75
+minutes a round; watcher `watch-seeds-36.sh` + `check-grand.sh` (`grandidle` on the ignore list);
+tasks ThreatIncSeeds36 / WatchSeeds36 (`/sd 01.01.2030`, `/run`).
+
+What the jar carries beyond hw312 / hw313's lump jar, all "untested" on commit - the recent changes
+to read for:
+- the share rule (`ThreatGroundFronts.lineRateOf`: a pusher gains covered force x its share of the
+  field, the other's push subtracted), pressure breaks cover (`coverPressure`), the bleed-out doctrine
+  (`pushPaysOff` - NPC and swarm push while the next district comes before the force bleeds out);
+- manned defences (`mannedGarrison`: ground defence counts as far as armed marines man it, 20 points
+  a marine; `ThreatReserves.floor` keeps the manning need at home) - NPC colonies short of marines
+  now fall faster; the effect scales with what stands of a consumed / rebuilding structure;
+- consumption fixes 5 and 6 (military claims consume in free slots; `releaseAll` on the last district
+  retaken), the occupation's army rising against the force over it (spare troops off the front);
+- a hostile station over the swarm's front makes the next strike an expedition (`stationOverFront`).
+
+Read against hw312 (set B) / hw313 (set A): hives 274-350, consumed 62-217, lift-offs 13-82, restores
+22-90, retaken 43-71, 0 exceptions. What to see: districts taken and retaken at a different pace (the
+share rule and manned defences both move the line), "Front collapsed" / "Threat ground victory" counts,
+expeditions over stations, the hive count unchanged, 0 exceptions on the new paths.
