@@ -1607,3 +1607,28 @@ run-seeds-34.ps1 (its hw311 round was not started: the lump build took its slot)
   258-394). The swarm is not weaker for leaving gutted worlds.
 - **hw312 / hw313 (rounds 80-81)** re-run the day-0 seeds on the LUMP jar 13:47:52 (section 8 of
   `occupation.md`: nothing while the swarm chews, the stream's worth the day an industry is eaten).
+
+## 85. hw312 - round 80, day-0 set B on the LUMP jar (2026-10-28 13:48-15:02)
+
+Jar 13:47:52 (8e9d7e8b, `occupation.md` 8: nothing to the pool while the swarm chews, the stream's
+worth the day an industry is eaten). Same seeds, same shift and same days as hw310 (fix 4, the
+stream) - the only change between the two rounds is the lump.
+
+| game | war day | hives (hw310) | consumed (hw310) | lift-offs | restores (hw310) | retaken (hw310) | lumps / capped | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw312a | 3,802 | 144 (328) | 217 (191) | 82 | 90 (61) | 71 (34) | 217 / 39 | 0 |
+| hw312b | 3,826 | 120 (288) | 132 (98) | 54 | 66 (56) | 70 (43) | 132 / 20 | 0 |
+| hw312c | 3,820 | 176 (342) | 158 (207) | 67 | 77 (31) | 60 (11) | 158 / 43 | 0 |
+
+- **The lump fires as designed:** 507 payments, 280k of 335k troops' worth paid (84%; the rest cut at
+  the pool cap on small worlds - 102 of the 507 capped). By industry: Orbital Works 74 x (66k of 79k),
+  Mining 96 x (29k of 42k), Heavy Batteries 64 x (32k of 41k), Heavy Industry 40 x (34k of 37k),
+  Military Base 34 x (23k of 28k), Light Industry 42 x (23k of 27k), Refining 31, Farming 34, Ground
+  Defenses 33, Patrol HQ 29, Fuel Production 12, High Command 8, Aquaculture 8, Lion's Guard HQ 2.
+- **The timer works for the humans, hard:** districts retaken 71 / 70 / 60 against 34 / 43 / 11 on
+  the stream, restores 90 / 66 / 77 against 61 / 56 / 31 - and **hives 144 / 120 / 176 against
+  328 / 288 / 342**, the swarm's end state halved in all three games. One round, one seed set: hw313
+  (set A, 15:02-) is the second reading before anything is concluded. The levers if it holds are the
+  user's (occupationConsumeMult shortens the chew; the lump's size; what the front lives on while it
+  chews).
+- 0 exceptions, no hang, 47-48 d/min.
