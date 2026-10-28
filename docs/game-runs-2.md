@@ -1697,3 +1697,23 @@ runs on unchanged; `handover-36-37.sh` (task HandoverSeeds37) rebuilds the jar w
 done, commits it and runs **hw316 (set B) / hw317 (set A)** as rounds 84-85 on it. Read hw316
 against hw314: dig-in lines a handful a world, Sphinx-like worlds consumed or lifted off rather
 than retaken by flapping; the rest unchanged.
+
+**hw314 END (23:52, set B, 75 min; hw312 in brackets - same seeds, the lump jar):**
+
+| game | war day | hives | consumed | lift-offs | restores | claims / reclaims / rebuilds | retaken | dig-ins (worlds 5+) | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw314a | 3,453 (3,802) | 239 (349) | 77 (217) | 20 (82) | 36 (90) | 202 / 107 / 58 | 83 (71) | 237 (5) | 0 |
+| hw314b | 3,824 (3,826) | 295 (274) | 86 (132) | 23 (54) | 59 (66) | 261 / 162 / 84 | 134 (70) | 117 (3) | 0 |
+| hw314c | 3,816 (3,820) | 310 (344) | 179 (158) | 54 (67) | 98 (77) | 396 / 207 / 108 | 170 (60) | 296 (10) | 0 |
+
+- **The ground war doubled on the human side:** districts retaken 83 / 134 / 170 against hw312's
+  71 / 70 / 60, reclaims 107-207, restores 36-98 (hw312 66-90). Consumed fewer in a and b (77 / 86
+  against 217 / 132), more in c (179 against 158); lift-offs 20-54 (hw312 54-82). The swarm's spread
+  at the end of the day count is inside the band (b 295 vs 274, c 310 vs 344); a ran slowly (100k
+  log lines, war 3,453 at the 75-minute cap, 239 hives at that day - not comparable).
+- **The flap is in every game** (dig-in lines 237 / 117 / 296, five / three / ten worlds past 5),
+  so the read mixes three things: the share rule, manned defences, and swarm fronts freezing at
+  parity. hw316 (set B on the hysteresis jar) separates the flap's share.
+- Human landings on hives: 68-117 fronts deployed, 9-16 ground victories, 0 collapses; the lump
+  fires on every consumption (77 / 86 / 179 payments); grand fleets 22 / 33 / 42 sails, 0-3 lost;
+  0 exceptions, no hang.
