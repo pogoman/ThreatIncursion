@@ -1681,3 +1681,19 @@ Read against hw312 (set B) / hw313 (set A): hives 274-350, consumed 62-217, lift
 22-90, retaken 43-71, 0 exceptions. What to see: districts taken and retaken at a different pace (the
 share rule and manned defences both move the line), "Front collapsed" / "Threat ground victory" counts,
 expeditions over stations, the hive count unchanged, 0 exceptions on the new paths.
+
+**Mid-run read 23:00 (war ~2,100, 0 exceptions, hives 146 / 148 / 187):** the cycle runs (consumed
+83 / 108 / 152, retaken 45 / 75 / 56 already - hw312 reached 60-71 at d3,800), the lump fires,
+relief pools, the dig-in doctrine fires ("Threat front at X digs in: the push does not pay (line
+-0.20..-0.25)" - the dug-in line with the defenders pushing at parity, as the share rule gives).
+**THE FLAP:** the swarm's front flaps push / dig in every half-day tick at parity - Sphinx 50 dig-ins
+in 130 days, Cibola 27, Ancyra 14, Derinkuyu 11 in hw314a (221 lines by w2,100), Laicaille 8 in b,
+none past 5 in c; `orderPush` / `orderEntrench` wipe the push progress each flip, so the front paid
+push losses and spent its cover for nothing and the garrison retook Sphinx. Cause: in
+`doctrinePushes` "push rate <= 0 -> push, it slows a loss" and "rate > 0 but the push does not pay
+-> dig in" sit a hair apart at parity. FIX a2261df6 (source only, hysteresis: a pushing side keeps a
+push that slows a loss, a dug-in side resumes only when the push pays; both doctrines). The round
+runs on unchanged; `handover-36-37.sh` (task HandoverSeeds37) rebuilds the jar when round 36 is
+done, commits it and runs **hw316 (set B) / hw317 (set A)** as rounds 84-85 on it. Read hw316
+against hw314: dig-in lines a handful a world, Sphinx-like worlds consumed or lifted off rather
+than retaken by flapping; the rest unchanged.
