@@ -1558,3 +1558,33 @@ hw306a's snapshot (hw302a d1,293) on the same jar 10:10:43, alone, 1,500 days (a
   the rest in flight or lost) - the hive count is level with hw303's, so the drain is not biting yet;
   the in-flight strikes on gutted worlds (a re-target on arrival would save them); the unconfirmed
   defaults (Population / ports never eaten, consume time = build time, 180-day hold).
+
+## 83. hw308 - round 76, day-0 seeds on the consumption jar; THE HANG FOUND (2026-10-28 11:23-12:26)
+
+Set B from day 0 on jar 10:10:43 (fixes 1-3), 3,800 days, 75 minutes, driver run-seeds-33.ps1. Stopped at
+12:26 (a and c at war ~3,100-3,200, a mid-run read) to build fix 4; hw309 never ran.
+
+| game | war day | hives | consumed | lift-offs | restores | claims / reclaims / rebuilds | occupied / retaken | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw308a | 3,197 | 170 | 93 | 31 | 42 | 125 / 16 / 7 | 13 / 16 | 0 |
+| hw308b | 1,296 (HUNG 11:43) | 93 | 0 | 0 | 0 | 2 / 0 / 0 | 0 / 0 | 0 |
+| hw308c | 3,061 | 260 | 156 | 54 | 37 | 217 / 34 / 14 | 40 / 34 | 0 |
+
+- **The hang is ours, and found.** hw308b froze at campaign day 1,272 (war 1,296) right after a
+  snapshot save, as hw306a had (campaign day 325 / war 1,622). A `jstack` of the three games (the
+  bundled jre is OpenJDK 17, so JDK 17's jstack attaches) showed a and c in vanilla's fleet AI and b's
+  campaign thread RUNNABLE in both dumps with 1,020 threatinc frames repeating:
+  `ThreatOccupation.producers` -> `OccupiedLightIndustry.isBuilding` -> `ThreatOccupation.consuming`
+  -> `active` -> `producers` ... Fix 3a had made `producers` ask `ind.isBuilding()` of an unclaimed
+  industry with no supply; the Occupied plugins' override answers through `consuming`, which lists
+  the active claims, which lists the producers. The `StackOverflowError` was caught by `consuming`'s
+  `catch (Throwable)`, so no exception was logged and the tick began again from the next industry -
+  a loop with no end, the clock standing. It fires only when an unclaimed producer has an empty
+  supply read at the tick (a Military Base or Ground Defenses out of the producers list, a disrupted
+  industry, a fresh build), which is why hw307a's re-run did not reproduce it.
+- **Fix 4 (12:26, jar 12:26:44, a1be8feb):** `producers` and `release` read vanilla's own building
+  flag through `OccupiedIndustry.underConstruction()` (each Occupied plugin returns
+  `super.isBuilding()`), never the override; `consuming` rethrows a `StackOverflowError` instead of
+  swallowing it. **hw310 / hw311 (rounds 78-79)** re-run the day-0 seeds on it from 12:27.
+- a and c, to the stop: the cycle as in hw305-hw307 (93 / 156 consumed, 31 / 54 lift-offs, 42 / 37
+  restores, 16 / 34 districts retaken), hives 170 / 260 at d3,100-3,200 - set B's spread as before.

@@ -425,3 +425,11 @@ advance for `active`, at most `strataHeld` of them - hw305's dumps (`consuming` 
 check it.
 
 **Fix 3 (10:00, hw305 first read):** (a) Tigra City - a strike landed, took one district and lifted off at once with "0 industries consumed, nothing left to claim": its Orbital Works was under construction (no supply yet) and nothing else stood; `producers` now counts a producer under construction. (b) No strike for nothing: the strike target pickers (`pickStrikeTarget`, `stagedCandidates`) and the offensive's prong check skip a world with nothing claimable (`ThreatOccupation.worthEating`). (c) Closed economy: a bud stood down was "on no ledger" and its points vanished at the hive; `standDown` binds an unbound swarm to the nearest hive's bank (`bindStrayToNearest`) and sends it there, so its points are re-banked on arrival.
+
+**Fix 4 (12:26, THE HANG - hw306a, hw308b):** fix 3a's `ind.isBuilding()` in `producers` reached the
+Occupied plugins' override, which reads `consuming` -> `active` -> `producers` -> `isBuilding` ... without
+end; the `StackOverflowError` died in `consuming`'s `catch (Throwable)`, so nothing was logged and the
+tick looped for good (jstack: 1,020 threatinc frames). `producers` and `release` now read vanilla's own
+flag through `OccupiedIndustry.underConstruction()` (each plugin: `super.isBuilding()`), and `consuming`
+rethrows a `StackOverflowError`. Rule: occupation code never asks an Occupied plugin's `isBuilding`,
+`isUpgrading` or `isFunctional` - they answer through `consuming`.
