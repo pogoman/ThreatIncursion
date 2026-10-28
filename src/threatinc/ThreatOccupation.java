@@ -16,6 +16,7 @@ import com.fs.starfarer.api.campaign.SpecialItemData;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
+import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker;
@@ -405,21 +406,38 @@ public class ThreatOccupation {
 		ThreatGroundFronts.reapply(front.marketId);
 	}
 
-	/** A district retaken releases the newest claim ({@link ThreatGroundFronts#loseStratum}). */
+	/**
+	 * A district retaken releases a claim ({@link ThreatGroundFronts#loseStratum}): the newest one being
+	 * consumed (a district held is a consumption slot, and the last slot closes), else the newest claim.
+	 * What the swarm had eaten of it is REBUILT (the user, 2026-10-28: "the industry should start
+	 * rebuilding from where it was consumed up to ... it shouldnt just instantly be restored"): vanilla's
+	 * own build, its progress set so the days left are the eaten share of the build time - unpaid, the
+	 * world's own work.
+	 */
 	protected static void release(GroundFront front, MarketAPI market) {
 		if (!occupies(front, market)) return;
 		List<String> claims = claims(front);
 		if (claims.isEmpty()) return;
-		String id = claims.remove(claims.size() - 1);
-		consumeDays(front).remove(id); // what the swarm had eaten of it is saved (consumption, 2026-10-28)
+		List<String> active = active(front, market);
+		String id = active.isEmpty() ? claims.get(claims.size() - 1) : active.get(active.size() - 1);
+		claims.remove(id);
+		Float eatenDays = consumeDays(front).remove(id);
 		Industry ind = market.getIndustry(id);
 		String name = ind != null ? ind.getCurrentName() : id;
-		ThreatNotice.titled("Industry Reclaimed").good().icon(market.getFaction())
+		String rebuild = null;
+		if (ind != null && eatenDays != null && eatenDays > 0f && ind instanceof BaseIndustry && !ind.isBuilding()) {
+			float share = Math.max(0f, Math.min(1f, eatenDays / consumeTime(ind)));
+			ind.startBuilding();
+			((BaseIndustry) ind).setBuildProgress(Math.max(0f, ind.getBuildTime() * (1f - share)));
+			rebuild = Math.round(share * 100f) + "% eaten, " + (int) Math.ceil(ind.getBuildTime() * share) + " days to rebuild";
+		}
+		ThreatNotice notice = ThreatNotice.titled("Industry Reclaimed").good().icon(market.getFaction())
 				.line("%s on %s is out of the swarm's hold.", name, ThreatNotice.market(market))
-				.line("%s of %s industries claimed.", "" + claims.size(), "" + claimable(market).size())
-				.send();
+				.line("%s of %s industries claimed.", "" + claims.size(), "" + claimable(market).size());
+		if (rebuild != null) notice.line("Rebuilding: %s.", rebuild);
+		notice.send();
 		ThreatIncConfig.log("Occupation: " + market.getName() + " reclaims " + name
-				+ ", " + claims.size() + " still claimed");
+				+ ", " + claims.size() + " still claimed" + (rebuild != null ? " (rebuilding from " + rebuild + ")" : ""));
 		// the front's reapply follows in loseStratum
 	}
 

@@ -400,3 +400,26 @@ stands again by any road (the yard step rebuilds a yard first).
 "Occupation: the swarm lifts off W", "Core build: W restores id". Defaults the user has not confirmed:
 Population and the ports never consumed; consumption time = build time x 1; the gutted / deciv hold
 180 days; the lift-off re-banks at the nearest hive.
+
+**Fix 1 (09:37, hw304 void):** the plugins' `isBuilding` true made vanilla read a consumed producer as
+not functional and clear its supply; `producers` dropped it as "no supply", the tick dropped the claim
+as no longer claimable, `next` found only the military, and every occupation lifted off within 60-120
+days with 0-2 industries consumed. Now the plugins override `isFunctional` on vanilla's own terms
+(disrupted / vanilla-building / vanilla-upgrading only) and `producers` keeps a claimed producer whatever
+its live supply reads.
+
+**Fix 2 (09:50, the user's save from the other machine - Haven, 3 districts held, four cards consumed,
+"any way to drop the building text?"):** vanilla's card (`campaign.ui.marketinfo.intnew`) writes its big
+"Building" label only when the industry is building and NOT upgrading and not disrupted, and draws the
+bar (our progress and text) either way - so the plugins report `isUpgrading` true while consumed as well,
+and the label is gone. **The release rule (the user, same message: "if the threat loses a district the
+industry should start rebuilding from where it was consumed up to ... it shouldnt just instantly be
+restored"):** `release` now frees the newest claim BEING CONSUMED (a district held is a consumption
+slot and the last slot closes; the newest claim when none is active), and what the swarm had eaten of
+it is rebuilt by vanilla's own build - `startBuilding` with the progress set so the days left are the
+eaten share of the build time (40% eaten of a 60-day Mining = 24 days), unpaid, the world's own work;
+the notice and the log say "rebuilding from N% eaten, M days". A fully consumed industry is still the
+builder's restore at full price and time. The four-at-three in the user's save is the fix-1 jar's
+bug (with every producer "gone" the military ran in parallel from the start); the clocks only ever
+advance for `active`, at most `strataHeld` of them - hw305's dumps (`consuming` against `strataHeld`)
+check it.
