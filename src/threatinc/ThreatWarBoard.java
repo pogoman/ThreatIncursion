@@ -1434,8 +1434,14 @@ public class ThreatWarBoard {
 				List<String> ra = new ArrayList<String>();
 				String line = World + ":";
 				if (reserve > 0.5f) {
-					line += " %s marines in reserve, arming";
+					// the ramp's pace is the whole stock over marineArmingDays (ThreatReserves.tickMarineArming),
+					// so a delivery onto a big stock is posted in days - say so (the user, 2026-10-28: "should
+					// say something about x deploying")
+					float perDay = stock / Math.max(0.01f, ThreatIncConfig.marineArmingDays());
+					line += " %s marines in reserve, arming at %s a day (%s d)";
 					ra.add(n(reserve));
+					ra.add(perDay >= 10f ? n(perDay) : f1(perDay));
+					ra.add("" + (int) Math.ceil(reserve / Math.max(0.01f, perDay)));
 				}
 				if (stagingM > 0.5f) {
 					line += (reserve > 0.5f ? "; " : " ") + "%s marines staging for %s";
