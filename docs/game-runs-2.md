@@ -1432,3 +1432,30 @@ day-1,293 snapshot (OceanPena), hw303b = hw302b's day-1,263 (ZhiFarah), 1,500 da
 driver run-seeds-28.ps1, watcher ignores `nograndfleet`. Read: relief convoys' sizes ("Relief
 pooled ... (need was N)"), districts retaken, worlds freed, and what the swarm's pool does
 against a landing of thousands (the counterGap refill at 400 a day).
+
+**hw303 cap (08:41, 1,500 days in 27 minutes, two games):**
+
+| game | war day | hives | relief passes | marines pooled, median / max a pass / total | districts taken / retaken | beachheads overrun | worlds freed | defender pushes | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw303a | 2,800 | 220 | 227 | 712 / 4,999 / 185,616 | 76 / 11 | 0 | 0 | 652 | 0 |
+| hw303b | 2,779 | 251 | 208 | 822 / 7,204 / 193,339 | 65 / 9 | 3 | 0 | 835 | 0 |
+
+- **The dribble is gone:** a relief pass pools 700-800 marines at the median and up to 7,204
+  (Yama, 11 convoys in one pass); 185-193k marines reached invaded worlds in 1,500 days, against
+  13,887 at Cibola over a whole 3,800-day game before.
+- **The worlds still do not come back:** 9-11 districts retaken against 65-76 taken, no world
+  freed. The defenders pushed 652 / 835 times, every push logged at the band's edge (-0.10 to
+  -0.12: the flip logs at the crossing) and every one dug back in.
+- **Yama, the clean case (hw303b):** 7,204 landed, 6,736 on hand a month later against an army
+  of 6,651 with its pool at 0 and 4,794 short of its own want. One push at -0.10, then dug in;
+  the marines bled 6,736 -> 5,575 -> 4,498 -> 3,648 -> 2,970 -> 2,467 over six months while the
+  army fell 6,651 -> 5,386 and the pool sent 18-23 a day. By heads the defenders led; by the
+  line's force (veterancy up to x2 and half losses, cover 1.5, the doctrine's band) they did not.
+  The front's level is not logged, so the veterancy weight is inferred from the knobs
+  (`npcLandingVeterancy` 0.15 at every reinforcement, XP earned per district taken: 65-76 a
+  game to the humans' 9-11), not measured.
+- The user's answer (09:00): a new plan - the swarm CONSUMES each claimed industry (progress
+  shown like construction, the industry removed when eaten, no more troops from it; a world with
+  nothing left is abandoned for the next) - under discussion (after-effects listed in chat:
+  the builder must restore consumed industries, Population / Spaceport never eaten, military
+  last, deciv hold outlives the occupation, lift-off = the pool sails as a strike).
