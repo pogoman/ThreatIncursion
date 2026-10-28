@@ -765,7 +765,10 @@ public class ThreatFactionView {
 						String why = ThreatAidRequests.requestOffReason(r.market, levers);
 						boolean askFleets = ThreatNeeds.fleets(r.market) != null;
 						StringBuilder tip = new StringBuilder("Asks every faction at Favourable or better for ")
-								.append(ThreatAidRequests.askText(levers, askFleets)).append(". Each sender's price is standing.");
+								.append(ThreatAidRequests.askText(levers, askFleets))
+								.append(", answered at once; colonies sparing under ")
+								.append(Misc.getWithDGS((int) ThreatIncConfig.aidRequestMinSpare()))
+								.append(" do not count. Each sender's price is standing.");
 						for (FactionAPI helper : ThreatAidRequests.candidates()) {
 							tip.append("\n").append(ThreatAidRequests.budgetLine(helper));
 						}
@@ -2047,10 +2050,12 @@ public class ThreatFactionView {
 				} else {
 					boolean fleets = ThreatNeeds.fleets(target) != null;
 					prompt.addPara("Ask the sector for %s for " + target.getName()
-							+ "? Every faction at Favourable or better sends that once; each sender's price is "
+							+ "? Every faction at Favourable or better answers at once with that share of what its "
+							+ "colonies spare (those sparing %s or more); each sender's price is "
 							+ "standing, at x%s of the giving rate for Med and x%s for Max, never below Favourable. "
 							+ "One request a colony every %s days.", 0f, h,
 							ThreatAidRequests.askText(levers, fleets),
+							Misc.getWithDGS((int) ThreatIncConfig.aidRequestMinSpare()),
 							String.format("%.2f", ThreatAidRequests.askPrice(1)),
 							String.format("%.2f", ThreatAidRequests.askPrice(2)),
 							"" + (int) ThreatIncConfig.aidRequestCooldownDays());

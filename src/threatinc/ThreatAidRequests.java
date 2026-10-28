@@ -218,10 +218,15 @@ public class ThreatAidRequests {
 
 	/**
 	 * The player asks at the colonies table's levers (the user, 2026-10-28: "aid and request etc
-	 * uses all these levers as well"): each candidate sends, once, each lever's share of what its
-	 * colony spares of that good - and a task force when a fleets need stands - from the next slow
-	 * tick. Until 2026-10-28 a request asked for the most urgent need's figure at a tier and stood
-	 * until the need was gone.
+	 * uses all these levers as well" ... "it should request that of the faction, i.e. zero or half
+	 * or max of what they currently have, above a min threshold like 100"): answered AT ONCE -
+	 * every candidate sends each lever's share of what its colonies in reach spare of that good,
+	 * counting only colonies with aidRequestMinSpare or more ({@link #answerNow}), and a task force
+	 * when a fleets need stands - and the answers are posted as one intel entry
+	 * ({@link ThreatAidAnswersIntel}), opened from its notification. Until 2026-10-28 a request
+	 * asked for the most urgent need's figure at a tier, stood until the need was gone, and was
+	 * answered on the slow tick with a notice a sender ("i requested aid and nothing really
+	 * happened").
 	 */
 	public static boolean request(MarketAPI market, int[] levers) {
 		if (requestOffReason(market, levers) != null) return false;
@@ -233,14 +238,148 @@ public class ThreatAidRequests {
 		r.fleets = ThreatNeeds.fleets(market) != null;
 		r.since = Global.getSector().getClock().getTimestamp();
 		cancel(market);
-		requests().add(r);
 		askedAt().put(market.getId(), r.since);
-		ThreatNotice.titled("Aid Requested").icon(Global.getSector().getPlayerFaction())
-				.line("%s asks for %s", ThreatNotice.market(market), askText(r.tiers, r.fleets))
-				.line("Every faction at Favourable or better answers on the next poll; each sender's price is standing")
-				.send();
 		ThreatIncConfig.log("Aid requested for " + market.getName() + ": " + askText(r.tiers, r.fleets));
+		ThreatAidAnswersIntel intel = answerNow(r, market, new Random());
+		Global.getSector().getIntelManager().addIntel(intel);
 		return true;
+	}
+
+	/** The least a colony must spare of a good to answer a request with it: aidRequestMinSpare, one unit for ship hulls. */
+	public static float minSpare(String good) {
+		if (Commodities.SHIPS.equals(good)) return 1f;
+		return Math.max(0f, ThreatIncConfig.aidRequestMinSpare());
+	}
+
+	/**
+	 * The helper's colonies in reach of the player's colony that spare {@link #minSpare} or more
+	 * of the good, most spare first. An NPC helper reaches as far as its colony's fuel pays
+	 * (ThreatConvoys.stockReachLY).
+	 */
+	protected static List<MarketAPI> donors(FactionAPI helper, MarketAPI needy, String good) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (helper == null || needy == null || needy.getStarSystem() == null) return out;
+		final String g = good;
+		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
+			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
+			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
+					needy.getStarSystem().getLocation()) > ThreatConvoys.stockReachLY(donor)) continue;
+			if (ThreatConvoys.spare(donor, good) >= minSpare(good)) out.add(donor);
+		}
+		Collections.sort(out, new Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				return Float.compare(ThreatConvoys.spare(b, g), ThreatConvoys.spare(a, g));
+			}
+		});
+		return out;
+	}
+
+	/**
+	 * Answers one request now, every candidate in turn: of each good at a lever, the lever's
+	 * share (ThreatConvoys.share) of what the faction's colonies in reach spare of it in all
+	 * ({@link #donors}: those at aidRequestMinSpare or more), filled from the colony sparing the
+	 * most, each convoy priced in standing (pricePerUnit at the lever's tier) and cut to the
+	 * budget that keeps the player at Favourable; a guard from the nearest base for a fleets
+	 * need. Every faction gets a line a good in the intel - what sailed, or why nothing did.
+	 */
+	public static ThreatAidAnswersIntel answerNow(Request r, MarketAPI market, Random random) {
+		migrate(r);
+		ThreatAidAnswersIntel intel = new ThreatAidAnswersIntel(market, askText(r.tiers, r.fleets));
+		for (FactionAPI helper : candidates()) {
+			for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length && i < r.tiers.length; i++) {
+				int tier = r.tiers[i];
+				if (tier <= 0) continue;
+				String good = ThreatReserves.AID_COMMODITIES[i];
+				float per = pricePerUnit(market, good, tier);
+				List<MarketAPI> donors = donors(helper, market, good);
+				if (donors.isEmpty()) {
+					intel.add(refusal(helper, good, "no colony in reach with " + Misc.getWithDGS((int) minSpare(good))
+							+ " or more to spare"));
+					continue;
+				}
+				float total = 0f;
+				for (MarketAPI d : donors) total += ThreatConvoys.spare(d, good);
+				float ask = (float) Math.floor(ThreatConvoys.share(tier) * total);
+				boolean sailed = false;
+				boolean budgetOut = false;
+				for (MarketAPI donor : donors) {
+					if (ask < 1f) break;
+					float budget = budget(helper);
+					float amount = Math.min(ask, ThreatConvoys.spare(donor, good));
+					if (per > 0f && amount * per > budget) {
+						amount = (float) Math.floor(budget / per);
+						budgetOut = true;
+					}
+					amount = (float) Math.floor(amount);
+					if (amount < 1f) break;
+					float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
+					load[i] = amount;
+					ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, market, helper, load, random,
+							Factions.PLAYER, false);
+					if (convoy == null) continue;
+					float carried = Commodities.SHIPS.equals(good) ? convoy.ships : amount;
+					if (carried < 1f) continue;
+					float price = Math.min(budget, carried * per);
+					debit(helper.getId(), price);
+					ThreatAidAnswersIntel.Answer a = new ThreatAidAnswersIntel.Answer();
+					a.factionId = helper.getId();
+					a.good = good;
+					a.amount = carried;
+					a.fromName = donor.getName();
+					a.rep = price;
+					intel.add(a);
+					ThreatIncConfig.log("Aid request answered: " + helper.getId() + " sends " + (int) carried + " "
+							+ good + " from " + donor.getName() + " to " + market.getName() + ", rep -" + price);
+					ask -= carried;
+					sailed = true;
+				}
+				if (!sailed) {
+					intel.add(refusal(helper, good, budgetOut ? "would take you below Favourable"
+							: "no convoy could be raised"));
+				}
+			}
+			if (r.fleets) {
+				int tier = topTier(r.tiers);
+				float per = pricePerUnit(market, ThreatNeeds.FLEETS, tier);
+				float budget = budget(helper);
+				MarketAPI base = ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
+				float fp = ThreatFleetOrders.guardNeed(market);
+				if (base == null) {
+					intel.add(refusal(helper, ThreatNeeds.FLEETS, "no base in reach"));
+				} else if (per > 0f && fp * per > budget) {
+					intel.add(refusal(helper, ThreatNeeds.FLEETS, "would take you below Favourable"));
+				} else {
+					float before = ThreatFleetOrders.guardPointsFor(market.getId());
+					ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(helper, market, base, false);
+					if (o == null) {
+						intel.add(refusal(helper, ThreatNeeds.FLEETS, "nothing to spare"));
+					} else {
+						float sailed = Math.max(0f, ThreatFleetOrders.guardPointsFor(market.getId()) - before);
+						if (sailed <= 0f && o.fleet != null) sailed = o.fleet.getFleetPoints();
+						float price = Math.min(budget, sailed * per);
+						debit(helper.getId(), price);
+						ThreatAidAnswersIntel.Answer a = new ThreatAidAnswersIntel.Answer();
+						a.factionId = helper.getId();
+						a.good = ThreatNeeds.FLEETS;
+						a.amount = sailed;
+						a.fromName = base.getName();
+						a.rep = price;
+						intel.add(a);
+						ThreatIncConfig.log("Aid request answered: " + helper.getId() + " sends " + (int) sailed
+								+ " FP from " + base.getName() + " to " + market.getName() + ", rep -" + price);
+					}
+				}
+			}
+		}
+		return intel;
+	}
+
+	protected static ThreatAidAnswersIntel.Answer refusal(FactionAPI helper, String good, String why) {
+		ThreatAidAnswersIntel.Answer a = new ThreatAidAnswersIntel.Answer();
+		a.factionId = helper.getId();
+		a.good = good;
+		a.reason = why;
+		return a;
 	}
 
 	/** "half of their spare marines and heavy armaments, all of their spare fuel, and a task force" - what a request asks each faction for. */
@@ -294,118 +433,14 @@ public class ThreatAidRequests {
 				new RepActionEnvelope(RepActions.CUSTOM, impact, null, null, true, false), factionId);
 	}
 
-	/**
-	 * Every open request: each candidate sends, once, each lever's share of what its colony
-	 * spares of that good (goods wait out a blockade), and a guard for a fleets need; the request
-	 * ends once every part has had its poll, with one "answered" notice a good or a "no answer".
-	 */
+	/** A request still open from a save before 2026-10-28 (requests are answered at once now): answered as {@link #answerNow} and posted, then gone. */
 	protected static void answer(Random random) {
 		if (!ThreatIncConfig.aidRequestsEnabled()) return;
 		for (Request r : new ArrayList<Request>(requests())) {
+			requests().remove(r);
 			MarketAPI market = Global.getSector().getEconomy().getMarket(r.marketId);
-			if (market == null || !market.isPlayerOwned()) {
-				requests().remove(r);
-				continue;
-			}
-			migrate(r);
-			ThreatNeeds.Need urgent = ThreatNeeds.mostUrgent(ThreatNeeds.of(market), true);
-			boolean blockaded = urgent != null && urgent.suspended;
-			ThreatNotice.Reason why = null;
-			// good -> {units sent, senders}
-			Map<String, float[]> sent = new LinkedHashMap<String, float[]>();
-			if (!r.goodsDone && !blockaded) {
-				for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length && i < r.tiers.length; i++) {
-					int tier = r.tiers[i];
-					if (tier <= 0) continue;
-					String good = ThreatReserves.AID_COMMODITIES[i];
-					for (FactionAPI helper : candidates()) {
-						float budget = budget(helper);
-						float per = pricePerUnit(market, good, tier);
-						MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, market, good);
-						if (donor == null) {
-							why = reason(why, helper, "no colony in reach with " + ThreatReserves.label(good) + " to spare");
-							continue;
-						}
-						float amount = ThreatConvoys.share(tier) * ThreatConvoys.spare(donor, good);
-						if (per > 0f) amount = Math.min(amount, budget / per);
-						amount = (float) Math.floor(amount);
-						if (amount < 1f) {
-							why = reason(why, helper, per > 0f && budget / per < 1f ? "would take you below Favourable"
-									: "nothing to spare");
-							continue;
-						}
-						float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
-						load[i] = amount;
-						ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, market, helper, load, random,
-								Factions.PLAYER, false);
-						if (convoy == null) {
-							why = reason(why, helper, "no convoy could be raised at " + donor.getName());
-							continue;
-						}
-						float carried = Commodities.SHIPS.equals(good) ? convoy.ships : amount;
-						float price = Math.min(budget, carried * per);
-						debit(helper.getId(), price);
-						ThreatComms.answers(helper, donor, market, Math.round(carried), good, price);
-						ThreatIncConfig.log("Aid request answered: " + helper.getId() + " sends " + (int) carried + " "
-								+ good + " from " + donor.getName() + " to " + market.getName() + ", rep -" + price);
-						float[] tally = sent.get(good);
-						if (tally == null) sent.put(good, tally = new float[2]);
-						tally[0] += carried;
-						tally[1]++;
-						r.sent += carried;
-						r.senders++;
-					}
-				}
-				r.goodsDone = true;
-			}
-			if (r.fleets && !r.fleetsDone) {
-				int tier = topTier(r.tiers);
-				for (FactionAPI helper : candidates()) {
-					float budget = budget(helper);
-					float per = pricePerUnit(market, ThreatNeeds.FLEETS, tier);
-					MarketAPI base = ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
-					if (base == null) {
-						why = reason(why, helper, "no base in reach");
-						continue;
-					}
-					float fp = ThreatFleetOrders.guardNeed(market);
-					if (per > 0f && fp * per > budget) {
-						why = reason(why, helper, "would take you below Favourable");
-						continue;
-					}
-					float before = ThreatFleetOrders.guardPointsFor(market.getId());
-					ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(helper, market, base, false);
-					if (o == null) {
-						why = reason(why, helper, "nothing to spare");
-						continue;
-					}
-					float sailed = Math.max(0f, ThreatFleetOrders.guardPointsFor(market.getId()) - before);
-					if (sailed <= 0f && o.fleet != null) sailed = o.fleet.getFleetPoints();
-					float price = Math.min(budget, sailed * per);
-					debit(helper.getId(), price);
-					int days = o.fleet != null && base.getStarSystem() != null ? (int) Math.ceil(
-							Misc.getDistanceLY(base.getStarSystem().getLocation(), market.getLocationInHyperspace()) * 2f) : 0;
-					ThreatComms.sailsFor(helper, base, market, Math.round(sailed), days, price);
-					ThreatIncConfig.log("Aid request answered: " + helper.getId() + " sends " + (int) sailed
-							+ " FP from " + base.getName() + " to " + market.getName() + ", rep -" + price);
-					float[] tally = sent.get(ThreatNeeds.FLEETS);
-					if (tally == null) sent.put(ThreatNeeds.FLEETS, tally = new float[2]);
-					tally[0] += sailed;
-					tally[1]++;
-					r.sent += sailed;
-					r.senders++;
-				}
-				r.fleetsDone = true;
-			}
-			for (Map.Entry<String, float[]> e : sent.entrySet()) {
-				ThreatComms.callAnswered(market, Math.round(e.getValue()[0]), e.getKey(), (int) e.getValue()[1]);
-			}
-			boolean done = (r.goodsDone || ThreatConvoys.allNone(r.tiers)) && (!r.fleets || r.fleetsDone);
-			if (done && r.sent <= 0f && !r.noAnswerNotified) {
-				ThreatComms.noAnswer(market, why);
-				r.noAnswerNotified = true;
-			}
-			if (done) requests().remove(r);
+			if (market == null || !market.isPlayerOwned()) continue;
+			Global.getSector().getIntelManager().addIntel(answerNow(r, market, random));
 		}
 	}
 

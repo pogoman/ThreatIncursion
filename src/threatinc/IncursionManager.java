@@ -325,6 +325,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// withdrew, Defend windows never closed, accepted terms never ran)
 		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatAidMissionIntel.class));
 		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatSwarmBountyIntel.class));
+		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatAidAnswersIntel.class));
 		for (com.fs.starfarer.api.campaign.comm.IntelInfoPlugin curr : intel) {
 			if (curr instanceof EveryFrameScript) {
 				((EveryFrameScript) curr).advance(amount);

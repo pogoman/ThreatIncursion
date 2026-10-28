@@ -1051,6 +1051,8 @@ public class ThreatIncConfig {
 	public static boolean aidRequestsEnabled(){ return b("threatinc_aidRequestsEnabled", true); }
 	/** Days between the player's requests for one colony. */
 	public static float aidRequestCooldownDays() { return f("threatinc_aidRequestCooldownDays"); }
+	/** The least a colony must spare of a good to answer the player's request with it (ThreatAidRequests.donors; one unit for ship hulls). */
+	public static float aidRequestMinSpare()   { return f("threatinc_aidRequestMinSpare"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }

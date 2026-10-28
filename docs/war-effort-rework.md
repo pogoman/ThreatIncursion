@@ -92,10 +92,16 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
 
 The mirror of giving. The player presses Request aid on an own colony; the Amount tier picks
 Min / Med / Max of the row's most urgent need (the tooltip names it; the confirmation is the
-question and the numbers). (Since 2026-10-28 the colonies table's levers instead: each
-candidate sends its levers' share of its colony's spare of each good once, and a guard when a
-fleets need stands; the request ends after its poll - `ThreatAidRequests.request` / `answer`.
-The rules below on candidates, budgets and prices stand.) Then, on the next slow tick:
+question and the numbers). (Since 2026-10-28 the colonies table's levers instead, answered AT
+ONCE: of each good at a lever, each candidate sends the lever's share - half or all - of what
+its colonies in reach spare of it in all, counting only colonies sparing `aidRequestMinSpare`
+(100; a unit for hulls) or more, filled from the colony sparing the most, and a guard when a
+fleets need stands - `ThreatAidRequests.request` / `answerNow` / `donors`. The answers are one
+intel entry, `ThreatAidAnswersIntel`, opened from its notification: a section a faction with
+what sailed from where and the standing it cost, or why nothing did ("no colony in reach with
+100 or more to spare", "would take you below Favourable", "no base in reach"), and the standing
+spent in all. No notice a sender any more. The rules below on candidates, budgets and prices
+stand; "on the next slow tick" is now "at once".) Then, on the next slow tick:
 
 - Every faction at **Favourable or better** with the player, not hostile to the player's
   faction, is a candidate. Candidates are ordered by standing (Cooperative first), then by

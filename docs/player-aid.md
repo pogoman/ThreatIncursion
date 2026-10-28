@@ -359,8 +359,10 @@ Where the build departs from the text above, on purpose:
     (`ThreatAid.quoteBattle`) read the two; the colony Supplies (`stageLoad`), Aid
     (`ThreatAid.quoteAid`: the best colony by cargo value; hulls from the hull port, as a
     second convoy when it is not the goods donor, `Quote.hullSource`) and Request
-    (`ThreatAidRequests.request`: each candidate sends its levers' share of its spare once,
-    and a guard when a fleets need stands) read the five. Fleet and Defend read no lever -
+    (`ThreatAidRequests.request`: answered at once - each candidate sends its levers' share of
+    what its colonies in reach spare in all, colonies under `aidRequestMinSpare` not counting,
+    and a guard when a fleets need stands; the answers are one `ThreatAidAnswersIntel`) read
+    the five. Fleet and Defend read no lever -
     every hull the nearest source has free (`ThreatFactionView.ALL_HULLS`). Supplies moves
     hulls between the player's colonies off the donor's own share (`ThreatHulls.takeShare` /
     `landShare`, `Convoy.ownHulls`), never the built navy. Defaults: the fronts' Max, the

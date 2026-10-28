@@ -1301,6 +1301,10 @@
 	# the navy; surplus: beyond Max, or a good nobody needs)
 	"threatinc_aidRequestsEnabled": true,
 	"threatinc_aidRequestCooldownDays": 30,
+	# aidRequestMinSpare (2026-10-28): a request is answered at once by every faction at Favourable or better with the
+	# levers' share (half / all) of what its colonies in reach spare of each good, counting only colonies sparing this
+	# much or more (a unit for ship hulls); the answers are one intel entry
+	"threatinc_aidRequestMinSpare": 100,
 	"threatinc_aidAskPriceMin": 1.0,
 	"threatinc_aidAskPriceMed": 1.25,
 	"threatinc_aidAskPriceMax": 1.5,
