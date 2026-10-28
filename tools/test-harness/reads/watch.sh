@@ -37,7 +37,7 @@ while :; do
     F=$T/ti-$TAG$g.txt; E=$T/exc-$TAG$g.txt
     [ -f "$F" ] || continue
     war=$(grep -o 'war [0-9]*' $F | tail -1 | cut -d' ' -f2); war=${war:-0}
-    ex=$(grep -v -E "ShipHullSpreadsheetLoader|sound.C|Unable to load: sounds|Failed to read OGG|^s+at |^Caused by" $E 2>/dev/null | grep -c "Exception|Error")
+    ex=$(grep -v -E "ShipHullSpreadsheetLoader|sound\.C|Unable to load: sounds|Failed to read OGG|^\s+at |^Caused by" $E 2>/dev/null | grep -c -E "Exception|Error")
     ref=$(grep -c 'cannot sail today' $F); la=$(grep -c '^Offensive launched' $F); hs=$(grep -c 'sails on its day' $F)
     hull=$(grep -c 'ship hulls from' $F); land=$(grep -c '^Hulls: .* lands' $F)
     hives=$(grep -o '^Census: threat hives [0-9]*' $F | tail -1 | grep -o '[0-9]*$'); hives=${hives:-0}
