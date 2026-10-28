@@ -1588,3 +1588,22 @@ Set B from day 0 on jar 10:10:43 (fixes 1-3), 3,800 days, 75 minutes, driver run
   swallowing it. **hw310 / hw311 (rounds 78-79)** re-run the day-0 seeds on it from 12:27.
 - a and c, to the stop: the cycle as in hw305-hw307 (93 / 156 consumed, 31 / 54 lift-offs, 42 / 37
   restores, 16 / 34 districts retaken), hives 170 / 260 at d3,100-3,200 - set B's spread as before.
+
+## 84. hw310 - round 78, day-0 seeds on the fix-4 jar: NO HANG (2026-10-28 12:27-13:47)
+
+Set B from day 0 on jar 12:26:44 (fix 4, the recursion), 3,800 days, 75 minutes, driver
+run-seeds-34.ps1 (its hw311 round was not started: the lump build took its slot).
+
+| game | war day | hives | consumed | lift-offs | restores | claims / reclaims / rebuilds | occupied / retaken | d/min | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw310a | 3,755 | 328 | 191 | 78 | 61 | 247 / 34 / 17 | 55 / 34 | 47 | 0 |
+| hw310b | 3,648 | 288 | 98 | 31 | 56 | 153 / 43 / 29 | 20 / 43 | 45 | 0 |
+| hw310c | 3,812 | 342 | 207 | 100 | 31 | 221 / 11 / 6 | 57 / 11 | 48 | 0 |
+
+- **No hang in three games over the full 3,800 days** (hw308b and hw306a froze at war 1,296 and
+  1,622) - fix 4 holds; the three ran to the 75-minute cap or the day count together.
+- The cycle at scale, a full war: 98-207 industries consumed, 31-100 lift-offs, 31-61 restores,
+  11-43 districts retaken; hives 288-342 at d3,650-3,800 (hw300-hw302 on the old occupation:
+  258-394). The swarm is not weaker for leaving gutted worlds.
+- **hw312 / hw313 (rounds 80-81)** re-run the day-0 seeds on the LUMP jar 13:47:52 (section 8 of
+  `occupation.md`: nothing while the swarm chews, the stream's worth the day an industry is eaten).
