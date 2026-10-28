@@ -112,6 +112,9 @@ public class ThreatCoreBuild {
 			if (marineStep(fid, sites)) continue;
 			// yards first, every pass: a yard started or held is the faction's whole pass
 			if (yardStep(fid, sites)) continue;
+			// RESTORE (the user, 2026-10-28): a world the swarm gutted rebuilds what it ate, quickest first; a restore
+			// started is the faction's whole pass
+			if (restoreStep(fid, sites)) continue;
 			// HOME FIRST (the user, 2026-10-20): while the hold stands the core build is the faction's whole
 			// war - every site a pass, no 30-day throttle, an unpaid step holds its price (holdMilitary)
 			if (homeFirstHolds(fid)) {
@@ -440,6 +443,52 @@ public class ThreatCoreBuild {
 		return true;
 	}
 
+	/**
+	 * RESTORE (the user, 2026-10-28: "the builder should restore to the prior state, one at a time probably
+	 * focusing on quickest to build first"): a world the swarm gutted (ThreatOccupation.consumed) and has
+	 * left rebuilds what it ate, the quickest build first, paid like any structure (startNew: the colony's
+	 * depot, then the faction's markets in reach) or its price held at the colony (ThreatFactionStock.hold);
+	 * a site builds one thing at a time (sites: nothing building). A player world rebuilds itself. True
+	 * when a restore started - the faction's whole pass; an unpaid one holds its price and the pass goes on.
+	 */
+	protected static boolean restoreStep(String fid, List<MarketAPI> sites) {
+		if (!ThreatIncConfig.occupationConsume()) return false;
+		for (MarketAPI m : sites) {
+			List<String> gone = ThreatOccupation.consumed(m, false);
+			if (gone.isEmpty()) continue;
+			if (ThreatOccupation.occupies(ThreatGroundFronts.getFront(m.getId()), m)) continue; // still under the swarm
+			String pick = null;
+			float pickDays = 0f;
+			boolean slot = Misc.getNumIndustries(m) < Misc.getMaxIndustries(m);
+			for (String id : new ArrayList<String>(gone)) {
+				com.fs.starfarer.api.loading.IndustrySpecAPI spec = ThreatOccupation.spec(id);
+				if (spec == null || m.hasIndustry(id)) { // unknown, or standing again
+					gone.remove(id);
+					continue;
+				}
+				if (spec.hasTag("industry") && !slot) continue;
+				if (pick == null || spec.getBuildTime() < pickDays) {
+					pick = id;
+					pickDays = spec.getBuildTime();
+				}
+			}
+			if (pick == null) continue;
+			if (start(m, pick)) {
+				gone.remove(pick);
+				started(fid);
+				ThreatIncConfig.log("Core build: " + m.getName() + " (" + fid + ") restores " + pick + " ("
+						+ gone.size() + " consumed industries still to restore)");
+				return true;
+			}
+			float cost = ThreatBuildCost.supplies(pick), funds = ThreatFrontlines.buildFunds(m);
+			if (cost > funds) {
+				ThreatFactionStock.hold(m, pick, cost - funds);
+				ThreatIncConfig.logQuiet("cb_restore_" + m.getId(), "Core build: " + m.getName() + " holds "
+						+ (int) (cost - funds) + " supplies to restore " + pick);
+			}
+		}
+		return false;
+	}
 	/**
 	 * The one military step the colony lacks, by size, without starting it: {kind, id} where kind is "start"
 	 * (id the industry to build) or "upgrade" (id the industry standing, its spec's upgrade is the target), or

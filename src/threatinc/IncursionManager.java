@@ -6242,6 +6242,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (ThreatMapFog.hidden(market)) return false;
 		if (Factions.THREAT.equals(market.getFactionId())) return false;
 		if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) return false;
+		if (market.getMemoryWithoutUpdate().getBoolean(ThreatOccupation.GUTTED_KEY)) return false; // eaten bare and left (consumption, 2026-10-28)
 		// frontline outposts start at size 1 and are targets from the first day
 		if (market.getSize() < 3 && !ThreatFrontlines.isOutpost(market)) return false;
 		if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(market)) return false;

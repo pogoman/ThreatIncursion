@@ -416,6 +416,13 @@ public class ThreatIncConfig {
 	public static float occupationRateMult() { return f("threatinc_occupationRateMult"); }
 	/** The least swarm an occupied world's pool buds against a force over it; 0 never buds. */
 	public static float occupationBudFP()     { return f("threatinc_occupationBudFP"); }
+	/** CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): a claimed industry is consumed over its build time x occupationConsumeMult and removed; a world with nothing left is left. */
+	public static boolean occupationConsume() { return b("threatinc_occupationConsume", true); }
+	public static float occupationConsumeMult() { return f("threatinc_occupationConsumeMult"); }
+	/** The military structures are consumed too, after every producer. */
+	public static boolean occupationConsumeMilitary() { return b("threatinc_occupationConsumeMilitary", true); }
+	/** Days a gutted world is no strike's target and vanilla's deciv is held off after the swarm lifts off. */
+	public static float occupationGuttedDays() { return f("threatinc_occupationGuttedDays"); }
 	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
 	// ---- hive sieges ----

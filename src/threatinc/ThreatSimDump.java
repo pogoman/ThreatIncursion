@@ -172,6 +172,8 @@ public class ThreatSimDump {
 		j.put("marines", f.marines);
 		j.put("state", f.state);
 		j.put("strataHeld", f.strataHeld);
+		j.put("claims", f.claims != null ? f.claims.size() : 0);
+		j.put("consuming", ThreatOccupation.active(f, m).size());
 		j.put("armaments", f.armaments);
 		j.put("stance", f.stance);
 		o.put("front", j);
@@ -193,6 +195,8 @@ public class ThreatSimDump {
 			o.put("faction", m.getFactionId());
 			o.put("system", m.getStarSystem().getId());
 			o.put("size", m.getSize());
+			o.put("consumed", ThreatOccupation.consumed(m, false).size()); // industries the swarm ate, not yet restored (2026-10-28)
+			o.put("gutted", m.getMemoryWithoutUpdate().getBoolean(ThreatOccupation.GUTTED_KEY));
 			o.put("forwardBase", ThreatFrontlines.isOutpost(m));
 			o.put("base", IncursionManager.isBase(m));
 			o.put("defence", ThreatGroundFronts.defenderStrength(m));

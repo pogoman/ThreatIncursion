@@ -333,3 +333,70 @@ pool budded (`BUD_KEY` in fleet memory, set in `bud`), `held` counts only those 
 the pool above `cap`. `game-runs-2.md` 72.
 
 **Fix 2 (2026-10-27 23:05, the user: "they should when no threat detected so they help grow colony"):** a quiet orbit (no hostile in the system for defendLingerDays) absorbs ANY swarm of the Threat's on station over the world into the pool - parked strike fleets included, not only the pool's buds (`absorb`, the cap still binds) - and `standDown` sends whatever the full pool cannot take home to its hive to despawn and re-bank (`ThreatSwarmDefend.sendHome`). Why: hw297a kept 60-90 strike fleets parked over sieged and occupied worlds for years, and vanilla's fleet AI weighing them was 60% of the frame (`performance.md`). **Fix 2b (23:18, hw298b first poll):** Athulf stood down 10 swarms (14k FP) with the pool at 0 of 3,200 - `absorb` had returned false on a tick whose bite rounded below one hull, and `standDown` read that as "full". The stand-down now runs only when `cap - held` is under one hull of strata (`ThreatStrata.strataOf(1)`); otherwise the quiet orbit waits for the next absorb tick. **Fix 2c (2026-10-28 01:12, hw300 read):** with the gate in, the stand-down lines read "holds 3756 of 3200, pool 0" and "holds 1675 of 3200, pool 180" - the world was "full" of its OWN buds: `held` counts the budded swarms above, so `absorb`'s room (`cap - held`) was 0 whenever the buds alone filled the cap, and `standDown` sent them home to the hive instead of back into the pool. Now `absorb` picks the smallest swarm that fits, and a bud's own strata are added back to its room (taking it back changes nothing the world holds); a parked strike fleet, which `held` does not count, still needs real room. The stand-down line prints what the world held before the release.
+
+## 7. CONSUMPTION (2026-10-28, the user's decision; built 09:28, trial hw304)
+
+After hw303 (the dribble fixed, 185-193k marines landed, no world freed): an occupied world was a
+hive without the title and nobody retakes a hive. The user's plan: "the threat actually full consume
+each industry which results in it being destroyed/removed. Ideally we show the progress like when
+its building ... once the industry is consumed they no longer generate troops from it and if a world
+has no industries left they lift off and find another." Decisions: the builder restores the prior
+state one at a time, quickest to build first; military structures are consumed last ("the most well
+protected"); no lump reward - the pool is paid over time as before; the number of districts held is
+the number of industries consumed in parallel.
+
+**The clocks** (`ThreatOccupation.consume`, from the front's tick after the claim clock): the front's
+`consumeDays` map holds days consumed by industry id. `active` picks the claims being eaten: the oldest
+claims, as many as districts held (`strataHeld`), a military claim only once no producer stands on the
+world. Each advances by the tick; at `consumeTime` (the industry's vanilla build time x
+`occupationConsumeMult`, 1.0 - Mining 60 days, Refining 90, Heavy Industry 120, Orbital Works 150)
+`consumeIndustry` removes it from the world (`market.removeIndustry`), drops the claim, records the id
+in the market's memory (`CONSUMED_KEY`, `$threatinc_consumed`) and sends Industry Consumed. No lump:
+`growthPerDay` is unchanged, and `share` now reads claimed producers over the producers the world HAD
+(consumed ones counted, so an eaten producer feeds nothing); the military feed nothing either way.
+
+**The order** (`claimable` = `producers` then `military`): the producers as before (vanilla's
+"industry" tag with a supply, never Population, ports, stations, ours), by id; then the key structures
+a holding front wears (`colonyKeyStructures`: Ground Defenses, Heavy Batteries, Patrol HQ, Military
+Base, High Command, the Lion's Guard) minus the orbital station, by id, under `occupationConsumeMilitary`.
+A district retaken still releases the newest claim, and its clock with it (what the swarm had eaten of
+it is saved; `release`).
+
+**The bar** (the user: "show the progress like when its building"): the `Occupied*` plugins - the seven
+producers and the two new ones, `OccupiedMilitaryBase` (Patrol HQ, Military Base, High Command) and
+`OccupiedGroundDefenses` (Ground Defenses, Heavy Batteries), aliased and registered like the rest -
+report `isBuilding` true while `ThreatOccupation.consuming`, with `getBuildOrUpgradeProgress` the
+consumption fraction and the texts "Consumed: N days left" / "N days", so vanilla's own card draws its
+build bar as the consumption. Wrinkles: vanilla reads a building industry as not functional, which on
+a claimed producer changes nothing (its output was x0) and on a military structure nothing either (a
+held one is pinned disrupted already); the builder's `projectRunning` reads the world as building, so
+nothing is started on it while the swarm eats; a player's own world would offer "cancel construction"
+on a consumed card (a removal, no refund - `getBuildCost` is vanilla's) - not handled, player worlds
+are not in the batches. The Ground War condition's tooltip adds "Consuming X: N days left" per active
+claim and "Consumed by the swarm: N industries".
+
+**The lift-off** (`liftOff`, after the clocks): ground held, no claim left and nothing left to claim
+(`next` null - every producer and military structure eaten, or none ever there) - the troops, the pool
+and the strata rising re-embark as one Infestation Swarm (`ThreatFleetComposer.createSized`, garrison
+job) bound for the nearest live hive's bank (`ThreatColonyManager.bindStrayToNearest`, then
+GO_TO_LOCATION_AND_DESPAWN at the hive as `ThreatSwarmDefend.sendHome` does; what is shot down on the
+way is lost, nothing is teleported); the swarms above stand down (`standDown`); the market is marked
+gutted (`GUTTED_KEY`, `$threatinc_gutted`, expires after `occupationGuttedDays` 180) - no strike targets
+it meanwhile (`IncursionManager.isStrikeableWorld`) and vanilla's deciv is held off for as long - the
+Swarm Lifts Off notice goes out and the front is withdrawn (`ThreatGroundFronts.withdraw`; the fronts
+tick returns on a front gone). The strike planner picks the next target on its own.
+
+**The restore** (`ThreatCoreBuild.restoreStep`, in the pass after the yard step, before HOME FIRST):
+at a core site with consumed industries and no swarm on it, the quickest vanilla build time first (an
+industry needs a free slot), paid as any structure (`ThreatFrontlines.startNew`: the depot, then the
+faction's markets in reach) or its price held at the colony (`ThreatFactionStock.hold`); a restore
+started is the faction's whole pass. The restored industry is bare: AI cores, improvements and special
+items went with the consumed one. A player world rebuilds itself. The consumed list drops an id that
+stands again by any road (the yard step rebuilds a yard first).
+
+**Knobs** (settings.json): `occupationConsume` true, `occupationConsumeMult` 1.0,
+`occupationConsumeMilitary` true, `occupationGuttedDays` 180. **Dumps**: a world's `consumed` and
+`gutted`, a front's `claims` and `consuming`. **Logs**: "Occupation: the swarm has consumed X on W",
+"Occupation: the swarm lifts off W", "Core build: W restores id". Defaults the user has not confirmed:
+Population and the ports never consumed; consumption time = build time x 1; the gutted / deciv hold
+180 days; the lift-off re-banks at the nearest hive.

@@ -201,6 +201,8 @@ public class ThreatGroundFronts {
 		public float orbitQuietDays;
 		/** The World Occupied notice has been sent. */
 		public boolean occupiedAnnounced;
+		/** CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): days each claim has been consumed, by industry id; the oldest claims, as many as districts held, advance (ThreatOccupation.active). Null on older saves. */
+		public Map<String, Float> consumeDays;
 
 		public boolean isPlayerOwned() {
 			return factionId == null || Factions.PLAYER.equals(factionId);
@@ -2118,6 +2120,7 @@ public class ThreatGroundFronts {
 		tickDefenderStance(front, market, elapsedDays); // and choose: counter-attack or dig in (2026-10-17)
 		bleedHiveStrata(market, front, elapsedDays); // a hive's strata too: every troop lost is a stratum point gone for good (2026-10-24)
 		ThreatOccupation.tick(front, market, elapsedDays); // and the swarm's front on a human world claims it, eats it and grows (THE OCCUPATION, 2026-10-27)
+		if (getFront(front.marketId) == null) return; // the swarm lifted off a gutted world (consumption, 2026-10-28)
 		if (groundDown(front)) {
 			if (threatFront) {
 				ThreatNotice.titled("Threat Landing Destroyed").good()

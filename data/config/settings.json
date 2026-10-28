@@ -500,6 +500,16 @@
 	"threatinc_occupationClaimDays": 30,
 	"threatinc_occupationRateMult": 1.0,
 	"threatinc_occupationBudFP": 60,
+	# CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): a claimed industry is CONSUMED over its vanilla
+	# build time x occupationConsumeMult - as many at once as districts held, the oldest claims first, the
+	# military structures last (occupationConsumeMilitary) - and removed from the world; it feeds nothing after
+	# (no lump reward). The owner's builder restores what was eaten, quickest first (ThreatCoreBuild.restoreStep).
+	# A world with nothing left to claim is left: troops and pool re-embark for the nearest hive, and for
+	# occupationGuttedDays no strike targets the world and vanilla's deciv is held off.
+	"threatinc_occupationConsume": true,
+	"threatinc_occupationConsumeMult": 1.0,
+	"threatinc_occupationConsumeMilitary": true,
+	"threatinc_occupationGuttedDays": 180,
 
 	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive
 	# world's one figure is its strata - its size by a doubling table (strataSizeBase

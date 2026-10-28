@@ -3,11 +3,14 @@ package threatinc;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
+import com.fs.starfarer.api.campaign.FleetAssignment;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.SpecialItemData;
 import com.fs.starfarer.api.campaign.econ.Industry;
@@ -56,7 +59,10 @@ public class ThreatOccupation {
 			{ "com.fs.starfarer.api.impl.campaign.econ.impl.Refining", "threatinc.OccupiedRefining" },
 			{ "com.fs.starfarer.api.impl.campaign.econ.impl.LightIndustry", "threatinc.OccupiedLightIndustry" },
 			{ "com.fs.starfarer.api.impl.campaign.econ.impl.HeavyIndustry", "threatinc.OccupiedHeavyIndustry" },
-			{ "com.fs.starfarer.api.impl.campaign.econ.impl.FuelProduction", "threatinc.OccupiedFuelProduction" } };
+			{ "com.fs.starfarer.api.impl.campaign.econ.impl.FuelProduction", "threatinc.OccupiedFuelProduction" },
+			// consumption (2026-10-28): the military structures draw their consumption bar too
+			{ "com.fs.starfarer.api.impl.campaign.econ.impl.MilitaryBase", "threatinc.OccupiedMilitaryBase" },
+			{ "com.fs.starfarer.api.impl.campaign.econ.impl.GroundDefenses", "threatinc.OccupiedGroundDefenses" } };
 	/**
 	 * The vanilla industry images with a dark-green copy, by file name - every variant vanilla
 	 * swaps in by condition (Haven's Farming drew farming_med and stayed plain, 2026-10-27).
@@ -122,7 +128,8 @@ public class ThreatOccupation {
 	/** At application load: the specs' plugins are ours, so new industries draw the image too, and the images are loaded. */
 	public static void registerPlugins() {
 		for (String id : new String[] { "farming", "aquaculture", "mining", "techmining", "refining",
-				"lightindustry", "heavyindustry", "orbitalworks", "fuelprod" }) {
+				"lightindustry", "heavyindustry", "orbitalworks", "fuelprod",
+				"patrolhq", "militarybase", "highcommand", "grounddefenses", "heavybatteries" }) {
 			com.fs.starfarer.api.loading.IndustrySpecAPI spec = com.fs.starfarer.api.Global.getSettings().getIndustrySpec(id);
 			if (spec == null) continue;
 			for (String[] p : PLUGINS) {
@@ -188,14 +195,14 @@ public class ThreatOccupation {
 	}
 
 	/**
-	 * The world's industries the swarm can claim, in a fixed order (by id) so the
-	 * clock takes the same next one from poll to poll: the PRODUCERS only (the user,
-	 * Haven 2026-10-27: "they are infesting the battle station next???") - vanilla's
-	 * industries (the "industry" tag: Mining, Farming, Refining, the yards, Fuel
-	 * Production...) that make something; never a structure (ports, waystation,
-	 * stations, the defences the siege wears), never Population, never ours.
+	 * The world's PRODUCERS the swarm claims first, in a fixed order (by id) so the clock
+	 * takes the same next one from poll to poll (the user, Haven 2026-10-27: "they are
+	 * infesting the battle station next???"): vanilla's industries (the "industry" tag:
+	 * Mining, Farming, Refining, the yards, Fuel Production...) that make something; never
+	 * a structure (ports, waystation, stations), never Population, never ours. What feeds
+	 * the pool ({@link #share}).
 	 */
-	public static List<Industry> claimable(MarketAPI market) {
+	public static List<Industry> producers(MarketAPI market) {
 		List<Industry> list = new ArrayList<Industry>();
 		if (market == null) return list;
 		List<Industry> key = ThreatGroundFronts.colonyKeyStructures(market);
@@ -208,14 +215,55 @@ public class ThreatOccupation {
 			if (ind.getAllSupply().isEmpty()) continue;
 			list.add(ind);
 		}
+		sortById(list);
+		return list;
+	}
+	/**
+	 * The world's MILITARY structures, claimed after the producers and consumed last (the
+	 * user, 2026-10-28: "lets say they are the most well protected"): the key structures a
+	 * holding front wears ({@link ThreatGroundFronts#colonyKeyStructures} - Ground Defenses,
+	 * Heavy Batteries, Patrol HQ, Military Base, High Command, the Lion's Guard), never the
+	 * orbital station, by id. They feed nothing. None with occupationConsumeMilitary off.
+	 */
+	public static List<Industry> military(MarketAPI market) {
+		List<Industry> list = new ArrayList<Industry>();
+		if (market == null || !ThreatIncConfig.occupationConsume() || !ThreatIncConfig.occupationConsumeMilitary()) return list;
+		Industry station = ThreatFrontlines.stationOf(market);
+		for (Industry ind : ThreatGroundFronts.colonyKeyStructures(market)) {
+			if (ind == null || ind.getId() == null || ind == station) continue;
+			if (ind.getId().startsWith("threatinc_")) continue;
+			list.add(ind);
+		}
+		sortById(list);
+		return list;
+	}
+	/** The world's industries the swarm claims, in claim order: the producers, then the military. */
+	public static List<Industry> claimable(MarketAPI market) {
+		List<Industry> list = producers(market);
+		list.addAll(military(market));
+		return list;
+	}
+	protected static void sortById(List<Industry> list) {
 		Collections.sort(list, new Comparator<Industry>() {
 			public int compare(Industry a, Industry b) {
 				return a.getId().compareTo(b.getId());
 			}
 		});
-		return list;
 	}
-
+	/** The industry spec, null for an unknown id (vanilla throws). */
+	public static com.fs.starfarer.api.loading.IndustrySpecAPI spec(String id) {
+		if (id == null) return null;
+		try {
+			return Global.getSettings().getIndustrySpec(id);
+		} catch (Throwable t) {
+			return null;
+		}
+	}
+	/** Whether the industry id is a military structure (vanilla's tactical-bombardment tag), by spec - a consumed one included. */
+	public static boolean isMilitary(String id) {
+		com.fs.starfarer.api.loading.IndustrySpecAPI spec = spec(id);
+		return spec != null && spec.hasTag(Industries.TAG_TACTICAL_BOMBARDMENT);
+	}
 	/** The claimed industries still on the market, in claim order. */
 	public static List<Industry> claimed(MarketAPI market, GroundFront front) {
 		List<Industry> list = new ArrayList<Industry>();
@@ -295,6 +343,10 @@ public class ThreatOccupation {
 				announceClaim(front, market, nxt);
 			}
 		}
+		// CONSUMPTION (the user, 2026-10-28): the oldest claims, as many as districts held, are eaten over
+		// their build time and removed; with nothing left to claim the swarm lifts off (section 7)
+		if (consume(front, market, elapsedDays)) changed = true;
+		if (liftOff(front, market)) return;
 		if (holdsAll(front, market)) {
 			// nothing left to take: the landing stands, and never spends itself pushing
 			front.stance = ThreatGroundFronts.STANCE_ENTRENCH;
@@ -355,6 +407,7 @@ public class ThreatOccupation {
 		List<String> claims = claims(front);
 		if (claims.isEmpty()) return;
 		String id = claims.remove(claims.size() - 1);
+		consumeDays(front).remove(id); // what the swarm had eaten of it is saved (consumption, 2026-10-28)
 		Industry ind = market.getIndustry(id);
 		String name = ind != null ? ind.getCurrentName() : id;
 		ThreatNotice.titled("Industry Reclaimed").good().icon(market.getFaction())
@@ -375,6 +428,189 @@ public class ThreatOccupation {
 				+ market.getName() + " (" + claims(front).size() + " claimed)");
 	}
 
+	// ------------------------------------------------------------------
+	// CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): "the threat actually full
+	// consume each industry which results in it being destroyed/removed ... once the
+	// industry is consumed they no longer generate troops from it and if a world has no
+	// industries left they lift off and find another"; military last, no lump reward, as
+	// many at once as districts held, the owner's builder restores the world.
+	// ------------------------------------------------------------------
+	/** Market memory: the industry ids the swarm has consumed here that the owner has not rebuilt (ThreatCoreBuild.restoreStep). */
+	public static final String CONSUMED_KEY = "$threatinc_consumed";
+	/** Market memory (expires, occupationGuttedDays): the swarm lifted off with nothing left to eat - no strike targets the world, vanilla's deciv is held off. */
+	public static final String GUTTED_KEY = "$threatinc_gutted";
+	/** The industries the swarm has consumed on the world and the owner has not rebuilt; the live list when create, else possibly a copy. */
+	@SuppressWarnings("unchecked")
+	public static List<String> consumed(MarketAPI market, boolean create) {
+		if (market == null) return new ArrayList<String>();
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		Object val = mem.get(CONSUMED_KEY);
+		if (val instanceof List) return (List<String>) val;
+		List<String> list = new ArrayList<String>();
+		if (create) mem.set(CONSUMED_KEY, list);
+		return list;
+	}
+	/** The front's consumption clocks by industry id (older saves hold none). */
+	public static Map<String, Float> consumeDays(GroundFront front) {
+		if (front.consumeDays == null) front.consumeDays = new HashMap<String, Float>();
+		return front.consumeDays;
+	}
+	/** Days the swarm takes to consume the industry: its vanilla build time x occupationConsumeMult, a day at least. */
+	public static float consumeTime(Industry ind) {
+		float days = ind != null ? ind.getBuildTime() : 0f;
+		return Math.max(1f, days * Math.max(0.01f, ThreatIncConfig.occupationConsumeMult()));
+	}
+	/**
+	 * The claims being consumed now: the oldest, as many as districts held (the user: "the
+	 * number of districts held is the number of industries they can consume in parallel"); a
+	 * military claim only once no producer stands on the world (consumed last).
+	 */
+	public static List<String> active(GroundFront front, MarketAPI market) {
+		List<String> list = new ArrayList<String>();
+		if (!ThreatIncConfig.occupationConsume() || !occupies(front, market) || front.strataHeld <= 0) return list;
+		boolean producersLeft = !producers(market).isEmpty();
+		for (String id : claims(front)) {
+			if (list.size() >= front.strataHeld) break;
+			if (market.getIndustry(id) == null) continue;
+			if (producersLeft && isMilitary(id)) continue;
+			list.add(id);
+		}
+		return list;
+	}
+	/** Whether the swarm is consuming the industry now: its card draws vanilla's build bar as the consumption (the Occupied plugins). */
+	public static boolean consuming(Industry ind) {
+		try {
+			if (ind == null || ind.getMarket() == null || !ThreatIncConfig.occupationConsume()) return false;
+			if (Global.getSector() == null) return false;
+			GroundFront front = ThreatGroundFronts.getFront(ind.getMarket().getId());
+			if (front == null || !occupies(front, ind.getMarket())) return false;
+			Float days = front.consumeDays != null ? front.consumeDays.get(ind.getId()) : null;
+			if (days != null && days > 0f) return true;
+			return active(front, ind.getMarket()).contains(ind.getId());
+		} catch (Throwable t) {
+			return false;
+		}
+	}
+	/** How far consumed the industry is, 0-1. */
+	public static float consumeProgress(Industry ind) {
+		if (ind == null || ind.getMarket() == null) return 0f;
+		GroundFront front = ThreatGroundFronts.getFront(ind.getMarket().getId());
+		if (front == null || front.consumeDays == null) return 0f;
+		Float days = front.consumeDays.get(ind.getId());
+		if (days == null) return 0f;
+		return Math.max(0f, Math.min(1f, days / consumeTime(ind)));
+	}
+	/** Days until the industry is consumed. */
+	public static int consumeDaysLeft(Industry ind) {
+		return (int) Math.ceil(Math.max(0f, consumeTime(ind) * (1f - consumeProgress(ind))));
+	}
+	/** The card's bar text while consumed, on vanilla's "Building: N days left" shape. */
+	public static String consumeText(Industry ind) {
+		int d = consumeDaysLeft(ind);
+		return "Consumed: " + d + (d == 1 ? " day" : " days") + " left";
+	}
+	/** The card's days text while consumed. */
+	public static String consumeDaysText(Industry ind) {
+		int d = consumeDaysLeft(ind);
+		return d + (d == 1 ? " day" : " days");
+	}
+	/**
+	 * One tick of the consumption: the active claims advance by the tick; one at its time
+	 * is eaten ({@link #consumeIndustry}). Whether any was (the market reapplies).
+	 */
+	protected static boolean consume(GroundFront front, MarketAPI market, float elapsedDays) {
+		if (!ThreatIncConfig.occupationConsume() || elapsedDays <= 0f) return false;
+		boolean any = false;
+		Map<String, Float> clocks = consumeDays(front);
+		for (String id : active(front, market)) {
+			Industry ind = market.getIndustry(id);
+			if (ind == null) continue;
+			Float days = clocks.get(id);
+			float now = (days != null ? days : 0f) + elapsedDays;
+			if (now < consumeTime(ind)) {
+				clocks.put(id, now);
+				continue;
+			}
+			consumeIndustry(front, market, ind);
+			any = true;
+		}
+		return any;
+	}
+	/** The industry is eaten: removed from the world, remembered for the owner's builder, claimed no more. No lump reward (the user). */
+	protected static void consumeIndustry(GroundFront front, MarketAPI market, Industry ind) {
+		String id = ind.getId(), name = ind.getCurrentName();
+		List<String> gone = consumed(market, true);
+		if (!gone.contains(id)) gone.add(id);
+		claims(front).remove(id);
+		consumeDays(front).remove(id);
+		market.removeIndustry(id, null, false);
+		int left = claimable(market).size();
+		ThreatNotice.titled("Industry Consumed").bad()
+				.line("The swarm has consumed %s on %s.", name, ThreatNotice.market(market))
+				.line("%s industries consumed, %s left to claim.", "" + gone.size(), "" + left)
+				.send();
+		ThreatIncConfig.log("Occupation: the swarm has consumed " + name + " on " + market.getName()
+				+ " (" + gone.size() + " consumed, " + left + " left to claim)");
+	}
+	/**
+	 * THE LIFT-OFF (the user, 2026-10-28: "if a world has no industries left they lift off
+	 * and find another"): ground held and nothing on the world left to claim or consume -
+	 * the troops and the pool re-embark as one swarm bound for the nearest hive's bank
+	 * (ThreatColonyManager.bindStrayToNearest: what reaches it is credited, what is shot
+	 * down on the way is lost), the swarms above stand down, the world is marked gutted for
+	 * occupationGuttedDays (no strike targets it, vanilla's deciv is held off) and the front
+	 * is withdrawn. True when it lifted off.
+	 */
+	protected static boolean liftOff(GroundFront front, MarketAPI market) {
+		if (!ThreatIncConfig.occupationConsume() || !occupies(front, market) || front.strataHeld <= 0) return false;
+		if (!claims(front).isEmpty() || next(market, front) != null) return false;
+		int eaten = consumed(market, false).size();
+		float strata = Math.max(0f, front.budPool) + Math.max(0f, front.budRising) + Math.max(0f, front.marines);
+		float fp = ThreatStrata.fpOf(strata);
+		float sailed = 0f;
+		String bound = null;
+		SectorEntityToken planet = market.getPrimaryEntity();
+		if (fp >= 1f && planet != null && planet.getContainingLocation() != null) {
+			CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, fp, Misc.random);
+			if (fleet != null && fleet.getFleetData().getNumMembers() > 0) {
+				fleet.setName("Infestation Swarm");
+				ThreatColonyManager.makeDetectable(fleet);
+				planet.getContainingLocation().addEntity(fleet);
+				fleet.setLocation(planet.getLocation().x, planet.getLocation().y);
+				bound = ThreatColonyManager.bindStrayToNearest(fleet);
+				MarketAPI home = bound != null ? Global.getSector().getEconomy().getMarket(bound) : null;
+				SectorEntityToken to = home != null ? home.getPrimaryEntity() : null;
+				fleet.getMemoryWithoutUpdate().set(Misc.FLEET_RETURNING_TO_DESPAWN, true);
+				if (to != null) {
+					fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, to, 1000f, "returning to the hive");
+				} else {
+					fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN,
+							Global.getSector().getHyperspace().createToken(0f, 0f), 1000f);
+				}
+				sailed = fleet.getFleetPoints();
+			}
+		}
+		front.budPool = 0f;
+		front.budRising = 0f;
+		front.marines = 0f;
+		front.armaments = 0f;
+		standDown(front, market);
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		float days = Math.max(1f, ThreatIncConfig.occupationGuttedDays());
+		mem.set(GUTTED_KEY, true, days);
+		if (mem.getBoolean(ThreatGroundFronts.DECIV_HELD_KEY) || !mem.contains(DecivTracker.NO_DECIV_KEY)) {
+			mem.set(DecivTracker.NO_DECIV_KEY, true, days);
+			mem.set(ThreatGroundFronts.DECIV_HELD_KEY, true, days);
+		}
+		ThreatNotice notice = ThreatNotice.titled("Swarm Lifts Off").bad().icon(market.getFaction())
+				.line("The swarm has consumed %s industries on %s and lifts off.", "" + eaten, ThreatNotice.market(market));
+		if (sailed > 0f) notice.line("%s fleet points re-embark for the nearest hive.", "" + (int) sailed);
+		notice.send();
+		ThreatIncConfig.log("Occupation: the swarm lifts off " + market.getName() + " - " + eaten + " industries consumed, nothing left to claim; "
+				+ (int) strata + " strata re-embark as " + (int) sailed + " FP bound for " + (bound != null ? bound : "nowhere"));
+		ThreatGroundFronts.withdraw(market.getId());
+		return true;
+	}
 	/**
 	 * Vanilla's zero-stability decivilisation is held off while the swarm stands on
 	 * the world (DecivTracker: 3 months at 0 and half the year, then 10% a month): an
@@ -388,12 +624,20 @@ public class ThreatOccupation {
 		mem.set(ThreatGroundFronts.DECIV_HELD_KEY, true, DECIV_HOLD_DAYS);
 	}
 
-	/** The share of the world's producers the swarm has claimed: claimed of claimable, 0-1. */
+	/**
+	 * The share of the world's producers the swarm has claimed, 0-1: the producers claimed over the
+	 * producers the world had - a consumed one counts and feeds nothing (the user, 2026-10-28: "once the
+	 * industry is consumed they no longer generate troops from it"); the military feed nothing either way.
+	 */
 	public static float share(MarketAPI market, GroundFront front) {
 		if (market == null || front == null) return 0f;
-		List<Industry> all = claimable(market);
+		List<Industry> all = producers(market);
+		int eaten = 0;
+		for (String id : consumed(market, false)) if (!isMilitary(id)) eaten++;
 		if (all.isEmpty()) return 0f;
-		return Math.max(0f, Math.min(1f, claimed(market, front).size() / (float) all.size()));
+		int feeding = 0;
+		for (Industry ind : claimed(market, front)) if (all.contains(ind)) feeding++;
+		return Math.max(0f, Math.min(1f, feeding / (float) (all.size() + eaten)));
 	}
 
 	/**

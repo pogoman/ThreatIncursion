@@ -118,6 +118,13 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 				}
 				tooltip.addPara("Claimed by the swarm: %s.", 3f, neg, names.toString());
 			}
+			for (String id : ThreatOccupation.active(front, market)) {
+				Industry ind = market.getIndustry(id);
+				if (ind == null) continue;
+				tooltip.addPara("Consuming %s: %s left.", 3f, neg, ind.getCurrentName(), days((float) ThreatOccupation.consumeDaysLeft(ind)));
+			}
+			int eaten = ThreatOccupation.consumed(market, false).size();
+			if (eaten > 0) tooltip.addPara("Consumed by the swarm: %s industries.", 3f, neg, "" + eaten);
 			Industry next = ThreatOccupation.next(market, front);
 			if (next != null && held > 0) {
 				tooltip.addPara("Next claim: %s in %s.", 3f, h, next.getCurrentName(),
