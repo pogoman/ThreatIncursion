@@ -28,7 +28,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `HiveVitalityCondition.unapply(String id)` :54
 - `HiveVitalityCondition.createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded)` :65
 
-## IncursionManager (6967 lines)
+## IncursionManager (6969 lines)
 - `IncursionManager.isDone()` :84 - Set once the bootstrap heal has run this session (transient:
 - `IncursionManager.runWhilePaused()` :88
 - `IncursionManager.advance(float amount)` :95 - The live manager (transient, re-created each load), for static callers such as retaliation.
@@ -238,66 +238,66 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `IncursionManager.pickStrikeTarget(MarketAPI staging, StarSystemAPI source)` :5458
 - `IncursionManager.retaliate(String factionId, StarSystemAPI near)` :5469 - RETALIATION (docs/design-theory.md 8.1):
 - `IncursionManager.pickStrikeTarget(MarketAPI staging, StarSystemAPI source, String onlyFactionId)` :5522 - @param onlyFactionId restrict candidates to this faction's worlds (retaliation), or null
-- `IncursionManager.stagedSizes(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut)` :5640 - STAGED STRIKES (the user, 2026-10-05:
-- `IncursionManager.landingPoints(MarketAPI target)` :5655 - The difficulty points of hull a strike breaks up to land on the world (ThreatStrikeFGI.embark):
-- `IncursionManager.setPricedFP(float fp)` :5710 - Caps the plan of the strike about to launch at the size its campaign priced (pricedFP);
-- `IncursionManager.setLaunchingEarmark(java.util.Map<String, Integer> earmark)` :5725 - Sets the launching held prong's earmark (hive system id -> fleets);
-- `IncursionManager.launchingEarmarkCovers(MarketAPI colony)` :5737 - Whether the held prong launching now earmarked garrison fleets of this colony's system:
-- `IncursionManager.stagedSpares(final StarSystemAPI source)` :5759 - The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
-- `IncursionManager.compare(StagedSpare x, StagedSpare y)` :5841
-- `IncursionManager.spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier, float dist, int size)` :5849
-- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares)` :5871 - stagedSizes with what it takes from where.
-- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven)` :5882 - stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds now:
-- `IncursionManager.stagedCandidates(String onlyFactionId)` :6009 - Every world a staged strike could sail at today:
-- `IncursionManager.pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId)` :6033 - The staged strike's target from this staging world:
-- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :6037
-- `IncursionManager.strikeValue(MarketAPI market)` :6063 - What a world is worth striking:
-- `IncursionManager.breakOffRatio()` :6070 - siegeBreakOffRatio, 1 when unset:
-- `IncursionManager.sizedDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :6084 - The defence a strike is SIZED for:
-- `IncursionManager.stationStrength(MarketAPI market)` :6101 - The world's station in vanilla strength units (WarSimScript), 0 with none.
-- `IncursionManager.targetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :6113 - The defence a strike at the world meets, in vanilla strength units, as the swarm knows it.
-- `IncursionManager.liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :6126 - The defence a strike at the world meets today, in vanilla strength units:
-- `IncursionManager.strikeSeen(MarketAPI market)` :6145 - With the swarm's fog (ThreatSwarmIntel), whether it has seen the world:
-- `IncursionManager.warOpen(MarketAPI market, int phase)` :6161 - Whether a strike at the world starts no war the hive is not ready for (2026-10-01):
-- `IncursionManager.openingWaits()` :6179 - Whether the war's opening still waits on the fund bar (strikeStagedOpenFP):
-- `IncursionManager.strikeAllowed(MarketAPI market)` :6184 - The strike gate's filters short of reach and weight:
-- `IncursionManager.strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo)` :6206 - The strike gate (2026-09-29, overnight run N4):
-- `IncursionManager.isStrikeableWorld(MarketAPI market)` :6240 - A world the swarm could ever send a strike at:
-- `IncursionManager.isCoreWorld(MarketAPI market)` :6253 - Size 6+ is a core world:
-- `IncursionManager.coreWorldInReach(MarketAPI staging)` :6263 - Whether an armada-capable hive could actually reach a core world:
+- `IncursionManager.stagedSizes(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut)` :5641 - STAGED STRIKES (the user, 2026-10-05:
+- `IncursionManager.landingPoints(MarketAPI target)` :5656 - The difficulty points of hull a strike breaks up to land on the world (ThreatStrikeFGI.embark):
+- `IncursionManager.setPricedFP(float fp)` :5711 - Caps the plan of the strike about to launch at the size its campaign priced (pricedFP);
+- `IncursionManager.setLaunchingEarmark(java.util.Map<String, Integer> earmark)` :5726 - Sets the launching held prong's earmark (hive system id -> fleets);
+- `IncursionManager.launchingEarmarkCovers(MarketAPI colony)` :5738 - Whether the held prong launching now earmarked garrison fleets of this colony's system:
+- `IncursionManager.stagedSpares(final StarSystemAPI source)` :5760 - The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
+- `IncursionManager.compare(StagedSpare x, StagedSpare y)` :5842
+- `IncursionManager.spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier, float dist, int size)` :5850
+- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares)` :5872 - stagedSizes with what it takes from where.
+- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven)` :5883 - stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds now:
+- `IncursionManager.stagedCandidates(String onlyFactionId)` :6010 - Every world a staged strike could sail at today:
+- `IncursionManager.pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId)` :6035 - The staged strike's target from this staging world:
+- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :6039
+- `IncursionManager.strikeValue(MarketAPI market)` :6065 - What a world is worth striking:
+- `IncursionManager.breakOffRatio()` :6072 - siegeBreakOffRatio, 1 when unset:
+- `IncursionManager.sizedDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :6086 - The defence a strike is SIZED for:
+- `IncursionManager.stationStrength(MarketAPI market)` :6103 - The world's station in vanilla strength units (WarSimScript), 0 with none.
+- `IncursionManager.targetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :6115 - The defence a strike at the world meets, in vanilla strength units, as the swarm knows it.
+- `IncursionManager.liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :6128 - The defence a strike at the world meets today, in vanilla strength units:
+- `IncursionManager.strikeSeen(MarketAPI market)` :6147 - With the swarm's fog (ThreatSwarmIntel), whether it has seen the world:
+- `IncursionManager.warOpen(MarketAPI market, int phase)` :6163 - Whether a strike at the world starts no war the hive is not ready for (2026-10-01):
+- `IncursionManager.openingWaits()` :6181 - Whether the war's opening still waits on the fund bar (strikeStagedOpenFP):
+- `IncursionManager.strikeAllowed(MarketAPI market)` :6186 - The strike gate's filters short of reach and weight:
+- `IncursionManager.strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo)` :6208 - The strike gate (2026-09-29, overnight run N4):
+- `IncursionManager.isStrikeableWorld(MarketAPI market)` :6242 - A world the swarm could ever send a strike at:
+- `IncursionManager.isCoreWorld(MarketAPI market)` :6255 - Size 6+ is a core world:
+- `IncursionManager.coreWorldInReach(MarketAPI staging)` :6265 - Whether an armada-capable hive could actually reach a core world:
 ### phases, bookkeeping, helpers
-- `IncursionManager.getPhase()` :6287
-- `IncursionManager.mobiliseAtPhase()` :6328 - Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or not;
-- `IncursionManager.checkPhaseAnnouncements()` :6350
-- `IncursionManager.getResponseList()` :6360
-- `IncursionManager.countActiveResponses()` :6369
-- `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :6384
-- `IncursionManager.expeditionRangeLY(MarketAPI base)` :6415 - How far a colony can send a task force or siege expedition:
-- `IncursionManager.hasMilitary(MarketAPI market)` :6426 - A military structure:
-- `IncursionManager.isBase(MarketAPI market)` :6445 - A BASE:
-- `IncursionManager.getStrikeList()` :6451
-- `IncursionManager.countActiveStrikes()` :6460
-- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :6469 - Whether an active strike is already aimed at this market.
-- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :6488 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
-- `IncursionManager.strikeSatPasses(int stagingSize)` :6510 - Bombardment passes an expedition may deliver PER WORLD.
-- `IncursionManager.expeditionPasses(int fleets)` :6524 - Passes a ground-doctrine siege or strike has per world:
-- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :6533 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
-- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :6550 - Whether some strike staged from this colony is still in its recall window.
-- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :6584 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
-- `IncursionManager.recallSiegesOf(String factionId, String why)` :6622 - HOME UNDER ATTACK (the user, 2026-10-20:
-- `IncursionManager.siegeProgress(ThreatPurgeFGI purge)` :6657 - How far along its voyage a siege expedition is, 0 (nothing spawned, or still at its base) to 1 (a fleet in the target system), by its lead fleet's hyperspace position between the base and the target s
-- `IncursionManager.siegeFactionsIn(String systemId)` :6679 - Factions with a siege expedition still running against a colony of the system.
-- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6699 - The worlds the faction's running siege of the system is fighting (its purge's targets);
-- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6728 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
-- `IncursionManager.sweepOrphanedExpeditions()` :6773 - Catch-all for expeditions orphaned outside the event hooks:
-- `IncursionManager.upgradeInFlightStrikes()` :6823 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
-- `IncursionManager.dedupDecivIntel()` :6855 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
-- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6883
-- `IncursionManager.getPurgeList()` :6891
-- `IncursionManager.countActivePurges()` :6900
-- `IncursionManager.countActiveFGIs(List<Object> list)` :6904
-- `IncursionManager.getSystem(String systemId)` :6927
-- `IncursionManager.syncSystemMarkers()` :6938 - Keeps one map-visible intel marker per infested system:
+- `IncursionManager.getPhase()` :6289
+- `IncursionManager.mobiliseAtPhase()` :6330 - Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or not;
+- `IncursionManager.checkPhaseAnnouncements()` :6352
+- `IncursionManager.getResponseList()` :6362
+- `IncursionManager.countActiveResponses()` :6371
+- `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :6386
+- `IncursionManager.expeditionRangeLY(MarketAPI base)` :6417 - How far a colony can send a task force or siege expedition:
+- `IncursionManager.hasMilitary(MarketAPI market)` :6428 - A military structure:
+- `IncursionManager.isBase(MarketAPI market)` :6447 - A BASE:
+- `IncursionManager.getStrikeList()` :6453
+- `IncursionManager.countActiveStrikes()` :6462
+- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :6471 - Whether an active strike is already aimed at this market.
+- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :6490 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
+- `IncursionManager.strikeSatPasses(int stagingSize)` :6512 - Bombardment passes an expedition may deliver PER WORLD.
+- `IncursionManager.expeditionPasses(int fleets)` :6526 - Passes a ground-doctrine siege or strike has per world:
+- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :6535 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
+- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :6552 - Whether some strike staged from this colony is still in its recall window.
+- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :6586 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
+- `IncursionManager.recallSiegesOf(String factionId, String why)` :6624 - HOME UNDER ATTACK (the user, 2026-10-20:
+- `IncursionManager.siegeProgress(ThreatPurgeFGI purge)` :6659 - How far along its voyage a siege expedition is, 0 (nothing spawned, or still at its base) to 1 (a fleet in the target system), by its lead fleet's hyperspace position between the base and the target s
+- `IncursionManager.siegeFactionsIn(String systemId)` :6681 - Factions with a siege expedition still running against a colony of the system.
+- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6701 - The worlds the faction's running siege of the system is fighting (its purge's targets);
+- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6730 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
+- `IncursionManager.sweepOrphanedExpeditions()` :6775 - Catch-all for expeditions orphaned outside the event hooks:
+- `IncursionManager.upgradeInFlightStrikes()` :6825 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
+- `IncursionManager.dedupDecivIntel()` :6857 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
+- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6885
+- `IncursionManager.getPurgeList()` :6893
+- `IncursionManager.countActivePurges()` :6902
+- `IncursionManager.countActiveFGIs(List<Object> list)` :6906
+- `IncursionManager.getSystem(String systemId)` :6929
+- `IncursionManager.syncSystemMarkers()` :6940 - Keeps one map-visible intel marker per infested system:
 
 ## InfestedSystemIntel (323 lines)
 - `InfestedSystemIntel.InfestedSystemIntel(String systemId)` :28
@@ -325,77 +325,86 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `LunaConfigBridge.drop(JSONObject json, String key)` :219 - Removes a retired knob from the store, whatever it held;
 - `LunaConfigBridge.bumpBoolean(JSONObject json, String key, boolean oldDefault, boolean newDefault)` :229 - The Boolean twin of bump:
 
-## OccupiedFarming (41 lines)
+## OccupiedFarming (46 lines)
 - `OccupiedFarming.getCurrentImage()` :13
 - `OccupiedFarming.isBuilding()` :18
 - `OccupiedFarming.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedFarming.getBuildOrUpgradeProgress()` :27
-- `OccupiedFarming.getBuildOrUpgradeProgressText()` :32
-- `OccupiedFarming.getBuildOrUpgradeDaysText()` :37
+- `OccupiedFarming.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedFarming.getBuildOrUpgradeProgress()` :32
+- `OccupiedFarming.getBuildOrUpgradeProgressText()` :37
+- `OccupiedFarming.getBuildOrUpgradeDaysText()` :42
 
-## OccupiedFuelProduction (41 lines)
+## OccupiedFuelProduction (46 lines)
 - `OccupiedFuelProduction.getCurrentImage()` :13
 - `OccupiedFuelProduction.isBuilding()` :18
 - `OccupiedFuelProduction.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedFuelProduction.getBuildOrUpgradeProgress()` :27
-- `OccupiedFuelProduction.getBuildOrUpgradeProgressText()` :32
-- `OccupiedFuelProduction.getBuildOrUpgradeDaysText()` :37
+- `OccupiedFuelProduction.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedFuelProduction.getBuildOrUpgradeProgress()` :32
+- `OccupiedFuelProduction.getBuildOrUpgradeProgressText()` :37
+- `OccupiedFuelProduction.getBuildOrUpgradeDaysText()` :42
 
-## OccupiedGroundDefenses (40 lines)
+## OccupiedGroundDefenses (45 lines)
 - `OccupiedGroundDefenses.getCurrentImage()` :12 - Vanilla's GroundDefenses (Ground Defenses and Heavy Batteries) with the occupation's consumption bar (docs/occupation.md 7, 2026-10-28:
 - `OccupiedGroundDefenses.isBuilding()` :17
 - `OccupiedGroundDefenses.isFunctional()` :22 - Fix 1 (hw304):
-- `OccupiedGroundDefenses.getBuildOrUpgradeProgress()` :26
-- `OccupiedGroundDefenses.getBuildOrUpgradeProgressText()` :31
-- `OccupiedGroundDefenses.getBuildOrUpgradeDaysText()` :36
+- `OccupiedGroundDefenses.isUpgrading()` :27 - Fix 2 (the user, 2026-10-28:
+- `OccupiedGroundDefenses.getBuildOrUpgradeProgress()` :31
+- `OccupiedGroundDefenses.getBuildOrUpgradeProgressText()` :36
+- `OccupiedGroundDefenses.getBuildOrUpgradeDaysText()` :41
 
-## OccupiedHeavyIndustry (41 lines)
+## OccupiedHeavyIndustry (46 lines)
 - `OccupiedHeavyIndustry.getCurrentImage()` :13
 - `OccupiedHeavyIndustry.isBuilding()` :18
 - `OccupiedHeavyIndustry.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedHeavyIndustry.getBuildOrUpgradeProgress()` :27
-- `OccupiedHeavyIndustry.getBuildOrUpgradeProgressText()` :32
-- `OccupiedHeavyIndustry.getBuildOrUpgradeDaysText()` :37
+- `OccupiedHeavyIndustry.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedHeavyIndustry.getBuildOrUpgradeProgress()` :32
+- `OccupiedHeavyIndustry.getBuildOrUpgradeProgressText()` :37
+- `OccupiedHeavyIndustry.getBuildOrUpgradeDaysText()` :42
 
-## OccupiedLightIndustry (41 lines)
+## OccupiedLightIndustry (46 lines)
 - `OccupiedLightIndustry.getCurrentImage()` :13
 - `OccupiedLightIndustry.isBuilding()` :18
 - `OccupiedLightIndustry.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedLightIndustry.getBuildOrUpgradeProgress()` :27
-- `OccupiedLightIndustry.getBuildOrUpgradeProgressText()` :32
-- `OccupiedLightIndustry.getBuildOrUpgradeDaysText()` :37
+- `OccupiedLightIndustry.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedLightIndustry.getBuildOrUpgradeProgress()` :32
+- `OccupiedLightIndustry.getBuildOrUpgradeProgressText()` :37
+- `OccupiedLightIndustry.getBuildOrUpgradeDaysText()` :42
 
-## OccupiedMilitaryBase (40 lines)
+## OccupiedMilitaryBase (45 lines)
 - `OccupiedMilitaryBase.getCurrentImage()` :12 - Vanilla's MilitaryBase (Patrol HQ, Military Base and High Command) with the occupation's consumption bar (docs/occupation.md 7, 2026-10-28:
 - `OccupiedMilitaryBase.isBuilding()` :17
 - `OccupiedMilitaryBase.isFunctional()` :22 - Fix 1 (hw304):
-- `OccupiedMilitaryBase.getBuildOrUpgradeProgress()` :26
-- `OccupiedMilitaryBase.getBuildOrUpgradeProgressText()` :31
-- `OccupiedMilitaryBase.getBuildOrUpgradeDaysText()` :36
+- `OccupiedMilitaryBase.isUpgrading()` :27 - Fix 2 (the user, 2026-10-28:
+- `OccupiedMilitaryBase.getBuildOrUpgradeProgress()` :31
+- `OccupiedMilitaryBase.getBuildOrUpgradeProgressText()` :36
+- `OccupiedMilitaryBase.getBuildOrUpgradeDaysText()` :41
 
-## OccupiedMining (41 lines)
+## OccupiedMining (46 lines)
 - `OccupiedMining.getCurrentImage()` :13
 - `OccupiedMining.isBuilding()` :18
 - `OccupiedMining.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedMining.getBuildOrUpgradeProgress()` :27
-- `OccupiedMining.getBuildOrUpgradeProgressText()` :32
-- `OccupiedMining.getBuildOrUpgradeDaysText()` :37
+- `OccupiedMining.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedMining.getBuildOrUpgradeProgress()` :32
+- `OccupiedMining.getBuildOrUpgradeProgressText()` :37
+- `OccupiedMining.getBuildOrUpgradeDaysText()` :42
 
-## OccupiedRefining (41 lines)
+## OccupiedRefining (46 lines)
 - `OccupiedRefining.getCurrentImage()` :13
 - `OccupiedRefining.isBuilding()` :18
 - `OccupiedRefining.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedRefining.getBuildOrUpgradeProgress()` :27
-- `OccupiedRefining.getBuildOrUpgradeProgressText()` :32
-- `OccupiedRefining.getBuildOrUpgradeDaysText()` :37
+- `OccupiedRefining.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedRefining.getBuildOrUpgradeProgress()` :32
+- `OccupiedRefining.getBuildOrUpgradeProgressText()` :37
+- `OccupiedRefining.getBuildOrUpgradeDaysText()` :42
 
-## OccupiedTechMining (41 lines)
+## OccupiedTechMining (46 lines)
 - `OccupiedTechMining.getCurrentImage()` :13
 - `OccupiedTechMining.isBuilding()` :18
 - `OccupiedTechMining.isFunctional()` :23 - Fix 1 (hw304):
-- `OccupiedTechMining.getBuildOrUpgradeProgress()` :27
-- `OccupiedTechMining.getBuildOrUpgradeProgressText()` :32
-- `OccupiedTechMining.getBuildOrUpgradeDaysText()` :37
+- `OccupiedTechMining.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
+- `OccupiedTechMining.getBuildOrUpgradeProgress()` :32
+- `OccupiedTechMining.getBuildOrUpgradeProgressText()` :37
+- `OccupiedTechMining.getBuildOrUpgradeDaysText()` :42
 
 ## SeedingSwarmIntel (266 lines)
 - `SeedingSwarmIntel.SeedingSwarmIntel(String planetId, String systemId, String sourceName)` :34
@@ -3466,58 +3475,59 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatOccupation (909 lines)
-- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :85 - XStream:
-- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :101 - The alias's fallback:
-- `ThreatOccupation.registerPlugins()` :129 - At application load:
-- `ThreatOccupation.isClaimed(Industry ind)` :149 - Whether the swarm's front on the industry's world has claimed it.
-- `ThreatOccupation.image(Industry ind, String base)` :156 - The image a producing industry draws:
-- `ThreatOccupation.enabled()` :165
-- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :170 - Whether the front is the swarm's on a human world still in the economy:
-- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :176 - Whether the swarm holds every district:
-- `ThreatOccupation.showsCard(MarketAPI market)` :187 - Whether the colony screen shows the infestation card:
-- `ThreatOccupation.claims(GroundFront front)` :192 - The front's claims, in claim order (older saves hold none).
-- `ThreatOccupation.producers(MarketAPI market)` :205 - The world's PRODUCERS the swarm claims first, in a fixed order (by id) so the clock takes the same next one from poll to poll (the user, Haven 2026-10-27:
-- `ThreatOccupation.military(MarketAPI market)` :232 - The world's MILITARY structures, claimed after the producers and consumed last (the user, 2026-10-28:
-- `ThreatOccupation.claimable(MarketAPI market)` :245 - The world's industries the swarm claims, in claim order:
-- `ThreatOccupation.sortById(List<Industry> list)` :250
-- `ThreatOccupation.compare(Industry a, Industry b)` :252
-- `ThreatOccupation.spec(String id)` :258 - The industry spec, null for an unknown id (vanilla throws).
-- `ThreatOccupation.isMilitary(String id)` :267 - Whether the industry id is a military structure (vanilla's tactical-bombardment tag), by spec - a consumed one included.
-- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :272 - The claimed industries still on the market, in claim order.
-- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :283 - The next industry the clock claims;
-- `ThreatOccupation.daysToNextClaim(GroundFront front)` :293 - Days until the clock claims the next industry.
-- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :303 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
-- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :371 - Claims one industry per district held that is not yet claimed;
-- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :385 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
-- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :391 - The last district is the swarm's:
-- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :409 - A district retaken releases the newest claim (ThreatGroundFronts#loseStratum).
-- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :426
+## ThreatOccupation (939 lines)
+- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :86 - XStream:
+- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :102 - The alias's fallback:
+- `ThreatOccupation.registerPlugins()` :130 - At application load:
+- `ThreatOccupation.isClaimed(Industry ind)` :150 - Whether the swarm's front on the industry's world has claimed it.
+- `ThreatOccupation.image(Industry ind, String base)` :157 - The image a producing industry draws:
+- `ThreatOccupation.enabled()` :166
+- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :171 - Whether the front is the swarm's on a human world still in the economy:
+- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :177 - Whether the swarm holds every district:
+- `ThreatOccupation.showsCard(MarketAPI market)` :188 - Whether the colony screen shows the infestation card:
+- `ThreatOccupation.claims(GroundFront front)` :193 - The front's claims, in claim order (older saves hold none).
+- `ThreatOccupation.producers(MarketAPI market)` :206 - The world's PRODUCERS the swarm claims first, in a fixed order (by id) so the clock takes the same next one from poll to poll (the user, Haven 2026-10-27:
+- `ThreatOccupation.military(MarketAPI market)` :235 - The world's MILITARY structures, claimed after the producers and consumed last (the user, 2026-10-28:
+- `ThreatOccupation.claimable(MarketAPI market)` :248 - The world's industries the swarm claims, in claim order:
+- `ThreatOccupation.sortById(List<Industry> list)` :253
+- `ThreatOccupation.compare(Industry a, Industry b)` :255
+- `ThreatOccupation.worthEating(MarketAPI market)` :261 - Whether a strike has anything to eat on the world:
+- `ThreatOccupation.spec(String id)` :265 - The industry spec, null for an unknown id (vanilla throws).
+- `ThreatOccupation.isMilitary(String id)` :274 - Whether the industry id is a military structure (vanilla's tactical-bombardment tag), by spec - a consumed one included.
+- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :279 - The claimed industries still on the market, in claim order.
+- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :290 - The next industry the clock claims;
+- `ThreatOccupation.daysToNextClaim(GroundFront front)` :300 - Days until the clock claims the next industry.
+- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :310 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
+- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :378 - Claims one industry per district held that is not yet claimed;
+- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :392 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
+- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :398 - The last district is the swarm's:
+- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :423 - A district retaken releases a claim (ThreatGroundFronts#loseStratum):
+- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :450
 ### CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): "the threat actually full
-- `ThreatOccupation.consumed(MarketAPI market, boolean create)` :448 - The industries the swarm has consumed on the world and the owner has not rebuilt;
-- `ThreatOccupation.consumeTime(Industry ind)` :463 - Days the swarm takes to consume the industry:
-- `ThreatOccupation.active(GroundFront front, MarketAPI market)` :472 - The claims being consumed now:
-- `ThreatOccupation.consuming(Industry ind)` :485 - Whether the swarm is consuming the industry now:
-- `ThreatOccupation.consumeProgress(Industry ind)` :499 - How far consumed the industry is, 0-1.
-- `ThreatOccupation.consumeDaysLeft(Industry ind)` :508 - Days until the industry is consumed.
-- `ThreatOccupation.consumeText(Industry ind)` :512 - The card's bar text while consumed, on vanilla's "Building:
-- `ThreatOccupation.consumeDaysText(Industry ind)` :517 - The card's days text while consumed.
-- `ThreatOccupation.consume(GroundFront front, MarketAPI market, float elapsedDays)` :525 - One tick of the consumption:
-- `ThreatOccupation.consumeIndustry(GroundFront front, MarketAPI market, Industry ind)` :544 - The industry is eaten:
-- `ThreatOccupation.liftOff(GroundFront front, MarketAPI market)` :568 - THE LIFT-OFF (the user, 2026-10-28:
-- `ThreatOccupation.holdDeciv(MarketAPI market)` :624 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
-- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :636 - The share of the world's producers the swarm has claimed, 0-1:
-- `ThreatOccupation.growthPerDay(GroundFront front)` :653 - Strata a day the occupation grows:
-- `ThreatOccupation.cap(MarketAPI market)` :665 - The most the occupation holds, all told:
-- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :670 - What the occupation holds:
-- `ThreatOccupation.buddedFP(MarketAPI market)` :679 - Fleet points of the swarms the pool budded that stand over the world.
-- `ThreatOccupation.standingFP(MarketAPI market)` :690 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
-- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :701 - Strata a day the occupation moves, either way:
-- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :711 - The troops the ground keeps standing:
-- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :732 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
-- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :808 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
-- `ThreatOccupation.standDown(GroundFront front, MarketAPI market)` :853 - A quiet orbit with a full pool (the user, 2026-10-27 23:00):
-- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :878 - The strata risen become a swarm over the world, whole:
+- `ThreatOccupation.consumed(MarketAPI market, boolean create)` :472 - The industries the swarm has consumed on the world and the owner has not rebuilt;
+- `ThreatOccupation.consumeTime(Industry ind)` :487 - Days the swarm takes to consume the industry:
+- `ThreatOccupation.active(GroundFront front, MarketAPI market)` :496 - The claims being consumed now:
+- `ThreatOccupation.consuming(Industry ind)` :509 - Whether the swarm is consuming the industry now:
+- `ThreatOccupation.consumeProgress(Industry ind)` :523 - How far consumed the industry is, 0-1.
+- `ThreatOccupation.consumeDaysLeft(Industry ind)` :532 - Days until the industry is consumed.
+- `ThreatOccupation.consumeText(Industry ind)` :536 - The card's bar text while consumed, on vanilla's "Building:
+- `ThreatOccupation.consumeDaysText(Industry ind)` :541 - The card's days text while consumed.
+- `ThreatOccupation.consume(GroundFront front, MarketAPI market, float elapsedDays)` :549 - One tick of the consumption:
+- `ThreatOccupation.consumeIndustry(GroundFront front, MarketAPI market, Industry ind)` :568 - The industry is eaten:
+- `ThreatOccupation.liftOff(GroundFront front, MarketAPI market)` :592 - THE LIFT-OFF (the user, 2026-10-28:
+- `ThreatOccupation.holdDeciv(MarketAPI market)` :648 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
+- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :660 - The share of the world's producers the swarm has claimed, 0-1:
+- `ThreatOccupation.growthPerDay(GroundFront front)` :677 - Strata a day the occupation grows:
+- `ThreatOccupation.cap(MarketAPI market)` :689 - The most the occupation holds, all told:
+- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :694 - What the occupation holds:
+- `ThreatOccupation.buddedFP(MarketAPI market)` :703 - Fleet points of the swarms the pool budded that stand over the world.
+- `ThreatOccupation.standingFP(MarketAPI market)` :714 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
+- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :725 - Strata a day the occupation moves, either way:
+- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :735 - The troops the ground keeps standing:
+- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :756 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
+- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :832 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
+- `ThreatOccupation.standDown(GroundFront front, MarketAPI market)` :877 - A quiet orbit with a full pool (the user, 2026-10-27 23:00):
+- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :908 - The strata risen become a swarm over the world, whole:
 
 ## ThreatOffensive (1060 lines)
 - `ThreatOffensive.startDay()` :126 - The campaign's start (the last launch), or NaN for none - never -1:
