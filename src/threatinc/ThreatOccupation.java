@@ -206,13 +206,17 @@ public class ThreatOccupation {
 		List<Industry> list = new ArrayList<Industry>();
 		if (market == null) return list;
 		List<Industry> key = ThreatGroundFronts.colonyKeyStructures(market);
+		// a claimed producer stays one whatever its live supply reads (fix 1, hw304: vanilla had cleared the
+		// supply of a consumed industry and every claim was dropped as "no longer claimable")
+		GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		List<String> held = front != null && front.claims != null ? front.claims : new ArrayList<String>();
 		for (Industry ind : market.getIndustries()) {
 			if (ind == null || ind.getSpec() == null || ind.getId() == null) continue;
 			if (key.contains(ind)) continue;
 			if (ind.getId().startsWith("threatinc_")) continue;
 			if (Industries.POPULATION.equals(ind.getId())) continue;
 			if (!ind.isIndustry()) continue;
-			if (ind.getAllSupply().isEmpty()) continue;
+			if (ind.getAllSupply().isEmpty() && !held.contains(ind.getId())) continue;
 			list.add(ind);
 		}
 		sortById(list);

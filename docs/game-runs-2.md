@@ -1469,3 +1469,11 @@ owner's builder restores what was eaten, quickest first. Built 09:28 (jar 09:28:
 `occupation.md` 7). hw304a = hw302a d1,293 (OceanPena), hw304b = hw302b d1,263 (ZhiFarah), 1,500 days,
 two games, driver run-seeds-29.ps1. Read: industries consumed and the clocks ("has consumed"), worlds
 gutted and left ("lifts off"), the builder's restores, districts taken / retaken, exceptions.
+
+**hw304 VOID (09:35, stopped at war day ~1,450):** every occupation lifted off within 60-120 days with "0 industries consumed, nothing left to claim" (Athulf, Tigra City, Derinkuyu, Orthrus) or after the military alone (Yama: Ground Defenses, then off - its Farming, Light Industry, Refining and Heavy Industry claims of hw302b dropped at load). Cause: the plugins' `isBuilding` true made vanilla read a consumed producer as not functional and clear its supply, `producers` filtered it out as "no supply", the tick dropped the claim as no longer claimable, and `next` found only the military. What worked: the clocks and removals (Ground Defenses at 60 d, Patrol HQ 60, Heavy Batteries 90), the lift-off fleets (564-1,508 FP bound for the nearest hive), the restores (Ilm, Raesvelg, Yama) and the holds. **Fix 1 (jar 09:37:17):** the Occupied plugins override `isFunctional` (disrupted / vanilla-building / upgrading only), and `producers` keeps a claimed producer whatever its live supply reads. hw305 = round 73, the same snapshots.
+
+## 80. hw305 - round 73, CONSUMPTION fix 1 from the hw302 snapshots (2026-10-28 09:40-)
+
+hw304 re-run on jar 09:37:17 (fix 1): hw305a = hw302a d1,293, hw305b = hw302b d1,263, 1,500 days, two
+games, driver run-seeds-30.ps1. Read: producers consumed (not only the military), lift-offs with a count,
+restores, districts retaken, the lifted swarms' fate.

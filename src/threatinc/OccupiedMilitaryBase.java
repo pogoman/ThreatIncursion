@@ -17,6 +17,11 @@ public class OccupiedMilitaryBase extends MilitaryBase {
 	public boolean isBuilding() {
 		return super.isBuilding() || ThreatOccupation.consuming(this);
 	}
+	/** Fix 1 (hw304): consumed is not building - vanilla clears a non-functional industry's supply, which emptied ThreatOccupation.producers and dropped the claims. */
+	@Override
+	public boolean isFunctional() {
+		return !isDisrupted() && !super.isBuilding() && !isUpgrading();
+	}
 	@Override
 	public float getBuildOrUpgradeProgress() {
 		if (!super.isBuilding() && ThreatOccupation.consuming(this)) return ThreatOccupation.consumeProgress(this);
