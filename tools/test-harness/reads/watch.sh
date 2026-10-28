@@ -5,7 +5,7 @@
 # an exception visible at minute 19). Prints only new signals plus a one-line progress mark a game.
 #
 # Signals (the third argument lists the ones to ignore, e.g. "ref,hoard" to read on past known ones):
-#   exc      a non-loading exception (vanilla's ShipHullSpreadsheetLoader noise filtered)
+#   exc      a non-loading exception (vanilla's ShipHullSpreadsheetLoader and sound.C "Unable to load ... .ogg" noise filtered - hw315b 2026-10-28 wrote 455k lines of the latter, a vanilla read failure, the game ran on)
 #   ref      a held prong refused on its day ("cannot sail today")
 #   wipe     the swarm wiped: 0 hives after war day 400
 #   collapse the swarm collapsing: hives under half its peak of 8 or more (hw47 0 / 10 / 0, hw49 b 0)
@@ -37,7 +37,7 @@ while :; do
     F=$T/ti-$TAG$g.txt; E=$T/exc-$TAG$g.txt
     [ -f "$F" ] || continue
     war=$(grep -o 'war [0-9]*' $F | tail -1 | cut -d' ' -f2); war=${war:-0}
-    ex=$(grep -v "ShipHullSpreadsheetLoader" $E 2>/dev/null | grep -c "Exception\|Error")
+    ex=$(grep -v "ShipHullSpreadsheetLoader|sound.C|Unable to load: sounds|Failed to read OGG|^sat |^Caused by" $E 2>/dev/null | grep -c "Exception|Error")
     ref=$(grep -c 'cannot sail today' $F); la=$(grep -c '^Offensive launched' $F); hs=$(grep -c 'sails on its day' $F)
     hull=$(grep -c 'ship hulls from' $F); land=$(grep -c '^Hulls: .* lands' $F)
     hives=$(grep -o '^Census: threat hives [0-9]*' $F | tail -1 | grep -o '[0-9]*$'); hives=${hives:-0}
@@ -46,7 +46,7 @@ while :; do
     fbf=$(grep -c 'Forward Base.*founded\|founded.*Forward Base' $F); fbl=$(grep -ci 'forward base.*\(lost\|destroyed\|falls\)' $F)
     starve=$(grep -c 'STARVE:' $F); strikes=$(grep -c '^Strike launched' $F)
     echo "$(date +%T) $TAG$g war $war | hives $hives (peak $peak) | launches $la held-sailed $hs refused $ref | exc $ex | fb $fbf/$fbl lost | STARVE $starve | hull convoys $hull landed $land"
-    [ "$ex" -gt 0 ] && flag $g exc "$(grep -v "ShipHullSpreadsheetLoader" $E | grep -m1 -A6 "Exception\|Error" | grep "Exception\|Error\|threatinc" | head -3 | cut -c1-180 | tr '\n' ' ')"
+    [ "$ex" -gt 0 ] && flag $g exc "$(grep -v "ShipHullSpreadsheetLoader|sound.C|Unable to load: sounds|Failed to read OGG" $E | grep -m1 -A6 "Exception\|Error" | grep "Exception\|Error\|threatinc" | head -3 | cut -c1-180 | tr '\n' ' ')"
     [ "$ref" -gt 0 ] && flag $g ref "$(grep -m1 -B1 'cannot sail today' $F | head -1 | cut -c1-220)"
     [ "$war" -gt 400 ] && [ "$hives" -eq 0 ] && [ "$peak" -gt 0 ] && flag $g wipe "0 hives at war day $war (peak $peak)"
     [ "$war" -gt 600 ] && [ "$peak" -ge 8 ] && [ $((hives * 2)) -lt "$peak" ] && flag $g collapse "$hives hives of a $peak peak at war day $war"
