@@ -1059,7 +1059,7 @@ public class ThreatWarBoard {
 	 * the row tooltip is the arithmetic behind them, one line per fact
 	 * (ThreatGroundFronts' readouts, so the table quotes what the tick does).
 	 * A front the player can order takes two rows: the entry, then an empty
-	 * row its buttons - Push / Dig in, Supply, Support, Pull out - float over
+	 * row its buttons - Push / Hold, Supply, Support, Pull out - float over
 	 * (user's layout, 2026-09-06); {@link #addFrontButtons} adds them last.
 	 */
 	public static Fronts addFronts(ThreatIncursionIntel intel, TooltipMakerAPI main,
@@ -1130,7 +1130,7 @@ public class ThreatWarBoard {
 		main.addTableHeaderTooltip(strengthCol + 2, "Districts or strata: taken by " + side + " landing, "
 				+ "or still standing on " + side + " world.");
 		main.addTableHeaderTooltip(strengthCol + 3, "Stance of " + side + " side: push moves the line, "
-				+ "dug in holds from cover, regrouping awaits orders.");
+				+ "hold defends from cover, regrouping awaits orders.");
 		main.addTableHeaderTooltip(strengthCol + 4, "Lost a day by " + side + " side at the current "
 				+ "stances and supply.");
 		main.addTableHeaderTooltip(strengthCol + 5, "Days until " + side + " side takes the next district "
@@ -1544,7 +1544,7 @@ public class ThreatWarBoard {
 					starved > 0 ? new String[] { "" + standing, "" + m.getSize(), "" + starved } : new String[] { "" + standing, "" + m.getSize() });
 		}
 		if (regrouping) {
-			tooltip.addPara(Army + " regrouping %s d, then " + (ThreatGroundFronts.doctrinePushes(f, m) ? "push" : "dig in") + " by doctrine.",
+			tooltip.addPara(Army + " regrouping %s d, then " + (ThreatGroundFronts.doctrinePushes(f, m) ? "push" : "hold") + " by doctrine.",
 					4f, text, h, "" + (int) Math.ceil(f.consolidateDaysLeft));
 		}
 
@@ -1564,7 +1564,7 @@ public class ThreatWarBoard {
 	/**
 	 * The fronts table's buttons - the player's own fronts only, while their
 	 * faction is mobilised - floated over the empty row beneath each such
-	 * entry, left to right: Push / Dig in, Supply, Support, Pull out. Added
+	 * entry, left to right: Push / Hold, Supply, Support, Pull out. Added
 	 * last, anchored to the table (platform traps 1 and 2); both views call
 	 * this after everything else. The orders route through
 	 * ThreatFactionView.executeOrder, one code path.
@@ -1598,7 +1598,7 @@ public class ThreatWarBoard {
 					dpush.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
 					rx += FRONT_STANCE_W + FRONT_BUTTON_GAP;
 					com.fs.starfarer.api.ui.ButtonAPI ddig = intel.addGenericButton(main,
-							FRONT_STANCE_W, "Dig in", ThreatFactionView.BUTTON_DEFEND_ENTRENCH + dkey);
+							FRONT_STANCE_W, "Hold", ThreatFactionView.BUTTON_DEFEND_ENTRENCH + dkey);
 					ddig.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
 					rx += FRONT_STANCE_W + FRONT_BUTTON_GAP;
 					String pushWhy = ThreatGroundFronts.defenderPushBlockReason(r.front, r.market);
@@ -1606,7 +1606,7 @@ public class ThreatWarBoard {
 							ThreatGroundFronts.defenderPushQuote(r.front, r.market));
 					String digWhy = ThreatGroundFronts.defenderEntrenchBlockReason(r.front, r.market);
 					ThreatFactionView.disableWith(main, ddig, digWhy == null, digWhy,
-							"Marines dig in: no push; the defence rises to x"
+							"Marines hold: no push; the cover rises to x"
 							+ String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()) + " over "
 							+ (int) ThreatIncConfig.frontEntrenchDays() + " days, lost with a "
 							+ ThreatGroundFronts.layerName(r.market) + ".");
@@ -1642,7 +1642,7 @@ public class ThreatWarBoard {
 			// the stance order: the one the front is not in
 			boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(r.front.stance);
 			com.fs.starfarer.api.ui.ButtonAPI stance = intel.addGenericButton(main,
-					FRONT_STANCE_W, pushing ? "Dig in" : "Push",
+					FRONT_STANCE_W, pushing ? "Hold" : "Push",
 					(pushing ? ThreatFactionView.BUTTON_ENTRENCH : ThreatFactionView.BUTTON_PUSH) + key);
 			stance.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
 			x += FRONT_STANCE_W + FRONT_BUTTON_GAP;
@@ -1671,7 +1671,7 @@ public class ThreatWarBoard {
 			if (pushing) {
 				String why = ThreatGroundFronts.entrenchBlockReason(r.front);
 				ThreatFactionView.disableWith(main, stance, why == null, why,
-						"Break off the assault and dig in: losses fall to ~"
+						"Break off the assault and hold: losses fall to ~"
 						+ ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(
 								r.front, r.market, false)) + " troops a day; it defends at up to x"
 						+ String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus())
@@ -2649,7 +2649,7 @@ public class ThreatWarBoard {
 			String stance = ThreatOccupation.holdsAll(front, market) ? "occupying"
 					: ThreatGroundFronts.STANCE_PUSH.equals(front.stance) ? "push"
 					: ThreatGroundFronts.STANCE_CONSOLIDATE.equals(front.stance) ? "regrouping"
-					: "dug in";
+					: "hold";
 			String label = Misc.getWithDGS(Math.round(front.marines)) + " "
 					+ (front.armaments <= 0f ? "no supply" : stance)
 					+ " " + heldCell(front, market)

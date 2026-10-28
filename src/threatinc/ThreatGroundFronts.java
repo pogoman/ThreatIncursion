@@ -1538,12 +1538,12 @@ public class ThreatGroundFronts {
 	// quotes is what will happen
 	// ------------------------------------------------------------------
 
-	/** "push" / "regrouping" / "dug in" - the stance as the board names it. */
+	/** "push" / "regrouping" / "hold" - the stance as the board names it (Dig in -> Hold, the user 2026-10-28: "stance is just push or hold"; the cover words are the tooltip's). */
 	public static String stanceLabel(GroundFront front) {
 		if (front == null) return "-";
 		if (STANCE_PUSH.equals(front.stance)) return "push";
 		if (STANCE_CONSOLIDATE.equals(front.stance)) return "regrouping";
-		return "dug in";
+		return "hold";
 	}
 
 	/** Days since the landing, by the tick's own clock (the front's age, like its entrenchment). */
@@ -1689,9 +1689,9 @@ public class ThreatGroundFronts {
 		return pushPaysOff(-pushV, -front.pushProgress, armed, armed > 0f ? worldLossPerDay(market, front, armed) : 0f);
 	}
 
-	/** "push" / "dug in" - the marines' stance against a Threat landing, as the board names it (push = they move the line, dug in = they hold it from cover). */
+	/** "push" / "hold" - the marines' stance against a Threat landing, as the board names it (push = they move the line, hold = they defend from cover). */
 	public static String defenderStanceLabel(GroundFront front) {
-		return STANCE_ENTRENCH.equals(defenderStance(front)) ? "dug in" : "push";
+		return STANCE_ENTRENCH.equals(defenderStance(front)) ? "hold" : "push";
 	}
 
 	/**
@@ -1742,11 +1742,11 @@ public class ThreatGroundFronts {
 		return null;
 	}
 
-	/** Why the defenders cannot be ordered to dig in, or null. */
+	/** Why the defenders cannot be ordered to hold, or null. */
 	public static String defenderEntrenchBlockReason(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return "There is no army there any more.";
 		if (isHiveTarget(market)) return "A hive counter-attacks with everything it has.";
-		if (STANCE_ENTRENCH.equals(front.defence)) return "The marines are already dug in.";
+		if (STANCE_ENTRENCH.equals(front.defence)) return "The marines are already holding.";
 		return null;
 	}
 
@@ -1952,7 +1952,7 @@ public class ThreatGroundFronts {
 		return null;
 	}
 
-	/** Why the board's Dig in order would do nothing now, or null. */
+	/** Why the board's Hold order would do nothing now, or null. */
 	public static String entrenchBlockReason(GroundFront front) {
 		return ThreatNotice.text(entrenchRefusal(front));
 	}
@@ -1960,7 +1960,7 @@ public class ThreatGroundFronts {
 	/** As above, one fact per line for the refusal notice. */
 	public static ThreatNotice.Reason entrenchRefusal(GroundFront front) {
 		if (front == null) return ThreatNotice.Reason.of("No front there");
-		if (STANCE_ENTRENCH.equals(front.stance)) return ThreatNotice.Reason.of("Already dug in");
+		if (STANCE_ENTRENCH.equals(front.stance)) return ThreatNotice.Reason.of("Already holding");
 		return null;
 	}
 

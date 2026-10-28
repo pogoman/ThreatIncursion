@@ -77,7 +77,7 @@ public class ThreatFactionView {
 	public static final String BUTTON_DEFEND = "threatinc_board_defend:";
 	/** The player's own front pushes on the next stratum (payload: factionId:marketId). */
 	public static final String BUTTON_PUSH = "threatinc_board_push:";
-	/** The player's own front breaks off and digs in (payload: factionId:marketId). */
+	/** The player's own front breaks off and holds (payload: factionId:marketId). */
 	public static final String BUTTON_ENTRENCH = "threatinc_board_entrench:";
 	/** Player aid: a task force from a player colony guards another faction's colony (payload: factionId:marketId). */
 	public static final String BUTTON_AID_DEFEND = "threatinc_board_aiddefend:";
@@ -91,7 +91,7 @@ public class ThreatFactionView {
 	public static final String BUTTON_REQUEST = "threatinc_board_request:";
 	/** The marines of the player's own colony push: counter-attacks on the cadence (payload player:marketId; 2026-10-17). */
 	public static final String BUTTON_DEFEND_PUSH = "threatinc_board_defend_push:";
-	/** The marines of the player's own colony hold fire and dig in. */
+	/** The marines of the player's own colony hold (no push, cover rises). */
 	public static final String BUTTON_DEFEND_ENTRENCH = "threatinc_board_defend_entrench:";
 	/** Build an outpost over a purged world (payload: factionId:planetId). */
 	public static final String BUTTON_OUTPOST = "threatinc_board_outpost:";
@@ -2125,7 +2125,7 @@ public class ThreatFactionView {
 				prompt.addPara("Order the marines of " + world.getName() + " to push? "
 						+ ThreatGroundFronts.defenderPushQuote(front, world), 0f);
 			} else {
-				prompt.addPara("Order the marines of " + world.getName() + " to dig in? "
+				prompt.addPara("Order the marines of " + world.getName() + " to hold? "
 						+ "No push; the defence rises to x%s over %s days, and the cover "
 						+ "is lost with a " + ThreatGroundFronts.layerName(world) + ".", 0f, h,
 						String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()),
@@ -2152,7 +2152,7 @@ public class ThreatFactionView {
 						ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(front, world, true)),
 						String.format("%.0f", ThreatIncConfig.frontPushUpkeepMult()));
 			} else {
-				prompt.addPara("Order the front on " + world.getName() + " to break off and dig in? "
+				prompt.addPara("Order the front on " + world.getName() + " to break off and hold? "
 						+ "Losses fall to about %s marines a day and it defends at x%s from "
 						+ "cover; its progress on stratum %s is lost.", 0f, h,
 						ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(front, world, false)),
@@ -2505,7 +2505,7 @@ public class ThreatFactionView {
 			String why = push ? ThreatGroundFronts.defenderPushBlockReason(front, world)
 					: ThreatGroundFronts.defenderEntrenchBlockReason(front, world);
 			if (why != null) {
-				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Dig In").bad().icon(faction)
+				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Hold").bad().icon(faction)
 						.line(why).send();
 				return null;
 			}
@@ -2518,8 +2518,8 @@ public class ThreatFactionView {
 				return "defend-push";
 			}
 			ThreatGroundFronts.orderDefenderEntrench(front);
-			ThreatNotice.titled("Dig In Ordered").icon(faction)
-					.line("Marines on %s dig in", ThreatNotice.market(world))
+			ThreatNotice.titled("Hold Ordered").icon(faction)
+					.line("Marines on %s hold", ThreatNotice.market(world))
 					.send();
 			return "defend-entrench";
 		}
@@ -2534,7 +2534,7 @@ public class ThreatFactionView {
 			ThreatNotice.Reason why = push ? ThreatGroundFronts.pushRefusal(front, world)
 					: ThreatGroundFronts.entrenchRefusal(front);
 			if (why != null) {
-				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Dig In").bad().icon(faction)
+				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Hold").bad().icon(faction)
 						.lines(why).send();
 				return null;
 			}
@@ -2547,8 +2547,8 @@ public class ThreatFactionView {
 				return "push";
 			}
 			ThreatGroundFronts.orderEntrench(front);
-			ThreatNotice.titled("Dig In Ordered").icon(faction)
-					.line("Front on %s breaks off and digs in", ThreatNotice.market(world))
+			ThreatNotice.titled("Hold Ordered").icon(faction)
+					.line("Front on %s breaks off and holds", ThreatNotice.market(world))
 					.send();
 			return "entrench";
 		}

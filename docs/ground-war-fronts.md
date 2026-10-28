@@ -289,7 +289,7 @@ brought (`ThreatConvoys.frontWants`). Every line names its side - "Swarm 144: 13
 "Next marine counter-attack in 5 days: 983 against the landing's 169" - and the swarm's bodies are
 *troops*, never marines (user, 2026-09-06; the side names 2026-10-18).
 
-**Orders from the board** (the player's own fronts, while mobilised): **Push** / **Dig in**
+**Orders from the board** (the player's own fronts, while mobilised): **Push** / **Hold** (named Dig in until 2026-10-28)
 (`ThreatFactionView.BUTTON_PUSH` / `BUTTON_ENTRENCH` -> `orderPush` / `orderEntrench`,
 the same calls the planet dialog makes; gated by `pushBlockReason` - holding strength, as the
 dialog - and `entrenchBlockReason`; either also answers a checkpoint), Escort, Pull out,
@@ -331,7 +331,7 @@ it still holds, digs in otherwise. The player's front pushes the
 moment its troops land if it can hold (`ThreatGroundFronts.autoPush`, from `deploy` and from
 any `resupply` that brings troops; knob `threatinc_frontAutoPush`, default on - user,
 2026-09-07); too weak to hold, it digs in and pushes when a later landing brings it to
-holding strength. A Dig in order (board or dialog) holds until the next troops land; an
+holding strength. A Hold order (board or dialog) holds until the next troops land; an
 armaments-only drop never changes stance. NPC and Threat fronts run the stance AI: push
 whenever supplied and holding, dig in otherwise - and a front that runs dry mid-assault
 breaks it off and digs in (2026-09-06).

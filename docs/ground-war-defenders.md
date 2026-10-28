@@ -197,7 +197,7 @@ null = no order given yet; it reads as push until the first tick picks one, belo
   `strataHeld--`) or batters a beachhead that holds none; every attempt costs
   `defenderCounterAttackLossFraction` of the engaged marines, win or lose. The defence figure has no
   cover: pushing spends it day by day, as the attacker's does (the user, 2026-10-24; before, going over the top was exposed outright).
-- **Dig in** - the garrison holds fire: no counter-attack is mounted (`defendersHoldFire`, read by
+- **Hold** (named Dig in until 2026-10-28) - the garrison holds fire: no counter-attack is mounted (`defendersHoldFire`, read by
   `hiveCounterAttack`, `shouldBrace` and every board readout), and it earns cover:
   `defenderEntrenchDays` accrues while dug in, and `COLONY.defenderStrength` is multiplied by
   `defenderCoverMult` = 1 + (`frontEntrenchDefenseBonus` 1.5 - 1) x min(1, days /
@@ -206,11 +206,11 @@ null = no order given yet; it reads as push until the first tick picks one, belo
   (`holdRequirement`) and bleeds its defenders less (the pressure term). When the army takes a
   district the cover is wiped (the user's "lost if they lose a strata", 2026-10-17, a hard rule
   since 2026-10-24); switching to Push keeps the days but applies no cover until the garrison digs in again.
-  Ordering Push from Dig in starts the muster clock afresh (`orderDefenderPush` sets
+  Ordering Push from Hold starts the muster clock afresh (`orderDefenderPush` sets
   `lastCounterAttack` to now): the first counter-attack comes a full interval later.
 
 **Who orders.** The player's own colonies from the fronts table: the army's row carries both
-**Push** and **Dig in**, the marines' current one greyed, beside **Reinforce**. Both are shown because
+**Push** and **Hold**, the marines' current one greyed, beside **Reinforce**. Both are shown because
 a lone toggle reading "Dig in" under a swarm landing already "dug in" looked like the wrong side's
 (user, 2026-10-17 night) - which is also what led to the per-tab fronts table the next day, where the
 Stance column is the tab's own side's

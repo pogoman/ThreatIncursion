@@ -232,7 +232,7 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		}
 
 		if (ThreatGroundFronts.defendersHoldFire(front, market)) {
-			tooltip.addPara("Marines dug in: defence x%s, no push.", 3f, pos,
+			tooltip.addPara("Marines hold: defence x%s, no push.", 3f, pos,
 					String.format("%.2f", ThreatGroundFronts.defenderCoverMult(front)));
 		} else {
 			tooltip.addPara("Marines push with %s.", 3f, pos,
