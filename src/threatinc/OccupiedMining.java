@@ -26,7 +26,9 @@ public class OccupiedMining extends Mining implements OccupiedIndustry {
 	/** Fix 2 (the user, 2026-10-28: "any way to drop the building text?"): the card writes its big Building label only when building and not upgrading, so a consumed industry reads as upgrading too - the bar and its text are ours either way. */
 	@Override
 	public boolean isUpgrading() {
-		return super.isUpgrading() || (!super.isBuilding() && ThreatOccupation.consuming(this));
+		return super.isUpgrading() || (!super.isBuilding() && ThreatOccupation.consuming(this))
+				// a rebuild from the eaten share reads as upgrading too: "Rebuilding" on the bar, no Building label
+				|| (super.isBuilding() && ThreatOccupation.rebuilding(this));
 	}
 	/** Fix 4: vanilla's own building flag, for ThreatOccupation.producers (never isBuilding, which would recurse). */
 	public boolean underConstruction() {
@@ -40,6 +42,7 @@ public class OccupiedMining extends Mining implements OccupiedIndustry {
 	@Override
 	public String getBuildOrUpgradeProgressText() {
 		if (!super.isBuilding() && ThreatOccupation.consuming(this)) return ThreatOccupation.consumeText(this);
+		if (super.isBuilding() && !isDisrupted() && ThreatOccupation.rebuilding(this)) return ThreatOccupation.rebuildText(this);
 		return super.getBuildOrUpgradeProgressText();
 	}
 	@Override

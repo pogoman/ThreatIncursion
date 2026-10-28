@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.combat.MutableStat;
+import com.fs.starfarer.api.combat.StatBonus;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FleetAssignment;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
@@ -462,6 +464,8 @@ public class ThreatOccupation {
 			float share = Math.max(0f, Math.min(1f, eatenDays / consumeTime(ind)));
 			ind.startBuilding();
 			((BaseIndustry) ind).setBuildProgress(Math.max(0f, ind.getBuildTime() * (1f - share)));
+			List<String> rb = rebuildingIds(market, true);
+			if (!rb.contains(id)) rb.add(id); // "Rebuilding" on the card, the effect scaling up with it (standing)
 			rebuild = Math.round(share * 100f) + "% eaten, " + (int) Math.ceil(ind.getBuildTime() * share) + " days to rebuild";
 		}
 		ThreatNotice notice = ThreatNotice.titled("Industry Reclaimed").good().icon(market.getFaction())
@@ -576,6 +580,91 @@ public class ThreatOccupation {
 	public static String consumeDaysText(Industry ind) {
 		int d = consumeDaysLeft(ind);
 		return d + (d == 1 ? " day" : " days");
+	}
+
+	// ------------------------------------------------------------------
+	// THE EFFECT SCALES WITH WHAT STANDS (the user, 2026-10-28 evening: "it doesn't make sense for a
+	// partially consumed building to give full effect but then when swarm are fought off it goes back
+	// to building state and loses its effect"; chose "scales with what stands", and "relabel to
+	// rebuilding also"). Vanilla's own shape: a shortage scales a structure's bonus by the share of
+	// demand met (BaseIndustry.getDeficitMult); here the bonus scales by what stands of the structure -
+	// 1 - the eaten share while the swarm consumes it, the rebuild's progress while it rebuilds. The
+	// rebuild (release's vanilla build from the eaten share) is marked on the market, reads as
+	// vanilla's "upgrading" (functional, no Building label) and its bar says "Rebuilding: N days left".
+	// ------------------------------------------------------------------
+
+	/** Market memory: the industry ids rebuilding what the swarm ate of them (release); the mark lapses when the build is over. */
+	public static final String REBUILDING_KEY = "$threatinc_rebuilding";
+
+	@SuppressWarnings("unchecked")
+	public static List<String> rebuildingIds(MarketAPI market, boolean create) {
+		if (market == null) return new ArrayList<String>();
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		Object val = mem.get(REBUILDING_KEY);
+		if (val instanceof List) return (List<String>) val;
+		List<String> list = new ArrayList<String>();
+		if (create) mem.set(REBUILDING_KEY, list);
+		return list;
+	}
+
+	/** Whether the industry is rebuilding what the swarm ate of it: marked by release and still under vanilla's build (never the Occupied plugins' isBuilding). */
+	public static boolean rebuilding(Industry ind) {
+		try {
+			if (ind == null || ind.getMarket() == null || ind.getId() == null) return false;
+			List<String> ids = rebuildingIds(ind.getMarket(), false);
+			if (!ids.contains(ind.getId())) return false;
+			if (!underConstruction(ind)) {
+				ids.remove(ind.getId()); // built, or cancelled: the mark lapses
+				return false;
+			}
+			return true;
+		} catch (StackOverflowError e) {
+			throw e;
+		} catch (RuntimeException e) {
+			return false;
+		}
+	}
+
+	/** What stands of the structure, 0-1: 1 - the eaten share while consumed, the rebuild's progress while rebuilding, 1 otherwise. */
+	public static float standing(Industry ind) {
+		if (ind == null) return 1f;
+		if (rebuilding(ind) && ind instanceof BaseIndustry) {
+			float time = Math.max(1f, ind.getBuildTime());
+			return Math.max(0f, Math.min(1f, ((BaseIndustry) ind).getBuildProgress() / time));
+		}
+		if (consuming(ind)) return Math.max(0f, 1f - consumeProgress(ind));
+		return 1f;
+	}
+
+	/** Days until the rebuild is done. */
+	public static int rebuildDaysLeft(Industry ind) {
+		if (!(ind instanceof BaseIndustry)) return 0;
+		return (int) Math.ceil(Math.max(0f, ind.getBuildTime() - ((BaseIndustry) ind).getBuildProgress()));
+	}
+
+	/** The card's bar text while rebuilding, on vanilla's "Building: N days left" shape. */
+	public static String rebuildText(Industry ind) {
+		int d = Math.max(1, rebuildDaysLeft(ind));
+		return "Rebuilding: " + d + (d == 1 ? " day" : " days") + " left";
+	}
+
+	/**
+	 * After vanilla's apply: the structure's multiplier on the stat (1 + bonus x shortage factor, as
+	 * vanilla set it under modId) becomes 1 + (that - 1) x what stands, "(consumed by the swarm)" or
+	 * "(rebuilding)" on the modifier line. Nothing while the structure is not functional (disrupted:
+	 * vanilla has unapplied it) or stands whole.
+	 */
+	public static void scaleEffect(Industry ind, String statId, String modId) {
+		if (ind == null || ind.getMarket() == null || statId == null || modId == null) return;
+		float standing = standing(ind);
+		if (standing >= 1f || !ind.isFunctional()) return;
+		StatBonus stat = ind.getMarket().getStats().getDynamic().getMod(statId);
+		if (stat == null) return;
+		MutableStat.StatMod mod = stat.getMultBonus(modId);
+		if (mod == null) return;
+		float value = 1f + (mod.value - 1f) * standing;
+		String why = rebuilding(ind) ? " (rebuilding)" : " (consumed by the swarm)";
+		stat.modifyMult(modId, value, (mod.desc != null ? mod.desc : ind.getCurrentName()) + why);
 	}
 	/**
 	 * One tick of the consumption: the active claims advance by the tick; one at its time

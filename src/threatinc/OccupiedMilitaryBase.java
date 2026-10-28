@@ -1,5 +1,6 @@
 package threatinc;
 
+import com.fs.starfarer.api.impl.campaign.ids.Stats;
 import com.fs.starfarer.api.impl.campaign.econ.impl.MilitaryBase;
 
 /**
@@ -20,12 +21,21 @@ public class OccupiedMilitaryBase extends MilitaryBase implements OccupiedIndust
 	/** Fix 1 (hw304): consumed is not building - vanilla clears a non-functional industry's supply, which emptied ThreatOccupation.producers and dropped the claims. */
 	@Override
 	public boolean isFunctional() {
-		return !isDisrupted() && !super.isBuilding() && !super.isUpgrading();
+		// a rebuild from the eaten share runs, its effect scaled by its progress (ThreatOccupation.scaleEffect)
+		return !isDisrupted() && !super.isUpgrading() && (!super.isBuilding() || ThreatOccupation.rebuilding(this));
+	}
+	/** THE EFFECT SCALES WITH WHAT STANDS (the user, 2026-10-28 evening): vanilla's apply, then its ground-defence multiplier x what stands of the structure. */
+	@Override
+	public void apply() {
+		super.apply();
+		ThreatOccupation.scaleEffect(this, Stats.GROUND_DEFENSES_MOD, getModId());
 	}
 	/** Fix 2 (the user, 2026-10-28: "any way to drop the building text?"): the card writes its big Building label only when building and not upgrading, so a consumed industry reads as upgrading too - the bar and its text are ours either way. */
 	@Override
 	public boolean isUpgrading() {
-		return super.isUpgrading() || (!super.isBuilding() && ThreatOccupation.consuming(this));
+		return super.isUpgrading() || (!super.isBuilding() && ThreatOccupation.consuming(this))
+				// a rebuild from the eaten share reads as upgrading too: "Rebuilding" on the bar, no Building label
+				|| (super.isBuilding() && ThreatOccupation.rebuilding(this));
 	}
 	/** Fix 4: vanilla's own building flag, for ThreatOccupation.producers (never isBuilding, which would recurse). */
 	public boolean underConstruction() {
@@ -39,6 +49,7 @@ public class OccupiedMilitaryBase extends MilitaryBase implements OccupiedIndust
 	@Override
 	public String getBuildOrUpgradeProgressText() {
 		if (!super.isBuilding() && ThreatOccupation.consuming(this)) return ThreatOccupation.consumeText(this);
+		if (super.isBuilding() && !isDisrupted() && ThreatOccupation.rebuilding(this)) return ThreatOccupation.rebuildText(this);
 		return super.getBuildOrUpgradeProgressText();
 	}
 	@Override

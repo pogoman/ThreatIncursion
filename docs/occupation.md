@@ -489,6 +489,28 @@ spare: short even with it, "cannot match ... N troops spare on the front". The g
 (`fabricateNeed`) still runs first each tick, so a front short on the line never lifts. Jar 21:29:36,
 untested.
 
+**The effect scales with what stands (2026-10-28 22:24, the user's decision: "it doesn't make sense for a
+partially consumed building to give full effect but then when swarm are fought off it goes back to
+building state and loses its effect"; asked what vanilla does on a shortage, chose "scales with what
+stands", and "relabel to rebuilding also").** Vanilla scales a structure's bonus by the share of its input
+demand met (`BaseIndustry.getDeficitMult`, linear, 0..1; Ground Defenses x(1 + 1.0 x met), Heavy
+Batteries x(1 + 2.0 x met), the military bases and the station on supplies) and switches it off only for
+disruption and construction; its partial logic is for SHORTAGES, there is no partial disruption in the
+engine, which is what the custom (now removed) disruption logic was for. Now a military structure's
+ground-defence multiplier is scaled by what stands of it, the same shape (`ThreatOccupation.standing`:
+1 - the eaten share while consumed, the rebuild's progress while rebuilding; `scaleEffect` after vanilla's
+apply in `OccupiedGroundDefenses` / `OccupiedMilitaryBase`, re-setting the mult to 1 + (bonus x
+shortage factor) x standing, "(consumed by the swarm)" / "(rebuilding)" on the modifier line in vanilla's
+Defenses tooltip). The rebuild `release` starts is marked on the market (`REBUILDING_KEY`,
+`$threatinc_rebuilding`; `rebuilding`, the mark lapsing when vanilla's build is over): the plugins report it
+as vanilla's UPGRADING state - functional (the old structure runs through an upgrade in vanilla), so the
+scaled effect applies and the big Building label is not written - with the bar reading "Rebuilding: N
+days left" (`rebuildText`) on all nine plugins, producers included. A producer's output stays off while
+claimed and while rebuilding (vanilla's under-construction rule; it was the swarm's either way). Patrol
+counts and the stability bonus are vanilla's whole, as vanilla leaves them on a shortage. Wrinkle: on a
+player's own world the rebuilding card offers vanilla's cancel-upgrade, which would stand the structure
+up whole at once - not handled, like "cancel construction" on a consumed card. Jar 22:24:30, untested.
+
 ## 8. THE LUMP (2026-10-28 12:50, the user: troops only once an industry is fully consumed)
 
 The user: "perhaps the threat only gets troops after it fully consumes the industry, so it's

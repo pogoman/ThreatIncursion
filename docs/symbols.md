@@ -325,97 +325,99 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `LunaConfigBridge.drop(JSONObject json, String key)` :219 - Removes a retired knob from the store, whatever it held;
 - `LunaConfigBridge.bumpBoolean(JSONObject json, String key, boolean oldDefault, boolean newDefault)` :229 - The Boolean twin of bump:
 
-## OccupiedFarming (50 lines)
+## OccupiedFarming (53 lines)
 - `OccupiedFarming.getCurrentImage()` :13
 - `OccupiedFarming.isBuilding()` :18
 - `OccupiedFarming.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedFarming.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedFarming.underConstruction()` :32 - Fix 4:
-- `OccupiedFarming.getBuildOrUpgradeProgress()` :36
-- `OccupiedFarming.getBuildOrUpgradeProgressText()` :41
-- `OccupiedFarming.getBuildOrUpgradeDaysText()` :46
+- `OccupiedFarming.underConstruction()` :34 - Fix 4:
+- `OccupiedFarming.getBuildOrUpgradeProgress()` :38
+- `OccupiedFarming.getBuildOrUpgradeProgressText()` :43
+- `OccupiedFarming.getBuildOrUpgradeDaysText()` :49
 
-## OccupiedFuelProduction (50 lines)
+## OccupiedFuelProduction (53 lines)
 - `OccupiedFuelProduction.getCurrentImage()` :13
 - `OccupiedFuelProduction.isBuilding()` :18
 - `OccupiedFuelProduction.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedFuelProduction.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedFuelProduction.underConstruction()` :32 - Fix 4:
-- `OccupiedFuelProduction.getBuildOrUpgradeProgress()` :36
-- `OccupiedFuelProduction.getBuildOrUpgradeProgressText()` :41
-- `OccupiedFuelProduction.getBuildOrUpgradeDaysText()` :46
+- `OccupiedFuelProduction.underConstruction()` :34 - Fix 4:
+- `OccupiedFuelProduction.getBuildOrUpgradeProgress()` :38
+- `OccupiedFuelProduction.getBuildOrUpgradeProgressText()` :43
+- `OccupiedFuelProduction.getBuildOrUpgradeDaysText()` :49
 
-## OccupiedGroundDefenses (49 lines)
-- `OccupiedGroundDefenses.getCurrentImage()` :12 - Vanilla's GroundDefenses (Ground Defenses and Heavy Batteries) with the occupation's consumption bar (docs/occupation.md 7, 2026-10-28:
-- `OccupiedGroundDefenses.isBuilding()` :17
-- `OccupiedGroundDefenses.isFunctional()` :22 - Fix 1 (hw304):
-- `OccupiedGroundDefenses.isUpgrading()` :27 - Fix 2 (the user, 2026-10-28:
-- `OccupiedGroundDefenses.underConstruction()` :31 - Fix 4:
-- `OccupiedGroundDefenses.getBuildOrUpgradeProgress()` :35
-- `OccupiedGroundDefenses.getBuildOrUpgradeProgressText()` :40
-- `OccupiedGroundDefenses.getBuildOrUpgradeDaysText()` :45
+## OccupiedGroundDefenses (60 lines)
+- `OccupiedGroundDefenses.getCurrentImage()` :13 - Vanilla's GroundDefenses (Ground Defenses and Heavy Batteries) with the occupation's consumption bar (docs/occupation.md 7, 2026-10-28:
+- `OccupiedGroundDefenses.isBuilding()` :18
+- `OccupiedGroundDefenses.isFunctional()` :23 - Fix 1 (hw304):
+- `OccupiedGroundDefenses.apply()` :29 - THE EFFECT SCALES WITH WHAT STANDS (the user, 2026-10-28 evening):
+- `OccupiedGroundDefenses.isUpgrading()` :35 - Fix 2 (the user, 2026-10-28:
+- `OccupiedGroundDefenses.underConstruction()` :41 - Fix 4:
+- `OccupiedGroundDefenses.getBuildOrUpgradeProgress()` :45
+- `OccupiedGroundDefenses.getBuildOrUpgradeProgressText()` :50
+- `OccupiedGroundDefenses.getBuildOrUpgradeDaysText()` :56
 
-## OccupiedHeavyIndustry (50 lines)
+## OccupiedHeavyIndustry (53 lines)
 - `OccupiedHeavyIndustry.getCurrentImage()` :13
 - `OccupiedHeavyIndustry.isBuilding()` :18
 - `OccupiedHeavyIndustry.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedHeavyIndustry.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedHeavyIndustry.underConstruction()` :32 - Fix 4:
-- `OccupiedHeavyIndustry.getBuildOrUpgradeProgress()` :36
-- `OccupiedHeavyIndustry.getBuildOrUpgradeProgressText()` :41
-- `OccupiedHeavyIndustry.getBuildOrUpgradeDaysText()` :46
+- `OccupiedHeavyIndustry.underConstruction()` :34 - Fix 4:
+- `OccupiedHeavyIndustry.getBuildOrUpgradeProgress()` :38
+- `OccupiedHeavyIndustry.getBuildOrUpgradeProgressText()` :43
+- `OccupiedHeavyIndustry.getBuildOrUpgradeDaysText()` :49
 
 ## OccupiedIndustry (12 lines)
 
-## OccupiedLightIndustry (50 lines)
+## OccupiedLightIndustry (53 lines)
 - `OccupiedLightIndustry.getCurrentImage()` :13
 - `OccupiedLightIndustry.isBuilding()` :18
 - `OccupiedLightIndustry.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedLightIndustry.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedLightIndustry.underConstruction()` :32 - Fix 4:
-- `OccupiedLightIndustry.getBuildOrUpgradeProgress()` :36
-- `OccupiedLightIndustry.getBuildOrUpgradeProgressText()` :41
-- `OccupiedLightIndustry.getBuildOrUpgradeDaysText()` :46
+- `OccupiedLightIndustry.underConstruction()` :34 - Fix 4:
+- `OccupiedLightIndustry.getBuildOrUpgradeProgress()` :38
+- `OccupiedLightIndustry.getBuildOrUpgradeProgressText()` :43
+- `OccupiedLightIndustry.getBuildOrUpgradeDaysText()` :49
 
-## OccupiedMilitaryBase (49 lines)
-- `OccupiedMilitaryBase.getCurrentImage()` :12 - Vanilla's MilitaryBase (Patrol HQ, Military Base and High Command) with the occupation's consumption bar (docs/occupation.md 7, 2026-10-28:
-- `OccupiedMilitaryBase.isBuilding()` :17
-- `OccupiedMilitaryBase.isFunctional()` :22 - Fix 1 (hw304):
-- `OccupiedMilitaryBase.isUpgrading()` :27 - Fix 2 (the user, 2026-10-28:
-- `OccupiedMilitaryBase.underConstruction()` :31 - Fix 4:
-- `OccupiedMilitaryBase.getBuildOrUpgradeProgress()` :35
-- `OccupiedMilitaryBase.getBuildOrUpgradeProgressText()` :40
-- `OccupiedMilitaryBase.getBuildOrUpgradeDaysText()` :45
+## OccupiedMilitaryBase (60 lines)
+- `OccupiedMilitaryBase.getCurrentImage()` :13 - Vanilla's MilitaryBase (Patrol HQ, Military Base and High Command) with the occupation's consumption bar (docs/occupation.md 7, 2026-10-28:
+- `OccupiedMilitaryBase.isBuilding()` :18
+- `OccupiedMilitaryBase.isFunctional()` :23 - Fix 1 (hw304):
+- `OccupiedMilitaryBase.apply()` :29 - THE EFFECT SCALES WITH WHAT STANDS (the user, 2026-10-28 evening):
+- `OccupiedMilitaryBase.isUpgrading()` :35 - Fix 2 (the user, 2026-10-28:
+- `OccupiedMilitaryBase.underConstruction()` :41 - Fix 4:
+- `OccupiedMilitaryBase.getBuildOrUpgradeProgress()` :45
+- `OccupiedMilitaryBase.getBuildOrUpgradeProgressText()` :50
+- `OccupiedMilitaryBase.getBuildOrUpgradeDaysText()` :56
 
-## OccupiedMining (50 lines)
+## OccupiedMining (53 lines)
 - `OccupiedMining.getCurrentImage()` :13
 - `OccupiedMining.isBuilding()` :18
 - `OccupiedMining.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedMining.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedMining.underConstruction()` :32 - Fix 4:
-- `OccupiedMining.getBuildOrUpgradeProgress()` :36
-- `OccupiedMining.getBuildOrUpgradeProgressText()` :41
-- `OccupiedMining.getBuildOrUpgradeDaysText()` :46
+- `OccupiedMining.underConstruction()` :34 - Fix 4:
+- `OccupiedMining.getBuildOrUpgradeProgress()` :38
+- `OccupiedMining.getBuildOrUpgradeProgressText()` :43
+- `OccupiedMining.getBuildOrUpgradeDaysText()` :49
 
-## OccupiedRefining (50 lines)
+## OccupiedRefining (53 lines)
 - `OccupiedRefining.getCurrentImage()` :13
 - `OccupiedRefining.isBuilding()` :18
 - `OccupiedRefining.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedRefining.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedRefining.underConstruction()` :32 - Fix 4:
-- `OccupiedRefining.getBuildOrUpgradeProgress()` :36
-- `OccupiedRefining.getBuildOrUpgradeProgressText()` :41
-- `OccupiedRefining.getBuildOrUpgradeDaysText()` :46
+- `OccupiedRefining.underConstruction()` :34 - Fix 4:
+- `OccupiedRefining.getBuildOrUpgradeProgress()` :38
+- `OccupiedRefining.getBuildOrUpgradeProgressText()` :43
+- `OccupiedRefining.getBuildOrUpgradeDaysText()` :49
 
-## OccupiedTechMining (50 lines)
+## OccupiedTechMining (53 lines)
 - `OccupiedTechMining.getCurrentImage()` :13
 - `OccupiedTechMining.isBuilding()` :18
 - `OccupiedTechMining.isFunctional()` :23 - Fix 1 (hw304):
 - `OccupiedTechMining.isUpgrading()` :28 - Fix 2 (the user, 2026-10-28:
-- `OccupiedTechMining.underConstruction()` :32 - Fix 4:
-- `OccupiedTechMining.getBuildOrUpgradeProgress()` :36
-- `OccupiedTechMining.getBuildOrUpgradeProgressText()` :41
-- `OccupiedTechMining.getBuildOrUpgradeDaysText()` :46
+- `OccupiedTechMining.underConstruction()` :34 - Fix 4:
+- `OccupiedTechMining.getBuildOrUpgradeProgress()` :38
+- `OccupiedTechMining.getBuildOrUpgradeProgressText()` :43
+- `OccupiedTechMining.getBuildOrUpgradeDaysText()` :49
 
 ## SeedingSwarmIntel (266 lines)
 - `SeedingSwarmIntel.SeedingSwarmIntel(String planetId, String systemId, String sourceName)` :34
@@ -3534,63 +3536,70 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatOccupation (1020 lines)
-- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :89 - XStream:
-- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :105 - The alias's fallback:
-- `ThreatOccupation.registerPlugins()` :133 - At application load:
-- `ThreatOccupation.isClaimed(Industry ind)` :153 - Whether the swarm's front on the industry's world has claimed it.
-- `ThreatOccupation.image(Industry ind, String base)` :160 - The image a producing industry draws:
-- `ThreatOccupation.enabled()` :169
-- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :174 - Whether the front is the swarm's on a human world still in the economy:
-- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :180 - Whether the swarm holds every district:
-- `ThreatOccupation.showsCard(MarketAPI market)` :191 - Whether the colony screen shows the infestation card:
-- `ThreatOccupation.claims(GroundFront front)` :196 - The front's claims, in claim order (older saves hold none).
-- `ThreatOccupation.producers(MarketAPI market)` :209 - The world's PRODUCERS the swarm claims first, in a fixed order (by id) so the clock takes the same next one from poll to poll (the user, Haven 2026-10-27:
-- `ThreatOccupation.military(MarketAPI market)` :238 - The world's MILITARY structures, claimed after the producers and consumed last (the user, 2026-10-28:
-- `ThreatOccupation.claimable(MarketAPI market)` :251 - The world's industries the swarm claims, in claim order:
-- `ThreatOccupation.sortById(List<Industry> list)` :256
-- `ThreatOccupation.compare(Industry a, Industry b)` :258
-- `ThreatOccupation.underConstruction(Industry ind)` :268 - Vanilla's building flag of an industry, never the Occupied plugins' overridden isBuilding (fix 4, 2026-10-28:
-- `ThreatOccupation.worthEating(MarketAPI market)` :273 - Whether a strike has anything to eat on the world:
-- `ThreatOccupation.spec(String id)` :277 - The industry spec, null for an unknown id (vanilla throws).
-- `ThreatOccupation.isMilitary(String id)` :286 - Whether the industry id is a military structure (vanilla's tactical-bombardment tag), by spec - a consumed one included.
-- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :291 - The claimed industries still on the market, in claim order.
-- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :302 - The next industry the clock claims;
-- `ThreatOccupation.daysToNextClaim(GroundFront front)` :312 - Days until the clock claims the next industry.
-- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :322 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
-- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :390 - Claims one industry per district held that is not yet claimed;
-- `ThreatOccupation.releaseAll(GroundFront front, MarketAPI market)` :409 - Every claim left goes (the last district retaken, ThreatGroundFronts#loseStratum;
-- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :416 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
-- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :422 - The last district is the swarm's:
-- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :447 - A district retaken releases a claim (ThreatGroundFronts#loseStratum):
-- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :477
+## ThreatOccupation (1109 lines)
+- `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :91 - XStream:
+- `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :107 - The alias's fallback:
+- `ThreatOccupation.registerPlugins()` :135 - At application load:
+- `ThreatOccupation.isClaimed(Industry ind)` :155 - Whether the swarm's front on the industry's world has claimed it.
+- `ThreatOccupation.image(Industry ind, String base)` :162 - The image a producing industry draws:
+- `ThreatOccupation.enabled()` :171
+- `ThreatOccupation.occupies(GroundFront front, MarketAPI market)` :176 - Whether the front is the swarm's on a human world still in the economy:
+- `ThreatOccupation.holdsAll(GroundFront front, MarketAPI market)` :182 - Whether the swarm holds every district:
+- `ThreatOccupation.showsCard(MarketAPI market)` :193 - Whether the colony screen shows the infestation card:
+- `ThreatOccupation.claims(GroundFront front)` :198 - The front's claims, in claim order (older saves hold none).
+- `ThreatOccupation.producers(MarketAPI market)` :211 - The world's PRODUCERS the swarm claims first, in a fixed order (by id) so the clock takes the same next one from poll to poll (the user, Haven 2026-10-27:
+- `ThreatOccupation.military(MarketAPI market)` :240 - The world's MILITARY structures, claimed after the producers and consumed last (the user, 2026-10-28:
+- `ThreatOccupation.claimable(MarketAPI market)` :253 - The world's industries the swarm claims, in claim order:
+- `ThreatOccupation.sortById(List<Industry> list)` :258
+- `ThreatOccupation.compare(Industry a, Industry b)` :260
+- `ThreatOccupation.underConstruction(Industry ind)` :270 - Vanilla's building flag of an industry, never the Occupied plugins' overridden isBuilding (fix 4, 2026-10-28:
+- `ThreatOccupation.worthEating(MarketAPI market)` :275 - Whether a strike has anything to eat on the world:
+- `ThreatOccupation.spec(String id)` :279 - The industry spec, null for an unknown id (vanilla throws).
+- `ThreatOccupation.isMilitary(String id)` :288 - Whether the industry id is a military structure (vanilla's tactical-bombardment tag), by spec - a consumed one included.
+- `ThreatOccupation.claimed(MarketAPI market, GroundFront front)` :293 - The claimed industries still on the market, in claim order.
+- `ThreatOccupation.next(MarketAPI market, GroundFront front)` :304 - The next industry the clock claims;
+- `ThreatOccupation.daysToNextClaim(GroundFront front)` :314 - Days until the clock claims the next industry.
+- `ThreatOccupation.tick(GroundFront front, MarketAPI market, float elapsedDays)` :324 - One tick of the front (ThreatGroundFronts's tick, after the attrition):
+- `ThreatOccupation.catchUp(GroundFront front, MarketAPI market)` :392 - Claims one industry per district held that is not yet claimed;
+- `ThreatOccupation.releaseAll(GroundFront front, MarketAPI market)` :411 - Every claim left goes (the last district retaken, ThreatGroundFronts#loseStratum;
+- `ThreatOccupation.onDistrictTaken(GroundFront front, MarketAPI market)` :418 - A district taken claims an industry on the spot (ThreatGroundFronts#takeStratum);
+- `ThreatOccupation.occupy(GroundFront front, MarketAPI market)` :424 - The last district is the swarm's:
+- `ThreatOccupation.release(GroundFront front, MarketAPI market)` :449 - A district retaken releases a claim (ThreatGroundFronts#loseStratum):
+- `ThreatOccupation.announceClaim(GroundFront front, MarketAPI market, Industry ind)` :481
 ### CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): "the threat actually full
-- `ThreatOccupation.consumed(MarketAPI market, boolean create)` :499 - The industries the swarm has consumed on the world and the owner has not rebuilt;
-- `ThreatOccupation.consumeTime(Industry ind)` :514 - Days the swarm takes to consume the industry:
-- `ThreatOccupation.active(GroundFront front, MarketAPI market)` :526 - The claims being consumed now:
-- `ThreatOccupation.consuming(Industry ind)` :542 - Whether the swarm is consuming the industry now:
-- `ThreatOccupation.consumeProgress(Industry ind)` :558 - How far consumed the industry is, 0-1.
-- `ThreatOccupation.consumeDaysLeft(Industry ind)` :567 - Days until the industry is consumed.
-- `ThreatOccupation.consumeText(Industry ind)` :571 - The card's bar text while consumed, on vanilla's "Building:
-- `ThreatOccupation.consumeDaysText(Industry ind)` :576 - The card's days text while consumed.
-- `ThreatOccupation.consume(GroundFront front, MarketAPI market, float elapsedDays)` :584 - One tick of the consumption:
-- `ThreatOccupation.consumeIndustry(GroundFront front, MarketAPI market, Industry ind)` :603 - The industry is eaten:
-- `ThreatOccupation.liftOff(GroundFront front, MarketAPI market)` :636 - THE LIFT-OFF (the user, 2026-10-28:
-- `ThreatOccupation.holdDeciv(MarketAPI market)` :692 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
-- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :704 - The share of the world's producers the swarm has claimed, 0-1:
-- `ThreatOccupation.growthPerDay(GroundFront front)` :721 - Strata a day the occupation grows:
-- `ThreatOccupation.ratePerDay(MarketAPI market)` :735 - The hive rate a day the pool would grow fed in full:
-- `ThreatOccupation.lump(MarketAPI market, Industry ind)` :745 - THE LUMP a consumed industry pays the pool (the user, 2026-10-28:
-- `ThreatOccupation.cap(MarketAPI market)` :751 - The most the occupation holds, all told:
-- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :756 - What the occupation holds:
-- `ThreatOccupation.buddedFP(MarketAPI market)` :765 - Fleet points of the swarms the pool budded that stand over the world.
-- `ThreatOccupation.standingFP(MarketAPI market)` :776 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
-- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :787 - Strata a day the occupation moves, either way:
-- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :797 - The troops the ground keeps standing:
-- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :818 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
-- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :913 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
-- `ThreatOccupation.standDown(GroundFront front, MarketAPI market)` :958 - A quiet orbit with a full pool (the user, 2026-10-27 23:00):
-- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :989 - The strata risen become a swarm over the world, whole:
+- `ThreatOccupation.consumed(MarketAPI market, boolean create)` :503 - The industries the swarm has consumed on the world and the owner has not rebuilt;
+- `ThreatOccupation.consumeTime(Industry ind)` :518 - Days the swarm takes to consume the industry:
+- `ThreatOccupation.active(GroundFront front, MarketAPI market)` :530 - The claims being consumed now:
+- `ThreatOccupation.consuming(Industry ind)` :546 - Whether the swarm is consuming the industry now:
+- `ThreatOccupation.consumeProgress(Industry ind)` :562 - How far consumed the industry is, 0-1.
+- `ThreatOccupation.consumeDaysLeft(Industry ind)` :571 - Days until the industry is consumed.
+- `ThreatOccupation.consumeText(Industry ind)` :575 - The card's bar text while consumed, on vanilla's "Building:
+- `ThreatOccupation.consumeDaysText(Industry ind)` :580 - The card's days text while consumed.
+### THE EFFECT SCALES WITH WHAT STANDS (the user, 2026-10-28 evening: "it doesn't make sense for a
+- `ThreatOccupation.rebuildingIds(MarketAPI market, boolean create)` :600
+- `ThreatOccupation.rebuilding(Industry ind)` :611 - Whether the industry is rebuilding what the swarm ate of it:
+- `ThreatOccupation.standing(Industry ind)` :629 - What stands of the structure, 0-1:
+- `ThreatOccupation.rebuildDaysLeft(Industry ind)` :640 - Days until the rebuild is done.
+- `ThreatOccupation.rebuildText(Industry ind)` :646 - The card's bar text while rebuilding, on vanilla's "Building:
+- `ThreatOccupation.scaleEffect(Industry ind, String statId, String modId)` :657 - After vanilla's apply:
+- `ThreatOccupation.consume(GroundFront front, MarketAPI market, float elapsedDays)` :673 - One tick of the consumption:
+- `ThreatOccupation.consumeIndustry(GroundFront front, MarketAPI market, Industry ind)` :692 - The industry is eaten:
+- `ThreatOccupation.liftOff(GroundFront front, MarketAPI market)` :725 - THE LIFT-OFF (the user, 2026-10-28:
+- `ThreatOccupation.holdDeciv(MarketAPI market)` :781 - Vanilla's zero-stability decivilisation is held off while the swarm stands on the world (DecivTracker:
+- `ThreatOccupation.share(MarketAPI market, GroundFront front)` :793 - The share of the world's producers the swarm has claimed, 0-1:
+- `ThreatOccupation.growthPerDay(GroundFront front)` :810 - Strata a day the occupation grows:
+- `ThreatOccupation.ratePerDay(MarketAPI market)` :824 - The hive rate a day the pool would grow fed in full:
+- `ThreatOccupation.lump(MarketAPI market, Industry ind)` :834 - THE LUMP a consumed industry pays the pool (the user, 2026-10-28:
+- `ThreatOccupation.cap(MarketAPI market)` :840 - The most the occupation holds, all told:
+- `ThreatOccupation.held(GroundFront front, MarketAPI market)` :845 - What the occupation holds:
+- `ThreatOccupation.buddedFP(MarketAPI market)` :854 - Fleet points of the swarms the pool budded that stand over the world.
+- `ThreatOccupation.standingFP(MarketAPI market)` :865 - Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms).
+- `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :876 - Strata a day the occupation moves, either way:
+- `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :886 - The troops the ground keeps standing:
+- `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :907 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
+- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :1002 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
+- `ThreatOccupation.standDown(GroundFront front, MarketAPI market)` :1047 - A quiet orbit with a full pool (the user, 2026-10-27 23:00):
+- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :1078 - The strata risen become a swarm over the world, whole:
 
 ## ThreatOffensive (1060 lines)
 - `ThreatOffensive.startDay()` :126 - The campaign's start (the last launch), or NaN for none - never -1:
