@@ -5572,6 +5572,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float waitedOn = Float.MAX_VALUE;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!isStrikeableWorld(market)) continue;
+			if (!ThreatOccupation.worthEating(market)) continue; // nothing to consume there (fix 3, 2026-10-28)
 			// size 6+ markets are "core worlds" - phase 3 only
 			if (!coreAllowed && isCoreWorld(market)) continue;
 			if (market.isPlayerOwned() && !playerAllowed) continue;
@@ -6013,6 +6014,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		List<MarketAPI> near = new ArrayList<MarketAPI>();
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!isStrikeableWorld(market)) continue;
+			if (!ThreatOccupation.worthEating(market)) continue; // nothing to consume there (fix 3, 2026-10-28)
 			if (!coreAllowed && isCoreWorld(market)) continue;
 			if (market.isPlayerOwned() && !playerAllowed) continue;
 			if (!warOpen(market, phase)) continue;

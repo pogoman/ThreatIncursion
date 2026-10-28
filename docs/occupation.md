@@ -423,3 +423,5 @@ builder's restore at full price and time. The four-at-three in the user's save i
 bug (with every producer "gone" the military ran in parallel from the start); the clocks only ever
 advance for `active`, at most `strataHeld` of them - hw305's dumps (`consuming` against `strataHeld`)
 check it.
+
+**Fix 3 (10:00, hw305 first read):** (a) Tigra City - a strike landed, took one district and lifted off at once with "0 industries consumed, nothing left to claim": its Orbital Works was under construction (no supply yet) and nothing else stood; `producers` now counts a producer under construction. (b) No strike for nothing: the strike target pickers (`pickStrikeTarget`, `stagedCandidates`) and the offensive's prong check skip a world with nothing claimable (`ThreatOccupation.worthEating`). (c) Closed economy: a bud stood down was "on no ledger" and its points vanished at the hive; `standDown` binds an unbound swarm to the nearest hive's bank (`bindStrayToNearest`) and sends it there, so its points are re-banked on arrival.

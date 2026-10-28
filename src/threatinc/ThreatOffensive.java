@@ -994,7 +994,7 @@ public class ThreatOffensive {
 			StarSystemAPI source = ThreatScoutRoute.systemById(f[2]);
 			String name = target != null ? target.getName() : f[0];
 			if (target == null || staging == null || source == null || target.getStarSystem() == null
-					|| !IncursionManager.isStrikeableWorld(target) || IncursionManager.isActiveStrikeTarget(target)
+					|| !IncursionManager.isStrikeableWorld(target) || !ThreatOccupation.worthEating(target) || IncursionManager.isActiveStrikeTarget(target)
 					|| !ThreatIncData.colonyMarkets().containsKey(source.getId())) {
 				ThreatIncConfig.log("Offensive: the prong at " + name + " is off - target or staging gone; " + (int) cost
 						+ " FP back in the fund");

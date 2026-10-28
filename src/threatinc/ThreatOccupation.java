@@ -217,7 +217,9 @@ public class ThreatOccupation {
 			if (ind.getId().startsWith("threatinc_")) continue;
 			if (Industries.POPULATION.equals(ind.getId())) continue;
 			if (!ind.isIndustry()) continue;
-			if (ind.getAllSupply().isEmpty() && !held.contains(ind.getId())) continue;
+			// a producer under construction has no supply yet and is a producer still (fix 3, hw305: Tigra City's
+			// Orbital Works building, "nothing left to claim" after one district, a strike for nothing)
+			if (ind.getAllSupply().isEmpty() && !held.contains(ind.getId()) && !ind.isBuilding()) continue;
 			list.add(ind);
 		}
 		sortById(list);
@@ -254,6 +256,10 @@ public class ThreatOccupation {
 				return a.getId().compareTo(b.getId());
 			}
 		});
+	}
+	/** Whether a strike has anything to eat on the world: something claimable, or consumption off (fix 3: no strike for nothing). */
+	public static boolean worthEating(MarketAPI market) {
+		return !ThreatIncConfig.occupationConsume() || market == null || !claimable(market).isEmpty();
 	}
 	/** The industry spec, null for an unknown id (vanilla throws). */
 	public static com.fs.starfarer.api.loading.IndustrySpecAPI spec(String id) {
@@ -877,6 +883,12 @@ public class ThreatOccupation {
 			if (!market.getId().equals(e.marketId) || !Factions.THREAT.equals(e.factionId)) continue;
 			if (!ThreatGroundFronts.nearWorld(e.fleet, market)) continue;
 			fp += e.fleet.getFleetPoints();
+			if (!ThreatColonyManager.ledgerBound(e.fleet)) {
+				// a bud is on no ledger ("Infestation Swarm is on no ledger", hw305): bound to the nearest hive's
+				// bank and sent there, so its points are re-banked on arrival instead of lost (fix 3)
+				String bound = ThreatColonyManager.bindStrayToNearest(e.fleet);
+				if (bound != null && e.homeMarketId == null) e.homeMarketId = bound;
+			}
 			ThreatSwarmDefend.release(e.fleet);
 			ThreatSwarmDefend.sendHome(e);
 			sent++;
