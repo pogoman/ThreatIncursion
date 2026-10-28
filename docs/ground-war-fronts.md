@@ -62,7 +62,11 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   lone push always gains, NPC and swarm doctrine pushes while the push takes the next district
   before the force bleeds out at its push losses (days to the district <= troops / losses a day x
   `doctrinePushBleedMargin` 1.0), else digs in; a push that only slows a loss digging in would not
-  stop is made regardless; a garrison with no marines loses nothing and pushes for free.
+  stop is made regardless; a garrison with no marines loses nothing and pushes for free. Hysteresis
+  (2026-10-28 late, hw314a: at parity the two clauses sat a hair apart and the swarm flapped push /
+  dig in every tick - Sphinx 50 times in 130 days - each flip wiping its progress, so the garrison
+  retook the world): a front already pushing keeps at a push that slows a loss; a dug-in one resumes
+  only when the push pays, so parity settles dug in, cover kept.
 - **The State word** (`stateWord` / `stateWordOf`, 2026-10-28, the user: "sub statuses like
   entrenched, dug in, holding, breaking retreating overrun"): the table's State cell from the
   reader's side. Pushing: overrunning past `frontOverrunRate`, gaining past `frontBreakRate` (0.1),

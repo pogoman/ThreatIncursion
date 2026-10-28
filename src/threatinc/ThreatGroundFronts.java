@@ -1371,7 +1371,10 @@ public class ThreatGroundFronts {
 					standing(lineRate(front, market, false, false)));
 		}
 		if (pushV <= digV) return false;
-		if (pushV <= 0f) return true; // pushing slows a loss digging in would not
+		// pushing slows a loss digging in would not - a front already pushing keeps at it; a dug-in one
+		// does not break cover for a push that takes no ground (hysteresis, 2026-10-28 late: hw314a
+		// flapped push / dig in every tick at parity, Sphinx 50 times, each flip wiping its progress)
+		if (pushV <= 0f) return STANCE_PUSH.equals(front.stance);
 		// THE BLEED-OUT TEST (2026-10-28): the district before the force is gone
 		return pushPaysOff(pushV, front.pushProgress, front.marines, landingLossPerDay(front, market, true));
 	}
@@ -1736,7 +1739,9 @@ public class ThreatGroundFronts {
 					standing(lineRate(front, market, false, false)));
 		}
 		if (pushV >= digV) return false;
-		if (pushV >= 0f) return true; // pushing slows a loss digging in would not
+		// pushing slows a loss digging in would not - marines already pushing keep at it; dug in they
+		// do not break cover for a push that takes no ground (hysteresis, 2026-10-28 late, as doctrinePushes)
+		if (pushV >= 0f) return STANCE_PUSH.equals(defenderStance(front));
 		// THE BLEED-OUT TEST (2026-10-28), on the marines - a garrison with none pushes for free
 		float armed = ThreatReserves.armedMarines(market);
 		return pushPaysOff(-pushV, -front.pushProgress, armed, armed > 0f ? worldLossPerDay(market, front, armed) : 0f);
