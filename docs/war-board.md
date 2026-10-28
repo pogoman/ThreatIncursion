@@ -131,11 +131,19 @@ line on what it was sized against (`Quote.sized`). Expedition hulls are the need
 (`ThreatAid.forceFP`, still what the colonies table's Amount ladder sails). **Scout** on every
 hive-system row (own tab): the player's own recon party, `ThreatScouts.playerRecon` - one stop
 and home, its report the player's, from the nearest colony with the hulls, fuel and supplies for
-it (`playerScoutHome`), greyed with `scoutOffReason`. Then **Supply run** over the ground fronts, **Amount** over the colonies (its
-Supplies and Aid buttons carry Min/Med/Max loads, its Fleet and Defend buttons sail one fleet /
-half / all the same way; "Convoy load" and sized by the hives table's Force until 2026-10-11
-evening, when a Fleet order quoted one fleet and sailed six). A ladder reaches only the
-buttons in its own table; Min is exactly one fleet. The tier is a view toggle like the faction
+it (`playerScoutHome`), greyed with `scoutOffReason`. Then THE LEVERS (2026-10-28, the user:
+"two sets of the 3 buttons, one for marines one for arms. None Med and Max, sending 0 half and
+all"; `ThreatFactionView.addFrontLevers` / `addColonyLevers`, one `addLever` a good): over the
+ground fronts **Marines** and **Arms**, over the colonies **Fuel**, **Supplies**, **Marines**,
+**Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare / all of it
+(`ThreatConvoys.share`, `handSpare`, `leverLoad`). The fronts' two size Reinforce, Aid and
+Supply; the colonies' five size Supplies and Aid and what a Request asks each faction for
+(`ThreatAidRequests.askText`). Fleet and Defend take no lever - every hull the nearest source
+has free (`ALL_HULLS`). Supplies moves hulls between the player's colonies off the donor's share
+(`ThreatHulls.takeShare`). They replaced the **Supply run** ladder (what the front wanted / x2 /
+everything) and the **Amount** ladder (the shortfall / x2 / everything, and one fleet / half /
+all the hulls for Fleet and Defend, 2026-10-11 to 2026-10-28; "Convoy load" and sized by the
+hives table's Force before that). A ladder reaches only the buttons in its own table. The tier is a view toggle like the faction
 selector - no Confirm, the current tier's button drawn disabled - stored on the intel and read
 by every order button in the table below, so a row's tooltip and its Confirm quote the tier's
 own numbers. The fronts ladder only appears where a front of the player's carries orders

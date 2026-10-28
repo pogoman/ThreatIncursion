@@ -350,24 +350,25 @@ Where the build departs from the text above, on purpose:
   Max quoted one fleet and sailed six). The tier is view state on the intel
   (`siegeTier` / `supplyTier` / `convoyTier`), set by a button with no Confirm, exactly
   like the faction selector; the current tier's button is the disabled one.
-  - **Supply run** (the front's Supply button, `ThreatConvoys.supplyAsk`): Min asks for
-    what the front wants, floored to a worthwhile run (200 marines, 30 days' armaments);
-    Med asks `threatinc_convoyExtraLoadFactor` x that (default 2); Max asks for a full
-    hull load (2026-09-29: everything available above the floor), wanted or not - so Max is also the only tier that sails to a front that
-    wants nothing (`supplyBlockReason` skips its "wants nothing" gate at Max).
-  - **Amount** (the colony Supplies button, `ThreatConvoys.stageLoad`, and the Aid
-    button, `ThreatAid.quoteResupply`; the Fleet and Defend buttons read the same tier as a
-    force size, `ThreatAid.forceFP`): Min carries what the target is short of its
-    staging target (or of its reserve cap, where it stages for nothing); Med carries the
-    factor x that; Max carries everything the source can spare above its floor (a hull load until
-    2026-09-29). **Max is
-    the old behaviour** for marines and armaments, which always asked for a hull load
-    regardless of the target's stock (2026-09-05, "the landing force ... there is never
-    enough of it"); Min is the bounded version of that ask, and is the default. Set the
-    ladder to Max to get the old Supplies button back. A run to an OUTPOST (2026-09-29; it was a
-    hull load at every tier) is Min = a reference load (`convoyMarineCapacity` /
-    `convoyCargoCapacity`), Med = that x `convoyExtraLoadFactor`, Max = everything available
-    above the floor: it banks nothing, so nothing there is ever "short".
+  - **THE LEVERS (2026-10-28) replaced the Supply run and Amount ladders.** One lever a
+    good - fronts table: Marines, Arms; colonies table: Fuel, Supplies, Marines, Arms, Hulls -
+    each None / Med / Max = nothing / half the source's spare / all of it
+    (`ThreatConvoys.share`; `handSpare`: stock above the floor, capped by `frontWorldSpare` on
+    a world with its own Threat army; `leverLoad`). No ask, no shortfall, no reference load:
+    the front's Supply (`supplyAsk`), Reinforce (`reinforceLoad`) and the fronts-table Aid
+    (`ThreatAid.quoteBattle`) read the two; the colony Supplies (`stageLoad`), Aid
+    (`ThreatAid.quoteAid`: the best colony by cargo value; hulls from the hull port, as a
+    second convoy when it is not the goods donor, `Quote.hullSource`) and Request
+    (`ThreatAidRequests.request`: each candidate sends its levers' share of its spare once,
+    and a guard when a fleets need stands) read the five. Fleet and Defend read no lever -
+    every hull the nearest source has free (`ThreatFactionView.ALL_HULLS`). Supplies moves
+    hulls between the player's colonies off the donor's own share (`ThreatHulls.takeShare` /
+    `landShare`, `Convoy.ownHulls`), never the built navy. Defaults: the fronts' Max, the
+    colonies' Med. Before: Supply run Min = what the front wanted floored to a worthwhile run
+    (200 marines, 30 days' armaments), Med x `convoyExtraLoadFactor`, Max everything; Amount
+    Min = the target's shortfall of its staging target or reserve cap (an outpost: a reference
+    load), Med x the factor, Max everything, and one fleet / half / all the hulls for Fleet and
+    Defend.
   - Every tier is only an ASK. The load is still `min(ask, what the source holds above
     its floor, the convoy's capacity)`, and a player source's is then fitted to its own
     free hulls - so a tier raises the ceiling, never the source's ability to fill it.

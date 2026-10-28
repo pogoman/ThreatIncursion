@@ -57,11 +57,51 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	/** The Attack's Marines ladder: 0 none, 1 half the pool, 2 all. */
 	protected int marineTier;
 
-	/** The load tier the board's front Supply buttons run: 0 min (what the front wants), 1 med, 2 max. */
+	/** Until 2026-10-28 the fronts table's Supply run ladder; kept so older saves load, read by nothing. */
 	protected int supplyTier;
 
-	/** The load tier the board's colony Supplies and Aid buttons carry: 0 min (the shortfall), 1 med, 2 max. */
+	/** Until 2026-10-28 the colonies table's Amount ladder; kept so older saves load, read by nothing. */
 	protected int convoyTier;
+
+	/**
+	 * THE LEVERS (the user, 2026-10-28: "two sets of the 3 buttons, one for marines one for arms.
+	 * None Med and Max, sending 0 half and all respectively ... then the same for the colony list
+	 * underneath. one for fuel, one for supplies, one for marines, one for arms" and Hulls): one
+	 * per good a hand order can move, each None (0) / Med (half the source's spare) / Max (all of
+	 * it), ThreatConvoys.share. The fronts table's two size its Reinforce, Aid and Supply runs; the
+	 * colonies table's five size its Supplies and Aid convoys and what a Request asks each faction
+	 * for. Fleet and Defend take no lever: a task force is every hull the nearest source has free.
+	 * Indexed by the LEVER_ constants; null in a save from before the levers (then {@link #lever}
+	 * seeds the defaults: the fronts' Max, the colonies' Med).
+	 */
+	protected int[] levers;
+
+	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
+			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6;
+	protected static final int LEVER_COUNT = 7;
+
+	public int lever(int which) {
+		if (levers == null || levers.length < LEVER_COUNT) {
+			levers = new int[] { 2, 2, 1, 1, 1, 1, 1 };
+		}
+		return which >= 0 && which < LEVER_COUNT ? levers[which] : 0;
+	}
+
+	public void setLever(int which, int tier) {
+		lever(which);
+		if (which >= 0 && which < LEVER_COUNT) levers[which] = Math.max(0, Math.min(2, tier));
+	}
+
+	/** The fronts table's levers as {marines, arms}. */
+	public int[] frontLevers() {
+		return new int[] { lever(LEVER_FRONT_MARINES), lever(LEVER_FRONT_ARMS) };
+	}
+
+	/** The colonies table's levers in ThreatReserves.AID_COMMODITIES order: marines, arms, fuel, supplies, hulls. */
+	public int[] colonyLevers() {
+		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_COLONY_FUEL),
+				lever(LEVER_COLONY_SUPPLIES), lever(LEVER_COLONY_HULLS) };
+	}
 
 	public int getSiegeTier() {
 		return siegeTier;
@@ -77,22 +117,6 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	public int getMarineTier() {
 		return marineTier;
-	}
-
-	public int getSupplyTier() {
-		return supplyTier;
-	}
-
-	public void setSupplyTier(int tier) {
-		supplyTier = tier;
-	}
-
-	public int getConvoyTier() {
-		return convoyTier;
-	}
-
-	public void setConvoyTier(int tier) {
-		convoyTier = tier;
 	}
 
 	/** The tier index a ladder button's id carries, or 0 if it carries nothing readable. */
@@ -352,13 +376,14 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			rerenderInPlace(ui);
 			return;
 		}
-		if (id.startsWith(ThreatFactionView.BUTTON_SUPPLY_TIER)) {
-			supplyTier = tierOf(id, ThreatFactionView.BUTTON_SUPPLY_TIER);
-			rerenderInPlace(ui);
-			return;
-		}
-		if (id.startsWith(ThreatFactionView.BUTTON_CONVOY_TIER)) {
-			convoyTier = tierOf(id, ThreatFactionView.BUTTON_CONVOY_TIER);
+		if (id.startsWith(ThreatFactionView.BUTTON_LEVER)) {
+			// "lever:<which>:<tier>"
+			String[] p = id.substring(ThreatFactionView.BUTTON_LEVER.length()).split(":");
+			try {
+				if (p.length == 2) setLever(Integer.parseInt(p[0]), Integer.parseInt(p[1]));
+			} catch (NumberFormatException e) {
+				// a malformed id sets nothing
+			}
 			rerenderInPlace(ui);
 			return;
 		}

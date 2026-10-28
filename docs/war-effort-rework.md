@@ -77,7 +77,9 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
   suspended one. Tooltip: one line per need, `purpose - good - min / med / max`, and for a
   fleets need the Threat FP over the world and the guards bound.
 - **Aid button** on an NPC colony row (today's Resupply / Reinforce fold into it; the Reinforce
-  button goes, as the user guessed): it serves the row's most urgent need at the Amount tier,
+  button goes, as the user guessed): it serves the row's most urgent need at the Amount tier
+  (since 2026-10-28 the colonies table's levers: each good's share of the best donor's spare,
+  `ThreatAid.quoteAid`; the need names the purpose only - see player-aid.md "The load ladders"),
   from the player's nearest colony that can cover it (today's `ThreatAid.quoteResupply` /
   `quoteReinforce` picking rules), and its tooltip quotes `purpose: N good from Colony`. A
   fleets need makes the button Defend (today's `quoteDefend`), with the FP it sends.
@@ -90,7 +92,10 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
 
 The mirror of giving. The player presses Request aid on an own colony; the Amount tier picks
 Min / Med / Max of the row's most urgent need (the tooltip names it; the confirmation is the
-question and the numbers). Then, on the next slow tick:
+question and the numbers). (Since 2026-10-28 the colonies table's levers instead: each
+candidate sends its levers' share of its colony's spare of each good once, and a guard when a
+fleets need stands; the request ends after its poll - `ThreatAidRequests.request` / `answer`.
+The rules below on candidates, budgets and prices stand.) Then, on the next slow tick:
 
 - Every faction at **Favourable or better** with the player, not hostile to the player's
   faction, is a candidate. Candidates are ordered by standing (Cooperative first), then by

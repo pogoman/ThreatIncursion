@@ -68,6 +68,8 @@ public class ThreatConvoys {
 		public float supplies;
 		/** Units of ship hulls aboard (ThreatHulls.unitFP each), for the recipient faction's pool. */
 		public float ships;
+		/** The hulls aboard are the player's own share moving between two of their colonies (ThreatHulls.takeShare, 2026-10-28), not the navy's. */
+		public boolean ownHulls;
 		public long departedTimestamp;
 		/** Set for a FRONT RUN: the hive world whose friendly front this convoy supplies or picks up. */
 		public String frontMarketId;
@@ -168,6 +170,62 @@ public class ThreatConvoys {
 	/** The ship hulls of a load: its 5th entry (AID_COMMODITIES), 0 for a reserve-goods load. */
 	public static float hullsIn(float[] load) {
 		return load != null && load.length > 4 ? Math.max(0f, load[4]) : 0f;
+	}
+
+	// ------------------------------------------------------------------
+	// THE LEVERS (the user, 2026-10-28; ThreatIncursionIntel.levers): every hand
+	// order moves a share of its source's spare, one lever a good - None 0, Med
+	// half, Max all. No ask, no shortfall, no reference load.
+	// ------------------------------------------------------------------
+
+	/** The share of a source's spare a lever's tier moves: None 0, Med half, Max all. */
+	public static float share(int tier) {
+		return tier <= 0 ? 0f : tier == 1 ? 0.5f : 1f;
+	}
+
+	/** Whether every lever is at None: nothing to move, the order's buttons grey. */
+	public static boolean allNone(int[] tiers) {
+		if (tiers == null) return true;
+		for (int t : tiers) if (t > 0) return false;
+		return true;
+	}
+
+	/**
+	 * What a hand order may take of one reserve good at a colony: its stock above its floor
+	 * (ThreatReserves.available) - and, on a world with a Threat army of its own, no more than
+	 * its front spares ({@link #frontWorldSpare}: Arkoman, 2026-10-28, sent Haven all 945 of the
+	 * arms its own stalled front was burning). 0 for ship hulls, which are no reserve good.
+	 */
+	public static float handSpare(MarketAPI donor, String commodityId) {
+		if (donor == null || commodityId == null || Commodities.SHIPS.equals(commodityId)) return 0f;
+		float spare = ThreatReserves.available(donor, commodityId);
+		if (ThreatGroundFronts.hasFront(donor)) spare = Math.min(spare, frontWorldSpare(donor, commodityId));
+		return Math.max(0f, spare);
+	}
+
+	/**
+	 * A load of the colony's spare at the levers, AID_COMMODITIES order: each reserve good's
+	 * {@link #handSpare} times its lever's {@link #share}, fitted to a player colony's own free
+	 * hulls under the ledger (ThreatAidCapacity.fitLoad); then, with {@code ownHulls}, the Hulls
+	 * lever's share of the whole units the colony's own free hulls spare above the convoy's own
+	 * points (ThreatHulls.takeShare). {@code tiers} is 5 long (the colonies table's levers) or 2
+	 * (the fronts table's: marines and arms).
+	 */
+	public static float[] leverLoad(MarketAPI donor, int[] tiers, boolean ownHulls) {
+		float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
+		if (donor == null || tiers == null) return load;
+		for (int i = 0; i < ThreatReserves.COMMODITIES.length && i < tiers.length; i++) {
+			load[i] = (float) Math.floor(share(tiers[i]) * handSpare(donor, ThreatReserves.COMMODITIES[i]));
+		}
+		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) { // freighters draw no hulls from the pool
+			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
+		}
+		if (ownHulls && tiers.length > 4 && donor.isPlayerOwned() && ThreatHulls.enabled()) {
+			float free = ThreatAidCapacity.ownFreeFP(donor) - ThreatAidCapacity.convoyPoints(load);
+			int units = (int) Math.floor(Math.max(0f, free) / ThreatHulls.unitFP());
+			load[4] = (float) Math.floor(share(tiers[4]) * units);
+		}
+		return load;
 	}
 
 	/** Units of ship hulls at sea to the market (Convoy.ships), net of what the fleets have lost. */
@@ -1816,33 +1874,22 @@ public class ThreatConvoys {
 	}
 
 	/**
-	 * What the board's Supply order asks the base for at a load tier: what
-	 * the front wants, floored to a worthwhile run (Min); that times
-	 * convoyExtraLoadFactor (Med); everything the base can spare above its
-	 * floor, wanted or not (Max - a hull load until 2026-09-29, when the
-	 * per-convoy cap went). The ask is then capped only by the base's stock
-	 * above its floor; the run's hulls grow to carry it.
+	 * What the board's Supply order sends the front at the fronts table's levers ({marines, arms};
+	 * the user, 2026-10-28): of the base's marines and heavy armaments above its floor, each
+	 * lever's {@link #share} (None 0, Med half, Max all), from the base {@link #pickFrontBase}
+	 * picks for what the front wants. The run's hulls grow to carry it. Until 2026-10-28 the
+	 * Supply run ladder asked for what the front wanted (Min), that x convoyExtraLoadFactor
+	 * (Med) or everything (Max).
 	 */
-	public static float[] supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int tier) {
-		if (tier >= 2) {
-			FactionAPI owner = front != null
-					? Global.getSector().getFaction(ThreatGroundFronts.ownerOf(front)) : null;
-			ThreatBases.Base base = owner != null && hive != null
-					? pickFrontBase(owner, hive, false, frontWants(front, hive)) : null;
-			if (base == null) return new float[] {0f, 0f};
-			return new float[] {ThreatBases.available(base, Commodities.MARINES),
-					ThreatBases.available(base, Commodities.HAND_WEAPONS)};
-		}
-		float[] wants = frontWants(front, hive);
-		// a hand order always sends a worthwhile load, wanted or not
-		float[] asked = new float[] {Math.max(wants[0], 200f),
-				Math.max(wants[1], ThreatGroundFronts.dailyUpkeep(front) * 30f)};
-		if (tier == 1) {
-			float mult = ThreatIncConfig.convoyExtraLoadFactor();
-			asked[0] *= mult;
-			asked[1] *= mult;
-		}
-		return asked;
+	public static float[] supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int[] levers) {
+		FactionAPI owner = front != null
+				? Global.getSector().getFaction(ThreatGroundFronts.ownerOf(front)) : null;
+		ThreatBases.Base base = owner != null && hive != null
+				? pickFrontBase(owner, hive, false, frontWants(front, hive)) : null;
+		if (base == null || levers == null || levers.length < 2) return new float[] {0f, 0f};
+		return new float[] {
+				(float) Math.floor(share(levers[0]) * ThreatBases.available(base, Commodities.MARINES)),
+				(float) Math.floor(share(levers[1]) * ThreatBases.available(base, Commodities.HAND_WEAPONS))};
 	}
 
 	/**
@@ -1851,13 +1898,13 @@ public class ThreatConvoys {
 	 * contested with nothing friendly holding it, no base is in reach, or it
 	 * has nothing above its floor to send.
 	 */
-	public static Convoy supplyFront(MarketAPI hive, FactionAPI faction, int tier, Random random) {
+	public static Convoy supplyFront(MarketAPI hive, FactionAPI faction, int[] levers, Random random) {
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
 		if (front == null || faction == null || !ThreatIncConfig.frontRunsEnabled()) return null;
 		if (convoyBoundForFront(hive.getId())) return null;
 		if (canRunTo(faction, hive) != null) return null;
-		float[] asked = supplyAsk(front, hive, tier);
-		ThreatBases.Base base = pickFrontBase(faction, hive, false, asked);
+		float[] asked = supplyAsk(front, hive, levers);
+		ThreatBases.Base base = pickFrontBase(faction, hive, false, frontWants(front, hive));
 		if (base == null) return null;
 		float[] load = new float[] {
 				Math.min(asked[0], ThreatBases.available(base, Commodities.MARINES)),
@@ -1867,7 +1914,7 @@ public class ThreatConvoys {
 	}
 
 	/** Why the board's Supply order at this load tier would send nothing now, or null if a run would sail. */
-	public static String supplyBlockReason(FactionAPI faction, MarketAPI hive, int tier) {
+	public static String supplyBlockReason(FactionAPI faction, MarketAPI hive, int[] levers) {
 		ThreatGroundFronts.GroundFront front = hive != null
 				? ThreatGroundFronts.getFront(hive.getId()) : null;
 		if (front == null || faction == null) return "No front there.";
@@ -1875,22 +1922,9 @@ public class ThreatConvoys {
 		if (convoyBoundForFront(hive.getId())) return "A run is already on its way there.";
 		String refused = canRunTo(faction, hive);
 		if (refused != null) return refused;
-		float[] wants = frontWants(front, hive);
-		// a run only sails for what the front is short of: marines back toward
-		// its peak, armaments up to frontResupplyDays. Max is the player asking
-		// for everything the base can spare whether the front wants it or not,
-		// so it always sails.
-		if (tier < 2 && wants[0] <= 0f && wants[1] <= 0f) {
-			return "The front wants nothing: at strength and stocked for "
-					+ (int) ThreatIncConfig.frontResupplyDays() + " days.";
-		}
-		float[] asked = supplyAsk(front, hive, tier);
-		ThreatBases.Base base = pickFrontBase(faction, hive, false, asked);
-		boolean marinesOk = asked[0] > 0f && base != null
-				&& ThreatBases.available(base, Commodities.MARINES) > 0f;
-		boolean armsOk = asked[1] > 0f && base != null
-				&& ThreatBases.available(base, Commodities.HAND_WEAPONS) > 0f;
-		if (!marinesOk && !armsOk) {
+		if (allNone(levers)) return "Marines and Arms are both at None.";
+		float[] asked = supplyAsk(front, hive, levers);
+		if (asked[0] < 1f && asked[1] < 1f) {
 			return "No base in reach has marines or heavy armaments above its floor to send.";
 		}
 		return null;
@@ -2132,92 +2166,50 @@ public class ThreatConvoys {
 	 * most, at the board's load tier ({@link #stageLoad}), regardless of
 	 * whether the destination is a staging base. Returns the convoy or null.
 	 */
-	public static Convoy stageTo(MarketAPI target, FactionAPI faction, int tier, Random random) {
-		return stageTo(ThreatBases.of(target), faction, tier, random);
+	public static Convoy stageTo(MarketAPI target, FactionAPI faction, int[] levers, Random random) {
+		return stageTo(ThreatBases.of(target), faction, levers, random);
 	}
 
 	/** As above to either kind of base - a colony, or the player's outpost (its station is the depot). */
-	public static Convoy stageTo(ThreatBases.Base target, FactionAPI faction, int tier, Random random) {
-		MarketAPI donor = stageDonor(target, faction, tier);
+	public static Convoy stageTo(ThreatBases.Base target, FactionAPI faction, int[] levers, Random random) {
+		MarketAPI donor = stageDonor(target, faction, levers);
 		if (donor == null) return null;
-		return dispatch(ThreatBases.of(donor), target, faction, stageLoad(donor, target, tier),
+		return dispatch(ThreatBases.of(donor), target, faction, stageLoad(donor, target, levers),
 				random, null, false);
 	}
 
 	/**
-	 * What a hand-ordered convoy from this donor carries to this target at a
-	 * load tier: what the target is short of its staging target, or of its
-	 * reference stock (Min), that times convoyExtraLoadFactor (Med), or
-	 * everything the donor can spare (Max - the 2026-09-05 rule, kept as the
-	 * override the player reaches for when the shortfall is not the point). A
-	 * run to an OUTPOST banks nothing, so nothing there is short of anything:
-	 * its Min is a reference load, Med that times convoyExtraLoadFactor.
-	 * Every tier is capped by what the donor holds above its sortie floor
-	 * (ThreatReserves.available) - no longer by a hull load (2026-09-29).
-	 * The planner's rules (the donor keep, a worthwhile load, a
-	 * staging base's own siege needs, convoy range) are for the automatic
-	 * traffic, not the override. A player donor's load is fitted to its own
-	 * free hulls here, so the board quotes exactly what dispatch will carry.
+	 * What a hand-ordered convoy from this donor carries to this target at the colonies table's
+	 * levers (the user, 2026-10-28): {@link #leverLoad} - each good's share of what the donor
+	 * spares above its sortie floor, and to another of the player's colonies the Hulls lever's
+	 * share of its own free hulls ("supplies button moves hulls"; an outpost has no hull share to
+	 * land). AID_COMMODITIES order, 5 long. Until 2026-10-28 the Amount ladder sized it to the
+	 * target's shortfall (Min), that x convoyExtraLoadFactor (Med) or everything (Max). The
+	 * planner's rules (the donor keep, a worthwhile load, a staging base's own siege needs, convoy
+	 * range) are for the automatic traffic, not the hand order. A player donor's load is fitted
+	 * to its own free hulls here, so the board quotes exactly what dispatch will carry.
 	 */
-	public static float[] stageLoad(MarketAPI donor, MarketAPI target, int tier) {
-		return stageLoad(donor, ThreatBases.of(target), tier);
+	public static float[] stageLoad(MarketAPI donor, MarketAPI target, int[] levers) {
+		return stageLoad(donor, ThreatBases.of(target), levers);
 	}
 
 	/** As above to either kind of base. */
-	public static float[] stageLoad(MarketAPI donor, ThreatBases.Base target, int tier) {
-		float[] load = new float[ThreatReserves.COMMODITIES.length];
-		if (donor == null || target == null) return load;
-		float[] wants = stageWants(target, tier);
-		for (int i = 0; i < load.length; i++) {
-			load[i] = Math.min(wants[i], ThreatReserves.available(donor, ThreatReserves.COMMODITIES[i]));
-		}
-		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) { // freighters draw no hulls from the pool
-			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
-		}
-		return load;
+	public static float[] stageLoad(MarketAPI donor, ThreatBases.Base target, int[] levers) {
+		if (donor == null || target == null) return new float[ThreatReserves.AID_COMMODITIES.length];
+		boolean ownHulls = target.market != null && target.market.isPlayerOwned() && donor.isPlayerOwned();
+		return leverLoad(donor, levers, ownHulls);
 	}
 
 	/**
-	 * The ask of a hand-ordered convoy to this target at a load tier, before any
-	 * donor's cap (the tier rules of {@link #stageLoad}), COMMODITIES order.
+	 * Why no Supplies convoy can sail to this target - the button's disabled tooltip and the
+	 * Confirm: convoys off, every lever at None, or no colony that can spare a load.
+	 * {@code whose} is "yours" or the faction's name.
 	 */
-	public static float[] stageWants(ThreatBases.Base target, int tier) {
-		float[] wants = new float[ThreatReserves.COMMODITIES.length];
-		if (target == null) return wants;
-		float[] targets = target.market != null ? stagingTargets(target.market)
-				: new float[] {0f, 0f, 0f, 0f};
-		for (int i = 0; i < wants.length; i++) {
-			String c = ThreatReserves.COMMODITIES[i];
-			if (tier >= 2) {
-				wants[i] = Float.MAX_VALUE; // everything above the floor
-			} else if (target.isOutpost()) {
-				wants[i] = capacityFor(c) * (tier == 1 ? ThreatIncConfig.convoyExtraLoadFactor() : 1f);
-			} else {
-				float toward = targets[i] > 0f ? targets[i] : ThreatReserves.cap(target.market, c);
-				float shortBy = Math.max(0f, toward - ThreatReserves.stock(target.id(), c));
-				if (tier == 1) shortBy *= ThreatIncConfig.convoyExtraLoadFactor();
-				wants[i] = shortBy;
-			}
-		}
-		return wants;
-	}
-
-	/**
-	 * Why no Supplies convoy can sail to this target at a load tier - the
-	 * button's disabled tooltip and the Confirm: convoys off, the target short of
-	 * nothing at this tier (a staging base above its target; the reason read "no
-	 * colony can spare a load" at Haven, 2026-10-11), or no colony that can spare
-	 * a load. {@code whose} is "yours" or the faction's name.
-	 */
-	public static String stageOffReason(ThreatBases.Base target, int tier, String whose) {
+	public static String stageOffReason(ThreatBases.Base target, int[] levers, String whose) {
 		String name = target != null ? target.name() : "the world";
 		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
-		if (target != null && tier < 2) {
-			boolean nothing = true;
-			for (float w : stageWants(target, tier)) if (w > 0f) nothing = false;
-			if (nothing) return name + " is short of nothing at this amount; set Amount to Max to send a full load.";
-		}
-		return "No colony of " + whose + " can spare a load for " + name + " at this amount.";
+		if (allNone(levers)) return "Every lever is at None.";
+		return "No colony of " + whose + " can spare a load for " + name + ".";
 	}
 
 	/**
@@ -2231,14 +2223,14 @@ public class ThreatConvoys {
 	 * and fuel, not permission); an NPC's as far as the donor's fuel pays
 	 * (stockReachLY).
 	 */
-	public static MarketAPI stageDonor(MarketAPI target, FactionAPI faction, int tier) {
-		return stageDonor(ThreatBases.of(target), faction, tier);
+	public static MarketAPI stageDonor(MarketAPI target, FactionAPI faction, int[] levers) {
+		return stageDonor(ThreatBases.of(target), faction, levers);
 	}
 
 	/** As above to either kind of base. */
-	public static MarketAPI stageDonor(ThreatBases.Base target, FactionAPI faction, int tier) {
+	public static MarketAPI stageDonor(ThreatBases.Base target, FactionAPI faction, int[] levers) {
 		if (target == null || faction == null || !ThreatIncConfig.convoyEnabled()) return null;
-		if (target.starSystem() == null) return null;
+		if (target.starSystem() == null || allNone(levers)) return null;
 		// (2026-10-10: a target without a Waystation could receive nothing; a convoy lands anywhere)
 		MarketAPI best = null;
 		float bestValue = 0f;
@@ -2247,8 +2239,8 @@ public class ThreatConvoys {
 			if (donor == target.market || donor.getStarSystem() == null) continue;
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					target.starSystem().getLocation()) > stockReachLY(donor)) continue;
-			float[] load = stageLoad(donor, target, tier);
-			float value = cargoValue(load[0], load[1], load[2], load[3]);
+			float[] load = stageLoad(donor, target, levers);
+			float value = cargoValue(load);
 			if (value <= 0f) continue;
 			boolean staging = stagingHive(donor) != null;
 			// a donor that is not itself a staging base beats one that is
@@ -2275,73 +2267,30 @@ public class ThreatConvoys {
 	// ------------------------------------------------------------------
 
 	/**
-	 * What a Reinforce convoy to this besieged colony asks for at a load tier, COMMODITIES
-	 * order (marines and heavy armaments only - a reinforcement carries troops and their
-	 * arms): what the defence wants ({@link ThreatGroundFronts#reliefNeed},
-	 * {@link ThreatGroundFronts#defenderArmsNeed}) net of what is at sea to it, never less
-	 * than one reference load - convoyMarineCapacity marines and frontResupplyDays of their
-	 * armaments - so the order is never refused for a defence that already outnumbers the
-	 * army (Arkoman, 2026-10-17: 983 defenders against 143 troops read "wants nothing" and the
-	 * button greyed out; the player decides what is enough) (Min); that times
-	 * convoyExtraLoadFactor (Med); or everything the donor can spare (Max). All zero with no
-	 * Threat front on the world.
+	 * What a Reinforce convoy from this donor carries at the fronts table's levers ({marines,
+	 * arms}; the user, 2026-10-28): {@link #leverLoad} - each lever's share of what the donor
+	 * spares, a donor with a Threat army of its own keeping what its front wants
+	 * ({@link #handSpare}). Until 2026-10-28 the Supply run ladder asked for what the defence
+	 * wanted net of what was at sea (Min), that x convoyExtraLoadFactor (Med) or everything (Max).
 	 */
-	public static float[] reinforceWants(MarketAPI besieged, int tier) {
-		float[] wants = new float[ThreatReserves.COMMODITIES.length];
-		if (besieged == null) return wants;
-		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) return wants;
-		if (tier >= 2) {
-			wants[0] = Float.MAX_VALUE;
-			wants[1] = Float.MAX_VALUE;
-			return wants;
-		}
-		float[] atSea = inbound(besieged.getId(), true); // what will land: a convoy held off by the blockade is not on its way
-		float marinesRef = capacityFor(Commodities.MARINES);
-		wants[0] = Math.max(marinesRef, ThreatGroundFronts.reliefNeed(besieged) - atSea[0]);
-		wants[1] = Math.max(ThreatGroundFronts.landingSupply(marinesRef, ThreatIncConfig.frontResupplyDays()),
-				ThreatGroundFronts.defenderArmsNeed(besieged) - atSea[1]);
-		if (tier == 1) {
-			wants[0] *= ThreatIncConfig.convoyExtraLoadFactor();
-			wants[1] *= ThreatIncConfig.convoyExtraLoadFactor();
-		}
-		return wants;
-	}
-
-	/**
-	 * What a Reinforce convoy from this donor carries at a load tier: the wants, capped by the donor's stock above its
-	 * floor - a donor with a Threat army of its own keeps what its front wants ({@link #frontWorldSpare}: Arkoman,
-	 * 2026-10-28, sent Haven all 945 of the arms its own stalled front was burning) - and, for a player donor under
-	 * the ledger, its own free hulls.
-	 */
-	public static float[] reinforceLoad(MarketAPI donor, MarketAPI besieged, int tier) {
-		float[] load = new float[ThreatReserves.COMMODITIES.length];
-		if (donor == null || besieged == null) return load;
-		float[] wants = reinforceWants(besieged, tier);
-		boolean front = ThreatGroundFronts.hasFront(donor);
-		for (int i = 0; i < 2; i++) {
-			String id = ThreatReserves.COMMODITIES[i];
-			float spare = ThreatReserves.available(donor, id);
-			if (front) spare = Math.min(spare, frontWorldSpare(donor, id));
-			load[i] = Math.min(wants[i], spare);
-		}
-		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) {
-			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
-		}
-		return load;
+	public static float[] reinforceLoad(MarketAPI donor, MarketAPI besieged, int[] levers) {
+		if (donor == null || besieged == null) return new float[ThreatReserves.AID_COMMODITIES.length];
+		return leverLoad(donor, levers, false);
 	}
 
 	/**
 	 * The same-faction colony a Reinforce order would load at: the one whose
 	 * {@link #reinforceLoad} is worth the most (marines first, as cargoValue weighs), a colony
 	 * that is not itself a staging base before one that is; null when nothing can be spared.
-	 * A reinforcement is marines: a donor with none to spare is no donor, as ThreatAid.quoteBattle
-	 * rules for an ally (Haven, 2026-10-28: Max offered "0 marines and 945 heavy armaments" from
-	 * Arkoman, whose 1,548 all hold its own front). No range for the player's hand orders (as
-	 * {@link #stageDonor}).
+	 * With the Marines lever on, a donor with no marines to send is no donor, as
+	 * ThreatAid.quoteBattle rules for an ally (Haven, 2026-10-28: Max offered "0 marines and 945
+	 * heavy armaments" from Arkoman, whose 1,548 all hold its own front). No range for the
+	 * player's hand orders (as {@link #stageDonor}).
 	 */
-	public static MarketAPI reinforceDonor(MarketAPI besieged, FactionAPI faction, int tier) {
+	public static MarketAPI reinforceDonor(MarketAPI besieged, FactionAPI faction, int[] levers) {
 		if (besieged == null || faction == null || !ThreatIncConfig.convoyEnabled()) return null;
-		if (besieged.getStarSystem() == null) return null;
+		if (besieged.getStarSystem() == null || allNone(levers)) return null;
+		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) return null;
 		MarketAPI best = null;
 		float bestValue = 0f;
 		boolean bestIsStaging = true;
@@ -2349,8 +2298,8 @@ public class ThreatConvoys {
 			if (donor == besieged || donor.getStarSystem() == null) continue;
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					besieged.getStarSystem().getLocation()) > stockReachLY(donor)) continue;
-			float[] load = reinforceLoad(donor, besieged, tier);
-			if (load[0] < 1f) continue;
+			float[] load = reinforceLoad(donor, besieged, levers);
+			if (levers[0] > 0 && load[0] < 1f) continue;
 			float value = cargoValue(load[0], load[1], 0f, 0f);
 			if (value <= 0f) continue;
 			boolean staging = stagingHive(donor) != null;
@@ -2364,29 +2313,31 @@ public class ThreatConvoys {
 	}
 
 	/** The board's Reinforce order to the player's own colony: the convoy, or null when none can sail. */
-	public static Convoy reinforceTo(MarketAPI besieged, FactionAPI faction, int tier, Random random) {
-		MarketAPI donor = reinforceDonor(besieged, faction, tier);
+	public static Convoy reinforceTo(MarketAPI besieged, FactionAPI faction, int[] levers, Random random) {
+		MarketAPI donor = reinforceDonor(besieged, faction, levers);
 		if (donor == null) return null;
 		return dispatch(ThreatBases.of(donor), ThreatBases.of(besieged), faction,
-				reinforceLoad(donor, besieged, tier), random, null, false);
+				reinforceLoad(donor, besieged, levers), random, null, false);
 	}
 
-	/** Why no Reinforce convoy can sail to this colony at a load tier - the button's disabled tooltip and the Confirm. {@code whose} is "yours" or the faction's name. */
-	public static String reinforceOffReason(MarketAPI besieged, int tier, String whose) {
+	/** Why no Reinforce convoy can sail to this colony at the fronts table's levers - the button's disabled tooltip and the Confirm. {@code whose} is "yours" or the faction's name. */
+	public static String reinforceOffReason(MarketAPI besieged, int[] levers, String whose) {
 		String name = besieged != null ? besieged.getName() : "the world";
 		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
 		if (besieged != null && !ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) {
 			return "No Threat army on " + name + ".";
 		}
+		if (allNone(levers)) return "Marines and Arms are both at None.";
+		boolean marines = levers[0] > 0;
 		String held = "";
-		if (besieged != null && besieged.getFaction() != null) {
+		if (marines && besieged != null && besieged.getFaction() != null) {
 			for (MarketAPI m : ThreatReserves.marketsOf(besieged.getFaction().getId())) {
 				if (m == besieged || !ThreatGroundFronts.hasFront(m)) continue;
 				float kept = ThreatReserves.frontKeep(m, Commodities.MARINES);
 				if (kept >= 1f) held += " " + m.getName() + "'s " + Misc.getWithDGS((int) kept) + " hold its own front.";
 			}
 		}
-		return "No colony of " + whose + " can spare marines for " + name + "." + held;
+		return "No colony of " + whose + " can spare " + (marines ? "marines" : "heavy armaments") + " for " + name + "." + held;
 	}
 
 	/**
@@ -2674,12 +2625,17 @@ public class ThreatConvoys {
 		c.armaments = loadCommodity(cargo, donor.id(), Commodities.HAND_WEAPONS, load[1]);
 		c.fuel = loadCommodity(cargo, donor.id(), Commodities.FUEL, load[2]);
 		c.supplies = loadCommodity(cargo, donor.id(), Commodities.SUPPLIES, load[3]);
-		// ship hulls come out of the donor faction's built navy (ThreatHulls.give), as units in the hold
+		// ship hulls come out of the donor faction's built navy (ThreatHulls.give), as units in the hold -
+		// or, between two of the player's colonies, off the donor's own share (ThreatHulls.takeShare, 2026-10-28)
 		int hulls = (int) Math.min(hullsIn(load), cargo.getSpaceLeft());
 		if (hulls > 0) {
-			int taken = ThreatHulls.give(faction.getId(), hulls);
+			boolean ownMove = recipientFactionId == null && faction.isPlayerFaction() && donor.market != null
+					&& donor.market.isPlayerOwned() && base.market != null && base.market.isPlayerOwned();
+			int taken = ownMove ? ThreatHulls.takeShare(donor.market, hulls, ThreatAidCapacity.convoyPoints(load))
+					: ThreatHulls.give(faction.getId(), hulls);
 			if (taken > 0) cargo.addCommodity(Commodities.SHIPS, taken);
 			c.ships = taken;
+			c.ownHulls = ownMove && taken > 0;
 		}
 		if (c.marines <= 0f && c.armaments <= 0f && c.fuel <= 0f && c.supplies <= 0f && c.ships <= 0f) {
 			refundEscort(fleet, donor);
@@ -3392,8 +3348,11 @@ public class ThreatConvoys {
 		ThreatReserves.deposit(base.id(), Commodities.HAND_WEAPONS, armaments);
 		ThreatReserves.deposit(base.id(), Commodities.FUEL, fuel);
 		ThreatReserves.deposit(base.id(), Commodities.SUPPLIES, supplies);
-		// ship hulls go to the colony's faction's pool, not its depot (ThreatHulls)
-		if (ships > 0 && base.market != null) {
+		// ship hulls go to the colony's faction's pool, not its depot (ThreatHulls); the player's own
+		// share moved between two of their colonies lands as the receiver's share (2026-10-28)
+		if (ships > 0 && base.market != null && c.ownHulls) {
+			ThreatHulls.landShare(base.market, ships);
+		} else if (ships > 0 && base.market != null) {
 			String owner = base.market.getFactionId();
 			float builtBefore = ThreatHulls.built(owner);
 			ThreatHulls.receive(owner, ships, c.fromName() + " (" + c.factionId + ")");

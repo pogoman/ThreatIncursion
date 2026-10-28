@@ -199,6 +199,34 @@ public class ThreatHulls {
 		return true;
 	}
 
+	/**
+	 * Hull units a player colony's Supplies convoy carries off to another of the player's colonies
+	 * (the user, 2026-10-28: "supplies button moves hulls"): whole units of the colony's own free
+	 * hulls (ThreatAidCapacity.ownFreeFP) above {@code reserveFP} - the points the convoy's own
+	 * freighters and escort hold - come off its share here, never out of the faction's built navy
+	 * ({@link #give}), and land as the receiver's share ({@link #landShare}). Units actually taken.
+	 */
+	public static int takeShare(MarketAPI from, int units, float reserveFP) {
+		if (!enabled() || from == null || units <= 0 || !from.isPlayerOwned()) return 0;
+		int can = (int) Math.floor(Math.max(0f, ThreatAidCapacity.ownFreeFP(from) - Math.max(0f, reserveFP)) / unitFP());
+		int taken = Math.min(units, can);
+		if (taken <= 0) return 0;
+		Map<String, Float> moved = movedMap();
+		moved.put(from.getId(), moved(from) - taken * unitFP());
+		ThreatIncConfig.log("Hulls: " + taken + " units (" + (int) (taken * unitFP()) + " FP) of " + from.getName()
+				+ "'s share sail as cargo");
+		return taken;
+	}
+
+	/** Hull units {@link #takeShare} sent landing at another of the player's colonies: its share from now on. */
+	public static void landShare(MarketAPI home, int units) {
+		if (!enabled() || home == null || units <= 0 || !home.isPlayerOwned()) return;
+		Map<String, Float> moved = movedMap();
+		moved.put(home.getId(), moved(home) + units * unitFP());
+		ThreatIncConfig.log("Hulls: " + units + " units (" + (int) (units * unitFP()) + " FP) landed at "
+				+ home.getName() + " and stay there");
+	}
+
 	/** The faction's standing hulls: its markets' summed, plus what its yards built (built). */
 	public static float standingFP(String factionId) {
 		float sum = built(factionId);

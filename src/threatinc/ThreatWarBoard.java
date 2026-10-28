@@ -1564,7 +1564,7 @@ public class ThreatWarBoard {
 	public static void addFrontButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Fronts fronts) {
 		if (fronts == null || fronts.table == null) return;
 		FactionAPI player = Global.getSector().getPlayerFaction();
-		int supplyTier = intel.getSupplyTier();
+		int[] fl = intel.frontLevers();
 		int n = Math.min(fronts.rows.size(), fronts.buttonRows.size());
 		for (int i = 0; i < n; i++) {
 			FrontRow r = fronts.rows.get(i);
@@ -1609,17 +1609,17 @@ public class ThreatWarBoard {
 						ThreatFactionView.BUTTON_REINFORCE + r.market.getFactionId() + ":" + r.market.getId());
 				reinforce.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
 				if (ownWorld) {
-					MarketAPI donor = ThreatConvoys.reinforceDonor(r.market, player, supplyTier);
-					float[] load = donor != null ? ThreatConvoys.reinforceLoad(donor, r.market, supplyTier) : null;
+					MarketAPI donor = ThreatConvoys.reinforceDonor(r.market, player, fl);
+					float[] load = donor != null ? ThreatConvoys.reinforceLoad(donor, r.market, fl) : null;
 					String from = donor != null ? donor.getName() : "your nearest colony";
-					String why = donor != null ? null : ThreatConvoys.reinforceOffReason(r.market, supplyTier, "yours");
+					String why = donor != null ? null : ThreatConvoys.reinforceOffReason(r.market, fl, "yours");
 					ThreatFactionView.disableWith(main, reinforce, why == null, why,
 							"A convoy brings " + (load != null ? Misc.getWithDGS((int) load[0]) + " marines and "
 									+ Misc.getWithDGS((int) load[1]) + " heavy armaments" : "marines and heavy armaments")
 							+ " from " + from + " to the stockpile of " + r.market.getName()
 							+ "; it waits at the jump-point while the Threat blockades the world.");
 				} else {
-					ThreatAid.Quote q = ThreatAid.quoteAid(r.market, supplyTier);
+					ThreatAid.Quote q = ThreatAid.quoteAid(r.market, ThreatFactionView.frontAidLevers(fl));
 					ThreatFactionView.disableWith(main, reinforce, q.ok(), q.ok() ? null : ThreatNotice.text(q.reason),
 							q.ok() ? q.purpose + ": " + ThreatFactionView.aidCargo(q) + " from " + q.source.getName()
 									+ " to the stockpile of " + r.market.getName()
@@ -1678,10 +1678,10 @@ public class ThreatWarBoard {
 								r.front, r.market)) + " troops at this pace; armaments burn x"
 						+ String.format("%.0f", ThreatIncConfig.frontPushUpkeepMult()) + ".");
 			}
-			String supplyWhy = ThreatConvoys.supplyBlockReason(player, r.market, supplyTier);
-			float[] asked = ThreatConvoys.supplyAsk(r.front, r.market, supplyTier);
+			String supplyWhy = ThreatConvoys.supplyBlockReason(player, r.market, fl);
+			float[] asked = ThreatConvoys.supplyAsk(r.front, r.market, fl);
 			ThreatFactionView.disableWith(main, supply, supplyWhy == null, supplyWhy,
-					"A convoy runs up to " + Misc.getWithDGS((int) asked[0]) + " marines and "
+					"A convoy runs " + Misc.getWithDGS((int) asked[0]) + " marines and "
 					+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your nearest "
 					+ "base to this front.");
 			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market, intel.getSiegeTier());
@@ -1709,7 +1709,7 @@ public class ThreatWarBoard {
 			ThreatFactionView.disableWith(main, pull, pullWhy == null, pullWhy,
 					"A convoy lifts this front off the world and brings it home.");
 		}
-		if (fronts.tierSelector) ThreatFactionView.addSupplyTierSelector(intel, main, fronts.table);
+		if (fronts.tierSelector) ThreatFactionView.addFrontLevers(intel, main, fronts.table);
 	}
 
 	// ---- shared drawing helpers ----
