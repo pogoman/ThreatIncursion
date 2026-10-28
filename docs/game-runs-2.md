@@ -1607,3 +1607,51 @@ run-seeds-34.ps1 (its hw311 round was not started: the lump build took its slot)
   258-394). The swarm is not weaker for leaving gutted worlds.
 - **hw312 / hw313 (rounds 80-81)** re-run the day-0 seeds on the LUMP jar 13:47:52 (section 8 of
   `occupation.md`: nothing while the swarm chews, the stream's worth the day an industry is eaten).
+
+## 85. hw312 - round 80, day-0 set B on the LUMP jar (2026-10-28 13:48-15:02)
+
+Jar 13:47:52 (8e9d7e8b, `occupation.md` 8: nothing to the pool while the swarm chews, the stream's
+worth the day an industry is eaten). Same seeds, same shift and same days as hw310 (fix 4, the
+stream) - the only change between the two rounds is the lump.
+
+| game | war day | hives (hw310) | consumed (hw310) | lift-offs | restores (hw310) | retaken (hw310) | lumps / capped | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw312a | 3,802 | 349 (328) | 217 (191) | 82 | 90 (61) | 71 (34) | 217 / 39 | 0 |
+| hw312b | 3,826 | 274 (288) | 132 (98) | 54 | 66 (56) | 70 (43) | 132 / 20 | 0 |
+| hw312c | 3,820 | 344 (342) | 158 (207) | 67 | 77 (31) | 60 (11) | 158 / 43 | 0 |
+
+- **The lump fires as designed:** 507 payments, 280k of 335k troops' worth paid (84%; the rest cut at
+  the pool cap on small worlds - 102 of the 507 capped). By industry: Orbital Works 74 x (66k of 79k),
+  Mining 96 x (29k of 42k), Heavy Batteries 64 x (32k of 41k), Heavy Industry 40 x (34k of 37k),
+  Military Base 34 x (23k of 28k), Light Industry 42 x (23k of 27k), Refining 31, Farming 34, Ground
+  Defenses 33, Patrol HQ 29, Fuel Production 12, High Command 8, Aquaculture 8, Lion's Guard HQ 2.
+- **The timer works on the ground, the war is unchanged:** districts retaken 71 / 70 / 60 against
+  34 / 43 / 11 on the stream, restores 90 / 66 / 77 against 61 / 56 / 31 - and hives 349 / 274 / 344
+  against 328 / 288 / 342, the swarm's end state the same. (MISREAD, corrected 16:30: the first cut of
+  this read said "hives 144 / 120 / 176, halved" - that was the watcher's last figure at war ~1,800,
+  where it had stopped on a grandidle signal at 14:10, carried by check-hw288.sh's hives field. The
+  census line of the log ("Census: threat hives N") is the end state; the check script reads it now.)
+- 0 exceptions, no hang, 47-48 d/min.
+
+## 86. hw313 - round 81, day-0 set A on the LUMP jar (2026-10-28 15:02-16:23)
+
+Same jar 13:47:52, set A (Amaru Dugas / Poseidon Deimos / Ares Daniels), 3,800 days. No day-0 round
+of the stream consumption exists for set A (hw309 / hw311 never ran), so the comparison is hw300-hw302
+(the endless occupation): 260-394 hives, 4-13 districts retaken.
+
+| game | war day | hives | consumed | lift-offs | restores | claims / reclaims / rebuilds | occupied / retaken | lumps | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw313a | 3,646 | 303 | 157 | 59 | 22 | 256 / 59 / 25 | 37 / 59 | 157 | 0 |
+| hw313b | 3,810 | 343 | 62 | 13 | 32 | 133 / 42 / 20 | 18 / 43 | 62 | 0 |
+| hw313c | 3,673 | 350 | 205 | 76 | 69 | 318 / 71 / 37 | 58 / 71 | 205 | 0 |
+
+- **Set A reads as set B did:** the lump fires (424 payments, 230k of 283k worth paid), districts
+  retaken 59 / 43 / 71 (hw300-hw302: 4-13), restores 22 / 32 / 69, hives 303 / 343 / 350 (hw300-hw302:
+  260-394). The humans fight back on the ground many times more than under the old occupation and the
+  swarm's spread is what it was. 0 exceptions, no hang.
+- **Six games on the lump, the verdict:** the chew window is a real timer (retaken 43-71 a game against
+  11-43 on the stream and 4-13 on the endless occupation) and costs the swarm nothing at the sector
+  level (hives 274-350 against 288-342 / 260-394). Nothing to tune from the data; the open items stand
+  (lift-off strata drain, in-flight strikes on gutted worlds, the unconfirmed defaults).
+- The watcher stopped at 14:10 in hw312 on a `grandidle` signal (5 grand fleets sailed, 0 legs done by
+  war 1,786 - read on each time since hw284) and never watched hw313; `grandidle` joins the ignore list.
