@@ -1458,6 +1458,10 @@
 	# commitments included. reliefMarinesOnlyIfEnough: the relief sails only as one body that meets the whole need.
 	"threatinc_homeUnderAttack": false,  # OFF 2026-10-20 15:35 for the clean comparison hw252/hw253 vs striking hw237/hw238 (the user: "yes try that")
 	"threatinc_reliefMarinesOnlyIfEnough": false,
+	# reliefBringsAll (the user, 2026-10-28, "the bug is the dribble"): a relief for an own invaded world draws everything
+	# every donor in reach holds above its floor, staging banks included (hw302a: Cibola took 13,887 marines in 112
+	# convoys of 100-240 and lost 5 of 5 districts while the Salamanca depot kept 7,315).
+	"threatinc_reliefBringsAll": true,
 	# ONE BODY OR NONE for relief fleets (2026-10-20 11:05) and the hull cap once a faction in joint relief (12:21):
 	# knobs added 19:30 for the bisect against the 10-19 build (hw254); off = sail what was built / promise the pool.
 	"threatinc_reliefOneBody": false,  # OFF 2026-10-20 19:45 bisect round 40 (hw256) vs hw255 / hw254

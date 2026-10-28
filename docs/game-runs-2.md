@@ -1422,3 +1422,13 @@ three each, 11 games) on the performance jar and its two occupation fixes - 258-
 w3,400-3,900 in 75 minutes (hw296: w3,100-3,300), late war 13-41 days a minute (was 20), 0
 exceptions, no world ever freed, grand fleets sail and come home. hw299 was lost to a self-firing
 one-shot task (section 74) and re-run as hw302.
+
+## 78. hw303 - round 71, THE DRIBBLE: reliefBringsAll from the hw302 snapshots (2026-10-28 08:13-)
+
+The user's reading of section 77's Cibola trace (facts, 2026-10-28): "the bug is the dribble. All
+marines available should be brought". Built as `reliefBringsAll` (jar 08:12:49): the relief
+draws everything every donor holds above its floor, staging banks included. hw303a = hw302a's
+day-1,293 snapshot (OceanPena), hw303b = hw302b's day-1,263 (ZhiFarah), 1,500 days, two games,
+driver run-seeds-28.ps1, watcher ignores `nograndfleet`. Read: relief convoys' sizes ("Relief
+pooled ... (need was N)"), districts retaken, worlds freed, and what the swarm's pool does
+against a landing of thousands (the counterGap refill at 400 a day).

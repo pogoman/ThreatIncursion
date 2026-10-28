@@ -2373,10 +2373,13 @@ public class ThreatConvoys {
 	 * floor. The donor keep and a staging base's commitment are a siege's, and no siege is staged while a home
 	 * world is under a Threat army - hw240c: Ragnar Complex kept 9,326 marines for the Hegemony's landing plays
 	 * while Jangala and Yama fell with 200-370. A world under a front gives nothing, as in {@link #spare}. With
-	 * the knob off, {@link #spare}.
+	 * the knob off, {@link #spare}. THE DRIBBLE (the user, 2026-10-28: "the bug is the dribble.
+	 * All marines available should be brought" - hw302a Cibola took 13,887 marines in 112 convoys of
+	 * 100-240 and lost 5 of 5 while Salamanca sat on 7,315): under reliefBringsAll the same rule
+	 * stands on its own, whatever the home-under-attack bundle says.
 	 */
 	public static float reliefSpare(MarketAPI donor, String commodityId) {
-		if (!ThreatIncConfig.homeUnderAttack()) return spare(donor, commodityId);
+		if (!ThreatIncConfig.homeUnderAttack() && !ThreatIncConfig.reliefBringsAll()) return spare(donor, commodityId);
 		if (donor == null) return 0f;
 		if (ThreatGroundFronts.hasFront(donor)) return frontWorldSpare(donor, commodityId);
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - ThreatReserves.floor(donor, commodityId));
