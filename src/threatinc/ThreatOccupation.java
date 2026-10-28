@@ -73,7 +73,10 @@ public class ThreatOccupation {
 			"aquaculture", "mining", "mining_low", "gas_giant_mining", "techmining", "refining",
 			"light_industry", "light_industry_low", "light_industry_high", "light_industry_orbital",
 			"light_industry_orbital_low", "light_industry_orbital_high", "heavy_industry", "orbital_works",
-			"fuel_production", "advanced_fuel_production" };
+			"fuel_production", "advanced_fuel_production",
+			// the military structures (2026-10-28 evening, the user: a claimed Ground Defenses drew plain)
+			"ground_defenses", "heavy_batteries", "heavy_batteries_orbital", "patrol_hq", "military_base",
+			"military_base_orbital", "high_command", "lions_guard" };
 
 	/**
 	 * XStream: our plugin classes write as vanilla's names and vanilla's names read as ours,
@@ -499,17 +502,23 @@ public class ThreatOccupation {
 	}
 	/**
 	 * The claims being consumed now: the oldest, as many as districts held (the user: "the
-	 * number of districts held is the number of industries they can consume in parallel"); a
-	 * military claim only once no producer stands on the world (consumed last).
+	 * number of districts held is the number of industries they can consume in parallel").
+	 * The producers take the slots first; the military claims fill the slots they leave free
+	 * (the user, 2026-10-28 evening, Haven - two producers chewing, a third district's slot
+	 * idle over a claimed Ground Defenses: "military buildings arent actually getting
+	 * consumed"). Before, a military claim waited until no producer stood at all.
 	 */
 	public static List<String> active(GroundFront front, MarketAPI market) {
 		List<String> list = new ArrayList<String>();
 		if (!ThreatIncConfig.occupationConsume() || !occupies(front, market) || front.strataHeld <= 0) return list;
-		boolean producersLeft = !producers(market).isEmpty();
 		for (String id : claims(front)) {
 			if (list.size() >= front.strataHeld) break;
-			if (market.getIndustry(id) == null) continue;
-			if (producersLeft && isMilitary(id)) continue;
+			if (market.getIndustry(id) == null || isMilitary(id)) continue;
+			list.add(id);
+		}
+		for (String id : claims(front)) {
+			if (list.size() >= front.strataHeld) break;
+			if (market.getIndustry(id) == null || !isMilitary(id) || list.contains(id)) continue;
 			list.add(id);
 		}
 		return list;

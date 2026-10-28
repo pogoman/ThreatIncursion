@@ -434,6 +434,35 @@ flag through `OccupiedIndustry.underConstruction()` (each plugin: `super.isBuild
 rethrows a `StackOverflowError`. Rule: occupation code never asks an Occupied plugin's `isBuilding`,
 `isUpgrading` or `isFunctional` - they answer through `consuming`.
 
+**Fix 5 (2026-10-28 evening, the user's save - Haven, Farming "Consumed: 46 days left", a claimed Ground
+Defenses with no bar and no green: "military buildings arent actually getting consumed? even though it
+says they are").** They were waiting: `active` let a military claim consume only once NO producer stood
+on the world, so with two producers chewing a third district's slot sat idle over the claimed Ground
+Defenses, and the claimed-military images did not exist (`IMAGES` held the producers only, so the card
+drew vanilla's plain picture). Now (1) `active` fills the slots producers first, then the military claims
+in whatever slots the producers leave free - the military still come after the producers in priority,
+never ahead of one, but no held district idles; (2) the eight military images (ground_defenses,
+heavy_batteries, heavy_batteries_orbital, patrol_hq, military_base, military_base_orbital, high_command,
+lions_guard) have their dark-green copies (`tools/occupied-images.ps1`, `IMAGES`). Judgement call to
+confirm: "consumed last" now means "after the producers in the queue", not "only once every producer
+is gone" - with one district held and a producer standing, the military still wait.
+
+**A station over the front (same message: "this colony has a battlestation, the swarm as a priority
+should bud fleets to take that out as it multiplies ground defence by 2x/3x").** Vanilla's station
+multiplies the ground defence while it flies (OrbitalStation DEFENSE_BONUS: x1.5 orbital, x2
+battlestation, x3 star fortress) and holds the orbit against any landing; Haven's came back from its
+repairs over the occupation with no swarm fleet left above it, and the pool ("cannot match 281 FP over it,
+0 FP in the ground") could never bud against it - under consumption the pool fills only by the lump.
+Now `ThreatGroundFronts.stationOverFront` (a hostile station flying, `stationFlies`, over a world the
+swarm's army stands on) makes `wantsExpedition` true: the next strike answers it first (relief-first,
+`strikeReinforceWeight`), sized by the staged planner to the defence seen x `strikeStagedMargin` - the
+station counted (`targetDefence`) - and it goes to that world alone (`launchStrike`'s relief rule). Two
+supports: the swarm's army on a world is its eyes in that system (`ThreatSwarmIntel.armyIn`, in
+`eyesIn`), so the place's defence figure is a live daily read, not the one from before the landing; and
+a front's relief passes the opening gates (`pickStrikeTarget` / `stagedCandidates`: the player grace,
+the core-world phase, `warOpen`) - the war there is open, the army is on the ground. The pool's own
+only-if-enough rule is unchanged. Jar 17:23:36, untested.
+
 ## 8. THE LUMP (2026-10-28 12:50, the user: troops only once an industry is fully consumed)
 
 The user: "perhaps the threat only gets troops after it fully consumes the industry, so it's

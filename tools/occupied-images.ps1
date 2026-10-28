@@ -24,7 +24,9 @@ $names = @("farming", "farming_low", "farming_med", "farming_high", "aquaculture
     "mining", "mining_low", "gas_giant_mining", "techmining", "refining",
     "light_industry", "light_industry_low", "light_industry_high",
     "light_industry_orbital", "light_industry_orbital_low", "light_industry_orbital_high",
-    "heavy_industry", "orbital_works", "fuel_production", "advanced_fuel_production")
+    "heavy_industry", "orbital_works", "fuel_production", "advanced_fuel_production",
+    "ground_defenses", "heavy_batteries", "heavy_batteries_orbital", "patrol_hq", "military_base",
+    "military_base_orbital", "high_command", "lions_guard")
 
 $icon = [System.Drawing.Bitmap]::FromFile((Resolve-Path "$mod\icons\threat_swarm.png"))
 $box = 52; $pad = 5; $margin = 8

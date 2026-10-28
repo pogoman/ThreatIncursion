@@ -291,7 +291,7 @@ public final class ThreatSwarmIntel {
 				&& Factions.THREAT.equals(f.getFaction().getId()) && f.getFleetPoints() > 0f;
 	}
 
-	/** Whether the swarm has eyes in the system: standing ones, or a live Threat fleet there. */
+	/** Whether the swarm has eyes in the system: standing ones, a live Threat fleet there, or its army on one of its worlds. */
 	protected static boolean eyesIn(StarSystemAPI system) {
 		if (STANDING.contains(system.getId())) return true;
 		Boolean fleet = FLEET_EYES.get(system.getId());
@@ -306,9 +306,23 @@ public final class ThreatSwarmIntel {
 					break;
 				}
 			}
+			// the swarm's army on a world of the system sees its orbit (2026-10-28 evening: Haven's
+			// battlestation came back from its repairs over the occupation with no swarm fleet left
+			// above, and the place's defence figure - what a relief strike is sized to - went stale)
+			if (!fleet && armyIn(system)) fleet = Boolean.TRUE;
 			FLEET_EYES.put(system.getId(), fleet);
 		}
 		return fleet.booleanValue();
+	}
+
+	/** Whether a Threat ground front stands on a world of the system. */
+	protected static boolean armyIn(StarSystemAPI system) {
+		for (ThreatGroundFronts.GroundFront front : ThreatGroundFronts.fronts().values()) {
+			if (!ThreatGroundFronts.isThreatOwned(front) || front.marketId == null) continue;
+			MarketAPI m = Global.getSector().getEconomy().getMarket(front.marketId);
+			if (m != null && m.getStarSystem() == system) return true;
+		}
+		return false;
 	}
 
 	/**

@@ -5179,9 +5179,28 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static boolean wantsExpedition(MarketAPI market) {
 		if (market == null) return false;
 		GroundFront front = getFront(market.getId());
-		if (!isThreatOwned(front) || front.finalPush) return false;
+		if (!isThreatOwned(front)) return false;
+		if (stationOverFront(front, market)) return true;
+		if (front.finalPush) return false;
 		if (needsArms(front)) return front.armaments <= 0f;
 		return !frontCanHold(front, market) || losingGround(front, market);
+	}
+
+	/**
+	 * A hostile station flying over a world the swarm's army stands on - back from its
+	 * repairs, or never beaten - is what the next expedition answers first (the user,
+	 * 2026-10-28 evening, Haven's battlestation: "the swarm as a priority should bud fleets
+	 * to take that out as it multiplies ground defence by 2x/3x"): vanilla's station
+	 * multiplies the ground defence the army fights while it flies (OrbitalStation
+	 * DEFENSE_BONUS - x1.5 orbital, x2 battlestation, x3 star fortress), and holds the orbit
+	 * against any landing ({@link Theatre#orbitHeldAgainst}). The strike is sized to the
+	 * defence seen (IncursionManager.targetDefence counts the station; the army on the
+	 * ground is the swarm's eyes there, ThreatSwarmIntel.armyIn) and takes the world past
+	 * the player-grace, core-world and war-open gates: it relieves a front that stands,
+	 * it opens nothing.
+	 */
+	public static boolean stationOverFront(GroundFront front, MarketAPI market) {
+		return isThreatOwned(front) && market != null && stationFlies(Factions.THREAT, market);
 	}
 
 	/**
