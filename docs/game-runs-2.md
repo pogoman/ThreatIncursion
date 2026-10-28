@@ -1371,3 +1371,25 @@ cap with three games on the machine - the like-for-like read against hw296 (75 m
   when hw301 ends and runs hw302 on it. hw301 (set B) runs on the gate jar meanwhile.
 - hw300c dropped 8 sat bombs (the others 1): the siege-path sat bomb fires where the hive has
   industries to disrupt, and this game's targets had them.
+
+## 76. hw301 - round 69, set B three games on the stand-down-gate jar (2026-10-28 01:17-02:33)
+
+Set B (shifted: ZhiFarah / AphelionDysnomia / OceanPena) from day 0 on jar 00:00:03, driver
+run-seeds-26.ps1's last round, 75 minutes to the cap.
+
+| game | war day | hives | worlds occupied | districts retaken | grand fleet sails | sat bombs | stand-downs / absorbs | late war d/min (w2,900-3,900) | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw301a | 3,663 | 339 | 24 | 5 | 12 | 0 | 14 / 14 | 28 | 0 |
+| hw301b | 3,137 | 284 | 44 | 12 | 19 | 0 | 30 / 29 | 13 | 0 |
+| hw301c | 3,890 | 352 | 36 | 5 | 4 | 0 | 96 / 121 | 29 | 0 |
+
+- Set B's read matches set A's (hw300): 284-352 hives, 24-44 worlds occupied, 5-12 districts
+  retaken, no world freed, grand fleets sail 4-19 times and come home, 0 exceptions, 0 "Daily
+  strike ... bombarded". hw297 (set B, the v3 jar) had 274 / 306 / 316 hives at w3,120-3,339.
+- Late war 13-29 days a minute; hw301b is the slow one (w3,137 at the cap, 44 worlds occupied -
+  the most fleets parked). The occupation's stand-downs ran 14-96 times, absorbs 14-121.
+- No NPC sat bomb this round (hw300: 1 / 1 / 8): the siege path drops it only where the hive
+  has industries to disrupt and the flotilla carries the price.
+
+hw302 (round 70, the set B re-run of the lost hw299) follows on the absorb-room jar
+(`handover-26-27b.sh`: kill, rebuild, commit, launch).
