@@ -327,6 +327,8 @@ public class ThreatIncConfig {
 	public static float strikeFrontSupplyDays() { return f("threatinc_strikeFrontSupplyDays"); }
 	/** How much of a colony's banked reserve marines defend the ground against a front. */
 	public static float reserveDefenseMult()  { return f("threatinc_reserveDefenseMult"); }
+	/** MANNED DEFENCES (2026-10-28): points of a colony's ground-defence score one armed marine mans (ThreatGroundFronts.mannedGarrison); 0 = every point counts unmanned. */
+	public static float groundDefencePerMarine() { return f("threatinc_groundDefencePerMarine"); }
 	/** Troops of ground strength that count as one fleet point in a faction's Strength score (ThreatFactionView.strengthOf; the user, 2026-10-24). */
 	public static float scoreTroopsPerPoint() { return f("threatinc_scoreTroopsPerPoint"); }
 	/** Light-years a siege is priced over when a faction's Strength score reads what its fuel pays (ThreatFactionView.strengthOf). */

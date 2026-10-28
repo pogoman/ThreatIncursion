@@ -662,6 +662,11 @@ public class ThreatReserves {
 		}
 		float floor = basis * (market.isPlayerOwned() ? ThreatIncConfig.playerReserveFloorFraction()
 				: ThreatIncConfig.reserveFloorFraction());
+		// MANNED DEFENCES (2026-10-28): an NPC colony keeps the marines that man its garrison
+		// (ThreatGroundFronts.manningNeed); the player's orders may still commit the whole regiment
+		if (Commodities.MARINES.equals(commodityId) && !market.isPlayerOwned()) {
+			floor = Math.max(floor, ThreatGroundFronts.manningNeed(market));
+		}
 		// the shortage's answer first (user, 2026-10-06): supplies held for a
 		// producer the market cannot yet pay sit above the floor, so upkeep and
 		// hunts leave them (ThreatFactionStock.hold; the builder's own pass

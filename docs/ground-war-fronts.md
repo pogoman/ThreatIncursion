@@ -35,6 +35,10 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   (dead in 33 by the attrition rule). Dug in never holds a push by cover alone, it slows it and
   cuts the losses; only a push back cancels it, so every hold figure (`deployWant`, the tooltip's
   "Needs N marines pushing to hold") sizes marines pushing back. A is `effectiveStrength`; D is the hive's
+  `defenderStrength`, or for a colony MANNED DEFENCES (2026-10-28): `mannedGarrison` - the
+  ground-defence score only as far as the armed marines man it, `groundDefencePerMarine` (20) a
+  marine, none man nothing - plus the armed marines at weight 1; an NPC colony keeps `manningNeed`
+  marines as a reserve floor (`ThreatReserves.floor`). The older text: D is the hive's
   `defenderStrength`, or a colony's garrison plus armed marines at weight 1 (`colonyGarrison +
   colonyMarineDefense`); D' is `defenderPressure` - `counterAttackStrength` (the force
   figure itself; the military command x1.5 went 2026-10-24), or x `hiveCounterAttackPace`

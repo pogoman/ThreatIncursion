@@ -387,6 +387,15 @@
 	"threatinc_strikeFrontSupplyDays": 90,
 	# banked reserve marines that defend the ground when a colony is invaded
 	"threatinc_reserveDefenseMult": 1.0,
+	# MANNED DEFENCES (the user, 2026-10-28: "50 marines with enough ground defences could hold
+	# 1000s at bay, but once the last falls ground defence score has no impact and battle is
+	# lost"): a colony's ground-defence score counts only as far as its armed marines man it, this
+	# many points a marine (Haven's 93 man all of its 1,674; 50 would man 1,000; none man nothing,
+	# and the landing then takes a district every frontLineBaseDays). An NPC colony keeps the
+	# marines that man its whole score as a floor no sortie or convoy draws below
+	# (ThreatReserves.floor); the player's orders may commit the whole regiment as before.
+	# 0 = every point counts, manned or not
+	"threatinc_groundDefencePerMarine": 20,
 	# a faction's Strength score on its board (the user, 2026-10-24): navy FP +
 	# ground strength / this many troops a point + the FP of sieges its depots
 	# pay (expeditionSuppliesPerPoint, expeditionFuelPerPointLY over this range)

@@ -432,13 +432,13 @@ public class ThreatGroundFronts {
 			// dug-in defenders fight from cover they have earned (2026-10-17);
 			// over-extended ones are spread thin (2026-10-24)
 			GroundFront front = getFront(market.getId());
-			return (colonyGarrison(market) + colonyMarineDefense(market, 1f))
+			return (mannedGarrison(market) + colonyMarineDefense(market, 1f))
 					* defenderCoverMult(front) * defenderOverExtendMult(front);
 		}
 		public float counterAttackStrength(MarketAPI market) {
 			// the garrison mounts the counter-attack; the stockpile's marines
 			// mostly hold the line they are standing on
-			return (colonyGarrison(market)
+			return (mannedGarrison(market)
 					+ colonyMarineDefense(market, ThreatIncConfig.marineCounterAttackMult()))
 					* defenderOverExtendMult(getFront(market.getId()));
 		}
@@ -946,6 +946,37 @@ public class ThreatGroundFronts {
 	}
 
 	/**
+	 * MANNED DEFENCES (the user, 2026-10-28: "what if we made [ground defences] a loss modifier
+	 * for the stationed marines ... 50 marines with enough ground defences could hold 1000s at
+	 * bay, but once the last falls ground defence score has no impact and battle is lost"): the
+	 * garrison counts only as far as the armed marines on the world man it,
+	 * groundDefencePerMarine (20) points a marine - Haven's 93 man all of its 1,674, 50 would man
+	 * 1,000, none man nothing, and with the last marine gone the landing takes a district every
+	 * frontLineBaseDays. The marines' losses need no rule of their own: the attrition rule bills
+	 * them on enemy force over their own, and the defences they man are in that figure. Knob 0 =
+	 * every point counts, manned or not (the rule before).
+	 */
+	public static float mannedGarrison(float garrison, float armed) {
+		float per = ThreatIncConfig.groundDefencePerMarine();
+		if (per <= 0f) return garrison;
+		return Math.min(garrison, Math.max(0f, armed) * per);
+	}
+
+	/** The colony's garrison as its armed marines man it now ({@link #mannedGarrison(float, float)}). */
+	public static float mannedGarrison(MarketAPI market) {
+		if (market == null) return 0f;
+		return mannedGarrison(colonyGarrison(market), ThreatReserves.armedMarines(market));
+	}
+
+	/** Marines that man the colony's whole garrison - the standing stock an NPC colony keeps (ThreatReserves.floor); 0 with the knob off or on a hive. */
+	public static float manningNeed(MarketAPI market) {
+		if (market == null || isHiveTarget(market)) return 0f;
+		float per = ThreatIncConfig.groundDefencePerMarine();
+		if (per <= 0f) return 0f;
+		return (float) Math.ceil(colonyGarrison(market) / per);
+	}
+
+	/**
 	 * What the colony's stockpiled marines add to its defence: the ones that
 	 * are actually armed ({@link ThreatReserves#armedMarines}), times
 	 * {@code reserveDefenseMult}, times what their experience is worth
@@ -1120,7 +1151,7 @@ public class ThreatGroundFronts {
 			d = defenderStrength(market);
 			coverD = 1f;
 		} else {
-			d = (colonyGarrison(market) + colonyMarineDefense(market, 1f)) * defenderOverExtendMult(front);
+			d = (mannedGarrison(market) + colonyMarineDefense(market, 1f)) * defenderOverExtendMult(front);
 			coverD = defenderCoverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
 		}
 		float coverA = coverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
@@ -1356,9 +1387,10 @@ public class ThreatGroundFronts {
 			float perMarine = Math.max(0f, ThreatIncConfig.reserveDefenseMult())
 					* (defendersDry(market) ? Math.max(0f, ThreatIncConfig.frontDryEffectivenessMult()) : 1f)
 					* ThreatMarineXP.effectMult(ThreatMarineXP.colonyLevel(market));
-			d = (garrison + perMarine * armed) * over;
+			float manned = mannedGarrison(garrison, armed); // the defences this many marines man (2026-10-28)
+			d = (manned + perMarine * armed) * over;
 			coverD = defenderCoverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
-			pressure = (garrison + perMarine * Math.max(0f, ThreatIncConfig.marineCounterAttackMult()) * armed) * over;
+			pressure = (manned + perMarine * Math.max(0f, ThreatIncConfig.marineCounterAttackMult()) * armed) * over;
 		}
 		return lineRateOf(a, coverA, d, coverD, pressure, landingPushes, worldPushes);
 	}
@@ -5378,8 +5410,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** The line's rate with {@code armed} marines banked on the world ({@link #reliefNeed(MarketAPI, float)}). */
 	private static float reliefRate(float a, float coverA, float coverD, float garrison, float perMarine,
 			float counter, float staff, float armed, boolean landingPushes, boolean worldPushes) {
-		float d = garrison + perMarine * armed;
-		float pressure = (garrison + perMarine * counter * armed) * staff;
+		float manned = mannedGarrison(garrison, armed); // the defences this many marines man (2026-10-28)
+		float d = manned + perMarine * armed;
+		float pressure = (manned + perMarine * counter * armed) * staff;
 		return lineRateOf(a, coverA, d, coverD, pressure, landingPushes, worldPushes);
 	}
 

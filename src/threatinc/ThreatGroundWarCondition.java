@@ -185,7 +185,7 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		// own Ground defenses readout on this screen shows the garrison stat
 		// alone and never counts marines, so without this line the two numbers
 		// disagree with nothing to explain them.
-		float garrison = ThreatGroundFronts.colonyGarrison(market);
+		float garrison = ThreatGroundFronts.mannedGarrison(market); // the defences the marines man (2026-10-28)
 		float armed = ThreatReserves.armedMarines(market);
 		if (armed > 0f) {
 			tooltip.addPara("Of that, %s garrison and %s marines deployed, %s.", 3f, h,

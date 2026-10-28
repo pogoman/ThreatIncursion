@@ -1103,7 +1103,7 @@ public class ThreatFactionView {
 		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
 			if (m == null || !m.isInEconomy()) continue;
 			s.colonies++;
-			s.garrisons += ThreatGroundFronts.colonyGarrison(m);
+			s.garrisons += ThreatGroundFronts.mannedGarrison(m); // the defences the marines man (2026-10-28)
 			s.marineDefence += ThreatGroundFronts.colonyMarineDefense(m, 1f);
 		}
 		s.supplies = ThreatReserves.factionStock(factionId, Commodities.SUPPLIES);
