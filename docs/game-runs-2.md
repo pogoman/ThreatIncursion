@@ -1508,3 +1508,28 @@ restores, districts retaken, the lifted swarms' fate.
   as before (the line's force terms, unchanged).
 - Fixes 2 + 3 (no Building label, the rebuild rule, building producers count, no strike for nothing,
   buds re-banked) built as jar 10:10:43; **hw306 (round 74)** on it from 10:11, the same snapshots.
+
+## 81. hw306 - round 74, CONSUMPTION fixes 2 + 3 from the hw302 snapshots (2026-10-28 10:11-10:34)
+
+Jar 10:10:43 (035d4e6b): no "Building" label, THE REBUILD RULE (a released claim rebuilds from where
+it was eaten), building producers count, no strike for nothing, buds re-banked. Same snapshots as
+hw305, 1,500 days, two games, driver run-seeds-31.ps1.
+
+| game | war day | hives | consumed | lift-offs (eaten: n) | restores / holds | claims / reclaims / rebuilds | occupied / retaken | re-landings (< 180 d) | lifted FP / re-banked | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw306a | 1,622 (HUNG) | 134 | 32 | 9 (1: 1, 2: 4, 3: 1, 4: 3) | 2 / 2 | 44 / 1 / 1 | 5 / 1 | 6 (6) | 4,129 / 1,705 | 0 |
+| hw306b | 2,768 | 217 | 91 | 31 (0: 2, 1: 2, 2: 4, 3: 8, 4: 9, 5: 3, 6: 3) | 26 / 53 | 127 / 20 / 12 | 23 / 20 | 16 (6) | 22,362 / 16,373 | 0 |
+
+- **The rebuild rule fires** (hw306b: 12 of 20 reclaims had been eaten into): "Ilm reclaims Mining
+  ... rebuilding from 15% eaten, 9 days to rebuild", "Athulf reclaims Heavy Industry ... 72% eaten, 87
+  days" - the eaten share of the build time, vanilla's own build, no price.
+- **hw306b = hw305b's shape:** 91 consumed (Heavy Industry 13, Mining 12, Orbital Works 11, Heavy
+  Batteries 9, Ground Defenses 9, Light Industry 8, Farming 8, Refining 7, Patrol HQ 6, Military Base 4,
+  Fuel Production 3), 31 worlds left, 26 restores + 53 holds, 20 districts retaken, 16.4k of 22.4k
+  lifted FP re-banked, hives 217 at d2,768 (hw305b 253, hw303b 251 - one game's variance or the
+  swarm's own strata leaving on every lift-off: to watch over more seeds). Two empty-handed landings
+  (Lost Astropolis: a strike in flight in the snapshot).
+- **hw306a HUNG at campaign day 325 (war 1,622) at 10:19** after the d1,620 snapshot: the clock
+  stood through three nudges, no exception, the last log lines ordinary (a grand fleet muster, a
+  budding). The only earlier hang on record is hw296 (2026-10-27). Re-run as **hw307a** (round 75, the
+  same snapshot, 10:52) to see whether it repeats on this jar.
