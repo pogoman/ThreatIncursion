@@ -1459,3 +1459,13 @@ against a landing of thousands (the counterGap refill at 400 a day).
   nothing left is abandoned for the next) - under discussion (after-effects listed in chat:
   the builder must restore consumed industries, Population / Spaceport never eaten, military
   last, deciv hold outlives the occupation, lift-off = the pool sails as a strike).
+
+## 79. hw304 - round 72, CONSUMPTION from the hw302 snapshots (2026-10-28 09:30-)
+
+The user's plan after section 78 (facts DECISION 09:30): the swarm CONSUMES each claimed industry over
+its build time and removes it, military last, no lump reward, as many at once as districts held; a
+world with nothing left to claim is left (the pool and troops re-embark for the nearest hive) and the
+owner's builder restores what was eaten, quickest first. Built 09:28 (jar 09:28:55, 0e343617;
+`occupation.md` 7). hw304a = hw302a d1,293 (OceanPena), hw304b = hw302b d1,263 (ZhiFarah), 1,500 days,
+two games, driver run-seeds-29.ps1. Read: industries consumed and the clocks ("has consumed"), worlds
+gutted and left ("lifts off"), the builder's restores, districts taken / retaken, exceptions.
