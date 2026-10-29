@@ -133,6 +133,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		interval.advance(days);
 		if (!interval.intervalElapsed()) return;
 
+		// the player's calls for aid are looked at daily (ThreatAidRequests.tick paces itself by aidRequestCheckDays), not on the
+		// 30-day tick below - there every faction sat "not looked at yet" for weeks (the user, 2026-10-29 night: "no one is responding")
+		if (ThreatIncConfig.enabled()) ThreatAidRequests.tick(random);
+
 		if (!ThreatIncConfig.enabled()) return;
 
 		// testing aid: grant the Mk.I sensor mods (10x detection vs Threat) that a
@@ -440,8 +444,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatAlarm.decay();
 		// allies answer open coalition calls and help each other's colonies
 		ThreatCoalition.tick(random);
-		// the player's requests for aid are answered, then the war comms speak of the ledger's needs (docs/war-effort-rework.md)
-		ThreatAidRequests.tick(random);
+		// shortages are dated for the comms; the player's calls for aid run on the interval above (ThreatAidRequests.tick)
+		ThreatAidRequests.tickShortages();
+		// the war comms speak of the ledger's needs (docs/war-effort-rework.md)
 		ThreatNeeds.tick(random);
 		manageMissions();
 		checkPhaseAnnouncements();

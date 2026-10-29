@@ -172,11 +172,19 @@ public class ThreatAidRequests {
 		return market.getId() + ":" + commodityId;
 	}
 
-	/** Slow tick: remember when shortages began; then every faction's daily look at the player's requests, and what was lost at sea. */
-	public static void tick(Random random) {
+	/** Slow tick (IncursionManager.tick): remember when shortages began. */
+	public static void tickShortages() {
 		if (!ThreatWarState.enabled()) return;
 		updateShortages();
 		Global.getSector().getPersistentData().remove(KEY_ASKED);
+	}
+
+	/**
+	 * Every half day (IncursionManager.advance's interval, 2026-10-29 night - on the 30-day tick no faction ever looked):
+	 * each faction's look at the player's requests once aidRequestCheckDays have passed since its last, and what was lost at sea.
+	 */
+	public static void tick(Random random) {
+		if (!ThreatWarState.enabled()) return;
 		if (!ThreatIncConfig.aidRequestsEnabled()) return;
 		for (Request r : new ArrayList<Request>(requests())) {
 			migrate(r);
@@ -260,7 +268,6 @@ public class ThreatAidRequests {
 		if (!ThreatIncConfig.aidRequestsEnabled()) return "Requests for aid are disabled in the mod settings.";
 		if (market == null || !market.isPlayerOwned()) return "Not your colony.";
 		if (!ThreatWarState.isAtWar(Factions.PLAYER)) return "Your faction is not mobilised.";
-		if (candidates().isEmpty()) return "No faction is Favourable or better with you.";
 		return null;
 	}
 
@@ -302,9 +309,9 @@ public class ThreatAidRequests {
 		if (asked.isEmpty()) return r;
 		r.checkedAt().clear();
 		ThreatIncConfig.log("Aid requested for " + market.getName() + ": " + ThreatWarBoard.join(asked));
-		ThreatNotice.titled("Call For Aid").icon(market.getFaction())
-				.line("%s calls the sector for %s", ThreatNotice.market(market), ThreatWarBoard.join(asked))
-				.line("Every faction at Favourable or better looks at it daily; it stands until answered or withdrawn")
+		// an SOS (the user, 2026-10-29 night: "you dont know if anyone is coming"): the call, nothing of how it is answered
+		ThreatNotice.titled("Distress Call").icon(market.getFaction())
+				.line("%s calls for %s", ThreatNotice.market(market), ThreatWarBoard.join(asked))
 				.send();
 		return r;
 	}
@@ -322,10 +329,8 @@ public class ThreatAidRequests {
 		r.withdrawn = true;
 		boolean sailing = r.anyAtSea();
 		if (!sailing) requests().remove(r);
-		ThreatNotice n = ThreatNotice.titled("Call Withdrawn").icon(market.getFaction())
-				.line("%s's call for aid is withdrawn", ThreatNotice.market(market));
-		if (sailing) n.line("What is already sailing still lands");
-		n.send();
+		ThreatNotice.titled("Call Withdrawn").icon(market.getFaction())
+				.line("%s withdraws its call", ThreatNotice.market(market)).send();
 		ThreatIncConfig.log("Aid request withdrawn for " + market.getName() + (sailing ? " (parts at sea)" : ""));
 		return true;
 	}
@@ -352,11 +357,15 @@ public class ThreatAidRequests {
 			String good = ThreatReserves.AID_COMMODITIES[i];
 			float need = needOf(needs, good, tier);
 			float sent = load != null && i < load.length ? load[i] : 0f;
-			if (need <= 0f || sent + 0.5f >= need) continue;
+			// short: under the colony's need of it, or nothing of it to send at all from any colony of the
+			// player's (2026-10-29 night: a world with no need on the ledger could never ask - "once i request
+			// marines at haven i cant request marines at arkoman")
+			boolean short_ = need > 0f ? sent + 0.5f < need : sent < 1f;
+			if (!short_) continue;
 			Part p = new Part();
 			p.good = good;
 			p.tier = tier;
-			p.amount = need - sent;
+			p.amount = Math.max(0f, need - sent);
 			out.add(p);
 		}
 		return out;
@@ -397,26 +406,23 @@ public class ThreatAidRequests {
 		return most;
 	}
 
-	/** "320 marines, 1,200 fuel and 900 fleet points" - the shortfalls of the parts. */
+	/** "marines, fuel and a task force" - what the parts are, no figures (the user, 2026-10-29 night: "keep all the text simple"). */
 	public static String shortText(List<Part> parts) {
-		List<String> bits = new ArrayList<String>();
-		if (parts != null) for (Part p : parts) bits.add(amountText(p));
-		return bits.isEmpty() ? "nothing" : ThreatWarBoard.join(bits);
+		return askText(parts);
 	}
 
-	/** "all of a colony's spare marines and half the hulls a navy has free" - what the parts ask each faction for. */
+	/** "marines, fuel and a task force" - what the parts call for. */
 	public static String askText(List<Part> parts) {
 		List<String> bits = new ArrayList<String>();
 		if (parts != null) for (Part p : parts) bits.add(askLabel(p));
 		return bits.isEmpty() ? "nothing" : ThreatWarBoard.join(bits);
 	}
 
-	/** "all of a colony's spare marines" / "half the hulls a navy has free" - one part's ask. */
+	/** "marines" / "a task force" - one part, the good alone: the tier and the share are the mechanism, not the call. */
 	public static String askLabel(Part p) {
 		if (p == null) return "";
-		String share = p.tier >= 2 ? "all" : "half";
-		if (p.isFleets()) return share + " the hulls a navy has free";
-		return share + " of a colony's spare " + ThreatReserves.label(p.good);
+		if (p.isFleets()) return "a task force";
+		return ThreatReserves.label(p.good);
 	}
 
 	/** "320 marines" / "900 fleet points" - the part's amount. */
@@ -454,7 +460,12 @@ public class ThreatAidRequests {
 			for (Part p : new ArrayList<Part>(r.parts())) {
 				if (!p.open()) continue;
 				String why = tryAccept(r, market, p, helper, random);
-				if (why != null) p.reasons().put(helper.getId(), why);
+				if (why != null) {
+					// the reason is the log's and debug mode's, never the player's (an SOS, 2026-10-29 night)
+					p.reasons().put(helper.getId(), why);
+					ThreatIncConfig.log("Aid request: " + helper.getId() + " cannot take " + p.good + " for "
+							+ market.getName() + " - " + why);
+				}
 			}
 		}
 	}
@@ -658,11 +669,10 @@ public class ThreatAidRequests {
 			FactionAPI helper = Global.getSector().getFaction(p.factionId);
 			ThreatIncConfig.log("Aid request part lost: " + p.factionId + " " + (int) p.amount + " " + p.good + " for "
 					+ market.getName());
-			ThreatNotice n = ThreatNotice.titled("Aid Lost").bad().icon(market.getFaction())
+			ThreatNotice.titled("Aid Lost").bad().icon(market.getFaction())
 					.line("%s's %s for %s was lost on the way", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(p)),
-							ThreatNotice.market(market));
-			if (!r.withdrawn) n.line("The call stands; nothing is charged");
-			n.send();
+							ThreatNotice.market(market))
+					.send();
 			p.factionId = null;
 			p.amount = 0f;
 			p.fromName = null;

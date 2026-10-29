@@ -760,8 +760,7 @@ public class ThreatFactionView {
 									+ ", carrying " + ThreatDeploy.loadText(d.load) + ". Attack sails it."
 							: "Nothing to deploy: " + ThreatDeploy.offReason(d);
 					if (!deployShort.isEmpty()) {
-						deployHelp += " Short of " + ThreatAidRequests.shortText(deployShort)
-								+ " for its needs: asks whether to call for a relief task force.";
+						deployHelp += " Short of " + ThreatAidRequests.shortText(deployShort) + ": asks whether to call for aid.";
 					}
 					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatDeploy.offReason(d), deployHelp);
 					String stageHelp = donor != null ? "A convoy from " + donor.getName() + " brings "
@@ -769,8 +768,7 @@ public class ThreatFactionView {
 									: "what the levers allow") + "."
 							: "Nothing to send: " + ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours");
 					if (!stageShort.isEmpty()) {
-						stageHelp += " Short of " + ThreatAidRequests.shortText(stageShort)
-								+ " for its needs: asks whether to call for aid.";
+						stageHelp += " Short of " + ThreatAidRequests.shortText(stageShort) + ": asks whether to call for aid.";
 					}
 					disableWith(main, stage, stageOk, blocked != null ? blocked
 							: ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours"), stageHelp);
@@ -1044,9 +1042,9 @@ public class ThreatFactionView {
 		Requests out = new Requests();
 		out.table = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(1, "What each faction is asked for: all or half of what one colony of its spares.");
-		main.addTableHeaderTooltip(3, own ? "Who took the part and where it sails from; waiting while no faction has the capacity."
-				: "This faction's answer: its part sailing, another faction's taken, or why it could not at its last daily look.");
+		main.addTableHeaderTooltip(1, "What the world calls for.");
+		main.addTableHeaderTooltip(3, own ? "Who answered and what sails; waiting until someone does."
+				: "This faction's answer; waiting until it or another answers.");
 		main.addTableHeaderTooltip(4, "Days until it lands.");
 		main.addTableHeaderTooltip(5, "Standing with the sender, charged when it lands.");
 		int rowIndex = 0;
@@ -1075,14 +1073,9 @@ public class ThreatFactionView {
 				} else if (taker != null) {
 					answer = ThreatWarState.displayName(taker.getId()) + " answered";
 					answerColor = gray;
-				} else if (own) {
-					answer = "waiting";
-					answerColor = gray;
 				} else {
-					String why = p.reasons().get(faction.getId());
-					float next = ThreatAidRequests.nextCheckIn(r, faction);
-					answer = (why != null ? why : "not looked at yet") + " - looks "
-							+ (next <= 0f ? "today" : "in " + (int) Math.ceil(next) + " d");
+					// an SOS: nothing of who looked or why not until someone answers (debug mode tells, in the tooltip)
+					answer = "waiting";
 					answerColor = gray;
 				}
 				ThreatWarBoard.cell(cells, Alignment.LMID, answerColor,
@@ -1102,20 +1095,25 @@ public class ThreatFactionView {
 					public float getTooltipWidth(Object tooltipParam) { return 460f; }
 					public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 						Color tx = Misc.getTextColor();
-						tooltip.addPara(ThreatAidRequests.askLabel(p) + " for " + m.getName() + ".", tx, 0f);
+						tooltip.addPara(m.getName() + " calls for " + ThreatAidRequests.askLabel(p) + ".", tx, 0f);
 						if (!p.open()) {
+							// answered: the facts (the user, 2026-10-29 night: "once request is accepted then the facts can be given")
 							tooltip.addPara(ThreatWarState.displayName(p.factionId) + ": " + ThreatAidRequests.amountText(p)
 									+ " from " + p.fromName + (p.delivered ? ", landed." : ", ETA "
 									+ (int) Math.ceil(ThreatAidRequests.etaLeft(p)) + " d.") + " Standing -" + p.price
 									+ (p.delivered ? "." : " on receipt."), tx, 4f);
+						} else {
+							tooltip.addPara("No answer yet.", tx, 4f);
 						}
-						for (FactionAPI helper : ThreatAidRequests.candidates()) {
-							if (!own && helper != faction) continue;
-							String why = p.open() ? p.reasons().get(helper.getId()) : null;
-							float next = ThreatAidRequests.nextCheckIn(r, helper);
-							tooltip.addPara(ThreatAidRequests.standLine(helper)
-									+ (p.open() ? " - " + (why != null ? why : "not looked at yet") + "; looks "
-											+ (next <= 0f ? "today" : "in " + (int) Math.ceil(next) + " d") : "") + ".", tx, 4f);
+						if (p.open() && ThreatIncConfig.debugMode()) {
+							for (FactionAPI helper : ThreatAidRequests.candidates()) {
+								if (!own && helper != faction) continue;
+								String why = p.reasons().get(helper.getId());
+								float next = ThreatAidRequests.nextCheckIn(r, helper);
+								tooltip.addPara("[debug] " + ThreatAidRequests.standLine(helper) + " - "
+										+ (why != null ? why : "not looked at yet") + "; looks "
+										+ (next <= 0f ? "today" : "in " + (int) Math.ceil(next) + " d") + ".", Misc.getGrayColor(), 4f);
+							}
 						}
 						tooltip.addPara("Click for the colony screen.", Misc.getGrayColor(), 6f);
 					}
@@ -1144,7 +1142,7 @@ public class ThreatFactionView {
 			ButtonAPI withdraw = intel.addGenericButton(main, WITHDRAW_W, "Withdraw",
 					BUTTON_WITHDRAW + Factions.PLAYER + ":" + marketId);
 			withdraw.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f);
-			disableWith(main, withdraw, true, null, "Withdraws this call; what is already sailing still lands.");
+			disableWith(main, withdraw, true, null, "Withdraws this call.");
 		}
 	}
 
@@ -2131,8 +2129,8 @@ public class ThreatFactionView {
 			if (target == null || open == null) {
 				prompt.addPara("No call for aid stands there any more.", 0f);
 			} else {
-				prompt.addPara("Withdraw the call for aid for " + target.getName() + "?", 0f);
-				if (open.anyAtSea()) prompt.addPara("What is already sailing still lands, and is still charged.", 10f);
+				prompt.addPara("Withdraw " + target.getName() + "'s call for aid?", 0f);
+				if (open.anyAtSea()) prompt.addPara("What is already sailing still lands.", 10f);
 			}
 		} else if (BUTTON_AID_STRIKE.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);

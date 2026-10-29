@@ -101,7 +101,9 @@ force) - and "Call for aid" logs one request a world, a `Part` a good at the lev
 (`request`; an open part of the same good is retiered, one already accepted left alone). It
 **stands until every part lands or the player withdraws it** from the Requests table (`withdraw`;
 parts already sailing still land and are still charged). **Every faction at Favourable or better
-looks at it once a day** on its own clock (`check`, `aidRequestCheckDays` 1; the fixed
+looks at it once a day** on its own clock (`check` from `ThreatAidRequests.tick` on the half-day
+interval of `IncursionManager.advance` - NOT the 30-day `tick()`, where it first sat and no faction
+ever looked, 2026-10-29 night; `aidRequestCheckDays` 1; the fixed
 `aidRequestAnswerDays` wait and the `aidRequestCooldownDays` cooldown went) and **accepts a part it
 has the capacity for** (`tryAccept`): **Max is all that one colony of its spares of the good, Med
 half** - the colony sparing the most in reach (`donors`), at least `aidRequestMinSpare` after the

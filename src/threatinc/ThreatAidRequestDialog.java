@@ -46,17 +46,14 @@ public class ThreatAidRequestDialog implements InteractionDialogPlugin {
 		TextPanelAPI text = dialog.getTextPanel();
 		Color h = Misc.getHighlightColor();
 		Color gray = Misc.getGrayColor();
+		// an SOS (the user, 2026-10-29 night: "keep all the text simple ... you dont know if anyone is coming"):
+		// the shortfall by name and the question, nothing of who answers or how
 		text.addPara(market.getName() + " is short of %s.", h, ThreatAidRequests.shortText(shorts));
 		String why = ThreatAidRequests.requestOffReason(market);
 		if (why != null) {
 			text.addPara(why, gray);
 		} else {
-			text.addPara("A request asks every faction at Favourable or better for %s. Each looks at it daily and "
-					+ "sends what it has; standing with the sender drops by a whole number of points when it lands. "
-					+ "It stands until answered or withdrawn from the war board.", h, ThreatAidRequests.askText(shorts));
-			for (com.fs.starfarer.api.campaign.FactionAPI helper : ThreatAidRequests.candidates()) {
-				text.addPara(ThreatAidRequests.standLine(helper), gray);
-			}
+			text.addPara("Call the sector for aid?", Misc.getTextColor());
 		}
 		dialog.getOptionPanel().clearOptions();
 		if (why == null) dialog.getOptionPanel().addOption("Call for aid", YES);

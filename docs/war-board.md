@@ -129,7 +129,7 @@ dont need to see that table at all").
 Deploy whose load at the levers is under what the colony needs (a good's convoy load under the
 colony's need at the lever's tier, `ThreatAidRequests.transferShortfall`; a Deploy's fleet under
 the fleets need, `deployShortfall` - "deploy would be for a relief task force") sails, then a yes /
-no dialog over the board (`ThreatAidRequestDialog`) lists the shortfall and offers to call for aid;
+no dialog over the board (`ThreatAidRequestDialog`) names the shortfall and asks "Call the sector for aid?";
 a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
 alone. The request is one a world, a part a good, and stands until every part lands or Withdraw.
 **Requests for aid** is a table at the top of every faction tab (`ThreatFactionView.addRequests`;
