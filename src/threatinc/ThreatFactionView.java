@@ -2207,6 +2207,7 @@ public class ThreatFactionView {
 			prompt.addPara("Fleet: %s fleet points of " + d.source.getName() + "'s %s free.", 10f, h,
 					Misc.getWithDGS((int) d.targetPts), Misc.getWithDGS((int) d.ownFree));
 		}
+		if (d.capped) prompt.addPara("One fleet holds at most %s.", 3f, h, Misc.getWithDGS((int) d.targetPts));
 		String[] goods = { "Marines", "Arms", "Fuel", "Supplies" };
 		for (int i = 0; i < 4; i++) {
 			String aboard = d.redeploy() ? ", " + Misc.getWithDGS((int) d.aboard[i]) + " aboard now" : "";

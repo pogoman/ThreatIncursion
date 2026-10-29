@@ -1515,22 +1515,22 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatDebugWar.industryIds(MarketAPI market)` :415
 - `ThreatDebugWar.between(Random random, int min, int max)` :423
 
-## ThreatDeploy (434 lines)
-- `ThreatDeploy.ok()` :70 - The colonies table's levers the plan was made at (ThreatIncursionIntel.colonyLevers).
-- `ThreatDeploy.redeploy()` :75 - Whether a fleet is deployed there already (the button reads Redeploy).
-- `ThreatDeploy.minPoints()` :81 - Smallest fleet a Deploy makes, whole-fleet points (aidGuardMinFP in the ledger's unit).
-- `ThreatDeploy.hullsTier(int[] levers)` :86 - The Hulls lever's tier of a colonies-table lever set (ThreatIncursionIntel.colonyLevers), 0 when it has none.
-- `ThreatDeploy.plan(ThreatBases.Base target, int[] levers)` :98 - The plan for a Deploy / Redeploy at the target at the levers.
-- `ThreatDeploy.outpostSource(ThreatBases.Base target, int[] levers)` :162 - The colony of the player's an outpost's Deploy builds at:
-- `ThreatDeploy.offReason(Plan p)` :181 - The button's one-line tooltip while it is off:
-- `ThreatDeploy.loadText(float[] load)` :186 - "320 marines, 400 arms, 1,200 fuel and 3,000 supplies" - a load's non-zero parts, or "nothing".
-- `ThreatDeploy.execute(Plan p, FactionAPI faction)` :200 - Carries the plan out for the player:
-- `ThreatDeploy.dissolve(Plan p, FactionAPI faction)` :271 - Hulls None with a fleet deployed:
-- `ThreatDeploy.build(MarketAPI source, FactionAPI faction, float combat, CampaignFleetAPI lead, ThreatBases.Base target, String label, float[] builtOut)` :296 - Builds combat combat points at the source as fleets of one fleet's size (ThreatSoftening.fleetCapFor;
-- `ThreatDeploy.reabsorb(CampaignFleetAPI fleet, float pts)` :334 - Takes about pts fleet points of ships off the fleet, smallest first (never its flagship, never the last ship):
-- `ThreatDeploy.compare(FleetMemberAPI a, FleetMemberAPI b)` :341
-- `ThreatDeploy.load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float[] backOut)` :375 - Loads the fleet to the plan's levers from the source's reserve:
-- `ThreatDeploy.isDeployed(ThreatFleetOrders.Order o)` :428 - Whether the guard order is a fleet deployed over the player's own colony (the fleets table's "Deployed").
+## ThreatDeploy (444 lines)
+- `ThreatDeploy.ok()` :73 - The colonies table's levers the plan was made at (ThreatIncursionIntel.colonyLevers).
+- `ThreatDeploy.redeploy()` :78 - Whether a fleet is deployed there already (the button reads Redeploy).
+- `ThreatDeploy.minPoints()` :84 - Smallest fleet a Deploy makes, whole-fleet points (aidGuardMinFP in the ledger's unit).
+- `ThreatDeploy.hullsTier(int[] levers)` :89 - The Hulls lever's tier of a colonies-table lever set (ThreatIncursionIntel.colonyLevers), 0 when it has none.
+- `ThreatDeploy.plan(ThreatBases.Base target, int[] levers)` :101 - The plan for a Deploy / Redeploy at the target at the levers.
+- `ThreatDeploy.outpostSource(ThreatBases.Base target, int[] levers)` :172 - The colony of the player's an outpost's Deploy builds at:
+- `ThreatDeploy.offReason(Plan p)` :191 - The button's one-line tooltip while it is off:
+- `ThreatDeploy.loadText(float[] load)` :196 - "320 marines, 400 arms, 1,200 fuel and 3,000 supplies" - a load's non-zero parts, or "nothing".
+- `ThreatDeploy.execute(Plan p, FactionAPI faction)` :210 - Carries the plan out for the player:
+- `ThreatDeploy.dissolve(Plan p, FactionAPI faction)` :281 - Hulls None with a fleet deployed:
+- `ThreatDeploy.build(MarketAPI source, FactionAPI faction, float combat, CampaignFleetAPI lead, ThreatBases.Base target, String label, float[] builtOut)` :306 - Builds combat combat points at the source as fleets of one fleet's size (ThreatSoftening.fleetCapFor;
+- `ThreatDeploy.reabsorb(CampaignFleetAPI fleet, float pts)` :344 - Takes about pts fleet points of ships off the fleet, smallest first (never its flagship, never the last ship):
+- `ThreatDeploy.compare(FleetMemberAPI a, FleetMemberAPI b)` :351
+- `ThreatDeploy.load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float[] backOut)` :385 - Loads the fleet to the plan's levers from the source's reserve:
+- `ThreatDeploy.isDeployed(ThreatFleetOrders.Order o)` :438 - Whether the guard order is a fleet deployed over the player's own colony (the fleets table's "Deployed").
 
 ## ThreatFabricationVisual (127 lines)
 - `ThreatFabricationVisual.ThreatFabricationVisual(SectorEntityToken target, Color colour, int count)` :52 - Rising (phase C, 2026-10-25):
@@ -1624,7 +1624,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.aided(String f, String c)` :559 - Notes that allies sailed the faction a convoy of the stock.
 - `ThreatFactionStock.describe(String f)` :564 - One line of the faction's plan for the log:
 
-## ThreatFactionView (2767 lines)
+## ThreatFactionView (2768 lines)
 ### selector row (both views)
 - `ThreatFactionView.selectorIds()` :121 - The factions the selector offers:
 - `ThreatFactionView.reserveSelectorRow(TooltipMakerAPI main)` :144 - Reserves the selector row's space in the flow, right after the strip.
@@ -1708,16 +1708,16 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.addOrderPrompt(TooltipMakerAPI prompt, String id, ThreatIncursionIntel intel)` :1802 - The confirm-dialog text for an order button.
 - `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :2133 - The Bombard order's confirm:
 - `ThreatFactionView.addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d)` :2187 - The Deploy / Redeploy order's confirmation:
-- `ThreatFactionView.addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a)` :2220 - The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8):
-- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :2263 - Executes an order button.
-- `ThreatFactionView.purgedInReach(FactionAPI faction)` :2569 - Purged worlds within expedition reach of one of the faction's military worlds.
-- `ThreatFactionView.group(String key)` :2580 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
-- `ThreatFactionView.groupFleet(String key)` :2597 - The fleet of a group key, while it still lives with its group.
-- `ThreatFactionView.groupTargetSystem(String key)` :2612 - The hive system a group key's fleet is sent against.
-- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :2639 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
-- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :2648 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
-- `ThreatFactionView.recall(String factionId, String key)` :2689
-- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2765 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
+- `ThreatFactionView.addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a)` :2221 - The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8):
+- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :2264 - Executes an order button.
+- `ThreatFactionView.purgedInReach(FactionAPI faction)` :2570 - Purged worlds within expedition reach of one of the faction's military worlds.
+- `ThreatFactionView.group(String key)` :2581 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
+- `ThreatFactionView.groupFleet(String key)` :2598 - The fleet of a group key, while it still lives with its group.
+- `ThreatFactionView.groupTargetSystem(String key)` :2613 - The hive system a group key's fleet is sent against.
+- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :2640 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
+- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :2649 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
+- `ThreatFactionView.recall(String factionId, String key)` :2690
+- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2766 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
 
 ## ThreatFeeding (397 lines)
 - `ThreatFeeding.enabled()` :61 - Fleet memory:

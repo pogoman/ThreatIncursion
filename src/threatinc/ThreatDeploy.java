@@ -21,7 +21,8 @@ import com.fs.starfarer.api.util.Misc;
  * med max buttons ... if none hulls set then its the same effect as recall"): the colonies table's
  * Deploy button. A colony's own hulls become ONE fleet in orbit over it, sized by the Hulls lever
  * - None / Med / Max = nothing / half / all of the hulls it has free, the fleet on station counted
- * with them - and loaded from its own reserve at the other four levers: marines and heavy
+ * with them, at most the fleet cap (ThreatIncConfig.fleetMaxFP, 2026-10-29) - and loaded from its
+ * own reserve at the other four levers: marines and heavy
  * armaments as cargo (as many as its berths and holds take), fuel and supplies as figures the
  * fleet carries (ThreatReturns.MEM_FUEL_ABOARD, the hold). The fleet is the colony's staged guard
  * (ThreatFleetOrders.KIND_GUARD over its own colony, until recalled); its hulls are the colony's
@@ -62,6 +63,8 @@ public class ThreatDeploy {
 		public float[] aboard = new float[4], load = new float[4];
 		/** Hulls None with a fleet deployed: it dissolves into the colony. */
 		public boolean dissolve;
+		/** The Hulls lever asked for more than one fleet holds (ThreatIncConfig.fleetMaxFP): targetPts is the cap, the rest stays as hulls. */
+		public boolean capped;
 		/** Why not, one fact per line; null when the order would go. */
 		public ThreatNotice.Reason reason;
 		/** The colonies table's levers the plan was made at (ThreatIncursionIntel.colonyLevers). */
@@ -141,6 +144,13 @@ public class ThreatDeploy {
 		}
 		p.ownFree = Math.max(0f, ThreatAidCapacity.ownFreeFP(p.source));
 		p.targetPts = (float) Math.floor(ThreatConvoys.share(hulls) * (p.ownFree + p.livePts));
+		// THE FLEET CAP (2026-10-29): one fleet holds at most fleetMaxFP, the rest stays as hulls - a Deploy at
+		// Haven came out at 7,325 FP on the capped jar, the one build outside the cap; a Redeploy at the lever
+		// takes a fleet over it back down (reabsorb)
+		if (p.targetPts > ThreatIncConfig.fleetMaxFP()) {
+			p.targetPts = (float) Math.floor(ThreatIncConfig.fleetMaxFP());
+			p.capped = true;
+		}
 		if (p.targetPts < minPoints() - 0.5f) {
 			p.reason = ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(p.source),
 					Misc.getWithDGS((int) p.ownFree))
