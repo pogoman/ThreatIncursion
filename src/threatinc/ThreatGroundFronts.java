@@ -735,7 +735,9 @@ public class ThreatGroundFronts {
 	public static void orderPush(GroundFront front) {
 		if (front == null || STANCE_PUSH.equals(front.stance)) return;
 		front.stance = STANCE_PUSH;
-		front.pushProgress = Math.min(0f, front.pushProgress); // ground being lost stays lost
+		// the ground taken stays taken (the user, 2026-10-29: "digging in shouldn't wipe ground
+		// taken/progress") - until then both orders zeroed a positive pushProgress, so a doctrine
+		// dig-in threw away a half-taken district and a resumed push started from nothing
 		front.consolidateDaysLeft = 0f;
 	}
 
@@ -743,7 +745,6 @@ public class ThreatGroundFronts {
 	public static void orderEntrench(GroundFront front) {
 		if (front == null || STANCE_ENTRENCH.equals(front.stance)) return;
 		front.stance = STANCE_ENTRENCH;
-		front.pushProgress = Math.min(0f, front.pushProgress);
 		front.consolidateDaysLeft = 0f;
 	}
 

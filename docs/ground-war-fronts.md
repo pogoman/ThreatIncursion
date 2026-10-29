@@ -49,8 +49,10 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   marines push unless dug in (`defendersPush`).
 - **Movement** (`tickFront`): `pushProgress += rate x days`. At `+frontLineBaseDays` (6) the
   landing takes a district (`takeStratum`), at `-frontLineBaseDays` it gives one back
-  (`loseStratum`: a held layer, or "Beachhead Overrun" and the front is gone). A Push or Dig
-  in order keeps negative progress and clears positive. Both sides earn XP per district change
+  (`loseStratum`: a held layer, or "Beachhead Overrun" and the front is gone). A Push or Hold
+  order leaves progress as it stands (the user, 2026-10-29: "digging in shouldn't wipe ground
+  taken/progress" - until then both orders cleared positive progress, so a doctrine dig-in threw
+  away a half-taken district). Both sides earn XP per district change
   on the strengths of the day (`ThreatMarineXP.frontEarn` / `colonyEarn`).
 - **Cover under pressure** (`coverStep` / `coverPressure`, 2026-10-28, the user: "a dug in force
   should be breakeable under enough pressure"): a side pushing spends its entrench days as
@@ -400,7 +402,7 @@ carried before (0.83 -> 1.67 of the defence), both sides.
 Two traps this walked into, both worth remembering. The NPC stance AI runs ~180 lines LATER in
 the same `tickFront`, saw the entrench the brace had just ordered, and pushed the front straight
 back out of cover - so the brace was dead for every NPC and Threat front until it learned
-`shouldBrace` too. And `orderPush` and `orderEntrench` BOTH zero `pushProgress`, so a braced
+`shouldBrace` too. And `orderPush` and `orderEntrench` BOTH zeroed `pushProgress` (until 2026-10-29), so a braced
 front restarted its assault from nothing each cycle and, with a push longer than the cadence,
 could never finish one at all; `bracedPushProgress` carries it over.
 
