@@ -1791,3 +1791,20 @@ Read hw318 against hw316 (set B, hysteresis alone: dig-ins 818 / 532 / 749) and 
 the same day 81 / 96 / 8), the worst world 5 in 270 days (Athulf in b: war 1,504 / 1,525 / 1,554 /
 1,673 / 1,769 - weeks apart, where Eldfell and Sphinx flapped daily), 0 exceptions, the fronts take
 and lose districts as before (took 59 / 69 / 90, retaken 5 / 30 / 7).
+
+**hw318 END (05:15, set B on THE DWELL jar; hw316 / hw314 / hw312 in brackets):**
+
+| game | war day | hives (hw316 / hw314 / hw312) | consumed | lift-offs | restores | retaken (hw316 / hw314 / hw312) | dig-ins (worlds 5+, worst) | marines flips | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw318a | 3,805 | 377 (345 / 239 at w3,453 / 349) | 215 | 88 | 36 | 55 (102 / 83 / 71) | 62 (5, Mairaath 8) | 137 | 10 | 0 |
+| hw318b | 3,726 | 292 (202 / 295 / 274) | 170 | 57 | 94 | 84 (127 / 134 / 70) | 60 (3, Yama 7) | 170 | 29 | 0 |
+| hw318c | 3,819 | 251 (333 / 310 / 344) | 101 | 28 | 76 | 83 (144 / 170 / 60) | 59 (1, Skathi 9) | 113 | 80 | 0 |
+
+- **THE FLAP IS GONE:** dig-in lines 62 / 60 / 59 all war against 818 / 532 / 749 on the hysteresis
+  alone and 237 / 117 / 296 on the merged jar; the worst world 7-9 decisions in 3,800 days. The
+  defenders' doctrine changed stance 113-170 times a game, each held ten days.
+- The war's shape on it: hives 377 / 292 / 251 (hw312 349 / 274 / 344), retaken 55 / 84 / 83 -
+  back at the lump jar's 60-71 from the merged jar's 83-170: a swarm front that holds its stance
+  takes and keeps districts the flapping one lost. hw318c: 80 grand-fleet sails, 35 human victories
+  on hives, 143 swarm break-ups - the human offence at its strongest in this seed, hives 251.
+- 0 exceptions, no hang. hw319 (set A) started 05:15 on the same jar.
