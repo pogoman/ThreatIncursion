@@ -119,6 +119,8 @@ public class ThreatGroundFronts {
 		public float pushProgress;
 		/** Checkpoint countdown while consolidating; at 0 the front pushes on. */
 		public float consolidateDaysLeft;
+		/** THE DWELL (2026-10-29): days before NPC / swarm doctrine may change this landing's stance again (doctrineDwellDays). */
+		public float doctrineDaysLeft;
 		public long deployedTimestamp;
 		public long lastCounterAttack;
 		/** Unused since the progress notices went (2026-09-27); kept so saves load. */
@@ -187,6 +189,8 @@ public class ThreatGroundFronts {
 		public String defence;
 		/** Days the defenders have held fire and dug in: their cover ({@link #defenderCoverMult}), lost with a district. */
 		public float defenderEntrenchDays;
+		/** THE DWELL (2026-10-29): days before NPC doctrine may change the defenders' stance again. */
+		public float defenderDoctrineDaysLeft;
 		/** THE OCCUPATION (2026-10-27, ThreatOccupation): the industries the swarm's front has claimed, in claim order. */
 		public List<String> claims;
 		/** Days on the clock toward the next claim. */
@@ -1825,14 +1829,18 @@ public class ThreatGroundFronts {
 				ThreatIncConfig.log("Marines of " + market.getName() + " " + defenderStanceLabel(front)
 						+ " until ordered: the line at " + String.format("%.2f", lineRate(front, market)));
 			}
+		} else if (front.defenderDoctrineDaysLeft > 0f) {
+			front.defenderDoctrineDaysLeft -= elapsedDays; // THE DWELL (2026-10-29), as the landing's
 		} else {
 			boolean wins = doctrineDefendersPush(front, market);
 			boolean dugIn = STANCE_ENTRENCH.equals(front.defence);
 			if (wins && dugIn) {
 				orderDefenderPush(front);
+				front.defenderDoctrineDaysLeft = Math.max(0f, ThreatIncConfig.doctrineDwellDays());
 				ThreatIncConfig.log("Marines of " + market.getName() + " push: the line at " + String.format("%.2f", lineRate(front, market)));
 			} else if (!wins && !dugIn) {
 				orderDefenderEntrench(front);
+				front.defenderDoctrineDaysLeft = Math.max(0f, ThreatIncConfig.doctrineDwellDays());
 				ThreatIncConfig.log("Marines of " + market.getName() + " dig in");
 			}
 		}
@@ -2418,11 +2426,18 @@ public class ThreatGroundFronts {
 		// paces them like everyone else; player fronts push when troops land
 		// (autoPush), when ordered, or by checkpoint doctrine above - a Dig in
 		// order holds until then.
-		if (!front.isPlayerOwned() && !isDry(front) && !lastStratumProtected(front, market)) {
+		// THE DWELL (2026-10-29, hw316a: with the hysteresis the front still flapped push / dig in
+		// every tick at Eldfell - pushing spends the cover that made the push pay, digging in
+		// regrows it): a stance the doctrine chose holds doctrineDwellDays before it looks again
+		if (front.doctrineDaysLeft > 0f) front.doctrineDaysLeft -= elapsedDays;
+		if (!front.isPlayerOwned() && !isDry(front) && !lastStratumProtected(front, market)
+				&& front.doctrineDaysLeft <= 0f) {
 			if (STANCE_ENTRENCH.equals(front.stance) && doctrinePushes(front, market)) {
 				orderPush(front);
+				front.doctrineDaysLeft = Math.max(0f, ThreatIncConfig.doctrineDwellDays());
 			} else if (STANCE_PUSH.equals(front.stance) && !doctrinePushes(front, market)) {
 				orderEntrench(front);
+				front.doctrineDaysLeft = Math.max(0f, ThreatIncConfig.doctrineDwellDays());
 				ThreatIncConfig.log((isThreatOwned(front) ? "Threat" : ownerOf(front)) + " front at "
 						+ market.getName() + " digs in: the push does not pay (line "
 						+ String.format("%.2f", lineRate(front, market)) + ")");

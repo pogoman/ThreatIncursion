@@ -644,6 +644,11 @@
 	# troops / losses a day x this), else digs in for the cover; a push that only slows a loss
 	# digging in would not stop is made regardless
 	"threatinc_doctrinePushBleedMargin": 1.0,
+	# THE DWELL (2026-10-29, hw314 / hw316: the doctrine flapped push / dig in every half-day tick
+	# at parity - pushing spends the cover that made the push pay, digging in regrows it - each
+	# flip wiping the push progress): a stance the doctrine chose holds this many days before it
+	# looks again, a landing's and the defenders' alike; 0 = every tick
+	"threatinc_doctrineDwellDays": 10,
 	# THE ATTRITION RULE (the user, 2026-10-24): a side loses, a day, its troops /
 	# attritionTroopsPer x (the enemy's force / its own force) x 1 / its own cover
 	# x its veteran factor - both sides alike, forces as the board shows them. No

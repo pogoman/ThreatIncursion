@@ -512,6 +512,8 @@ public class ThreatIncConfig {
 	public static float frontLineBaseDays()   { return f("threatinc_frontLineBaseDays"); }
 	/** The line's rate inside which the front reads grinding (both pushing) or stalled, and the landing holds the defence structures rather than wearing everything. */
 	public static float frontGrindBand()      { return f("threatinc_frontGrindBand"); }
+	/** THE DWELL (2026-10-29): days a stance NPC / swarm doctrine chose holds before the doctrine looks again (a landing's and the defenders' alike); 0 = every tick. */
+	public static float doctrineDwellDays()   { return f("threatinc_doctrineDwellDays"); }
 	/** The line's rate past which a side reads overrunning (the other overrun). */
 	public static float frontOverrunRate()    { return f("threatinc_frontOverrunRate"); }
 	/** The rate toward the defenders a colony's marines ask is sized to (ThreatGroundFronts.reliefNeed): push the army back. */

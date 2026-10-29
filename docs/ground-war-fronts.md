@@ -66,7 +66,11 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   (2026-10-28 late, hw314a: at parity the two clauses sat a hair apart and the swarm flapped push /
   dig in every tick - Sphinx 50 times in 130 days - each flip wiping its progress, so the garrison
   retook the world): a front already pushing keeps at a push that slows a loss; a dug-in one resumes
-  only when the push pays, so parity settles dug in, cover kept.
+  only when the push pays, so parity settles dug in, cover kept. THE DWELL (2026-10-29,
+  hw316a on the hysteresis jar: Eldfell still flapped daily - pushing spends the cover that made
+  the push pay, digging in regrows it, so the bleed-out test itself alternates): a stance the
+  doctrine chose holds `doctrineDwellDays` (10) before it looks again, the landing's
+  (`GroundFront.doctrineDaysLeft`) and the defenders' (`defenderDoctrineDaysLeft`) alike.
 - **The State word** (`stateWord` / `stateWordOf`, 2026-10-28, the user: "sub statuses like
   entrenched, dug in, holding, breaking retreating overrun"): the table's State cell from the
   reader's side. Pushing: overrunning past `frontOverrunRate`, gaining past `frontBreakRate` (0.1),

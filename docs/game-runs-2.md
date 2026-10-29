@@ -1736,3 +1736,13 @@ than retaken by flapping; the rest unchanged.
   sound.C from the exc signal (ce7ade56).
 - 0 exceptions, no hang. **The flap costs the swarm** is the hypothesis hw316 / hw317 test: the
   jar 01:15:03 (320a8199, the hysteresis) launched hw316 (set B) at 01:15 from `handover-36-37.sh`.
+
+**hw316 mid-run read 01:40 (set B on the hysteresis jar, war ~1,550): THE FLAP STANDS.** Dig-in
+lines 81 / 96 / 8, four / four / one worlds past 5 - Eldfell 31 in 70 days, daily, as Sphinx was.
+The hysteresis closed the sign gap but the bleed-out test alternates by itself: pushing spends the
+cover that made the push pay (`coverStep`), digging in regrows it, and `effectiveStrength` carries
+the ramp. FIX 2, THE DWELL: a stance the doctrine chose holds `doctrineDwellDays` (10, new knob)
+before the doctrine looks again - both ticks, `GroundFront.doctrineDaysLeft` /
+`defenderDoctrineDaysLeft`. Source only (the jar is hw316's); `handover-37-38.sh` (task
+HandoverSeeds38) rebuilds when round 37 is done and runs **hw318 (set B) / hw319 (set A)** as
+rounds 86-87 on it. hw317 (set A) runs on the hysteresis jar as planned, a second read of it.
