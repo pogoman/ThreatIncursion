@@ -104,6 +104,29 @@ is the layout it implements.
 All floating buttons (Map, Colony, Push / Dig in, Support, Defend, Pull out, Supply) are created after
 everything else and anchored to siblings (the table panel, the cards); see platform trap 1 and 2.
 
+**Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
+fleet sized based on hulls modifier ... then the attack button is available assuming the staged
+fleet has enough supplies and fuel"; `ThreatDeploy`). A colony row of the player's holds **Deploy**
+(was Fleet) and **Transfer** (was Supplies). Deploy builds a fleet over the colony from its own free
+hulls at the Hulls lever (None / half / all of its free points plus what is deployed; greyed at None
+with nothing deployed) and loads it at the other four levers - marines to its berths and arms to
+its holds, fuel and supplies as figures aboard (`ThreatReturns.MEM_FUEL_ABOARD`, the supplies
+hold) - drawn from the colony's reserve. The button reads **Redeploy** while a fleet is deployed
+and resizes it to the levers as they stand: ships come off as hulls (`reabsorb`, smallest first,
+the ledger's commitment and health baseline scaled with them), goods the fleet no longer holds or
+the lever no longer sends go back to the reserve (`load`), and Hulls at None dissolves it
+(`ThreatFleetOrders.fold`, the recall). An outpost's Deploy builds at the nearest colony and sails
+there. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
+aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` deployed: the goods come
+off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
+nothing), greyed with the figures while nothing is deployed, the fuel aboard is under the passage
+or the supplies under the expedition's deposit and hold (`attackBlockFacts`). The Attack's Fleet /
+Fuel / Marines ladders went. The colony rows' **Request** went too, to the player's sieged worlds
+on the fronts table (beside Reinforce, `ThreatWarBoard.addFrontButtons`): a call for aid at the
+fronts' Marines, Arms and the new **Fleet** lever, answered after `aidRequestAnswerDays` by each
+faction less its besetness (`ThreatAidRequests.willingness`; docs/player-aid.md). The NPC tabs'
+"Hive systems in reach" table and its Hunt went ("we dont need to see that table at all").
+
 **Load ladders** (2026-09-07, `ThreatFactionView.addTierSelector`, docs/player-aid.md): a table
 whose buttons move a quantity carries a **Min / Med / Max** selector in a row reserved under its
 section heading (`addSpacer(SELECTOR_ROW_H)` before `beginTable2`; the buttons float in last,
@@ -137,10 +160,13 @@ it (`playerScoutHome`), greyed with `scoutOffReason`. Then THE LEVERS (2026-10-2
 all"; `ThreatFactionView.addFrontLevers` / `addColonyLevers`, one `addLever` a good): over the
 ground fronts **Marines** and **Arms**, over the colonies **Fuel**, **Supplies**, **Marines**,
 **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare / all of it
-(`ThreatConvoys.share`, `handSpare`, `leverLoad`). The fronts' two size Reinforce, Aid and
-Supply; the colonies' five size Supplies and Aid and what a Request asks each faction for
-(`ThreatAidRequests.askText`). Fleet and Defend take no lever - every hull the nearest source
-has free (`ALL_HULLS`). Supplies moves hulls between the player's colonies off the donor's share
+(`ThreatConvoys.share`, `handSpare`, `leverLoad`). The fronts' Marines and Arms size Reinforce,
+Aid and Supply, and with the **Fleet** lever (2026-10-29) what a Request calls each faction for
+(`ThreatAidRequests.askText`), and the Fleet lever is also Support / Defend's outcome tier (match
+the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's ladders); the
+colonies' five size Transfer and Aid and the Deploy (above). An NPC colony's Defend aid takes no
+lever - every hull the nearest source has free (`ALL_HULLS`). Transfer moves
+hulls between the player's colonies off the donor's share
 (`ThreatHulls.takeShare`). They replaced the **Supply run** ladder (what the front wanted / x2 /
 everything) and the **Amount** ladder (the shortfall / x2 / everything, and one fleet / half /
 all the hulls for Fleet and Defend, 2026-10-11 to 2026-10-28; "Convoy load" and sized by the

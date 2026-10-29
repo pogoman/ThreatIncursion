@@ -1081,6 +1081,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * params.fleetSizes count (IncursionManager.playerExpeditionSizes put them there first).
 	 */
 	public float takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label) {
+		return takeStaged(base, staged, label, true);
+	}
+
+	/** As above; {@code restock} false leaves each fleet's own hold empty - a DEPLOYED fleet's hold went into the expedition's (IncursionManager.launchSiegeExpedition, deployed). */
+	public float takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label, boolean restock) {
 		float taken = 0f;
 		if (base == null || staged == null) return taken;
 		if (stagedLive == null) stagedLive = new ArrayList<CampaignFleetAPI>();
@@ -1105,7 +1110,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatFleetOrders.fold(o, base, true);
 			if (!fleet.isAlive()) continue;
 			// its hold again, from the base: the settle emptied it, and it may wait here for days
-			ThreatUpkeep.restockFleet(fleet, fleet.getFaction().getId());
+			if (restock) {
+				ThreatUpkeep.restockFleet(fleet, fleet.getFaction().getId());
+			} else {
+				// a deployed fleet's hold went into the expedition's: no hold of its own to burn or
+				// restock while it waits here (ThreatUpkeep.charge leaves a player fleet with none alone)
+				fleet.getMemoryWithoutUpdate().unset(ThreatReturns.MEM_HOLD_FULL);
+			}
 			stagedLive.add(fleet);
 			stagedLiveSizes.add(IncursionManager.stagedSize(live));
 			stagedEntries.put(fleet, new ArrayList<ThreatAidCapacity.Commitment>(held));

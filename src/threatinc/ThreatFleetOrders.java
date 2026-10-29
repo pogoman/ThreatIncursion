@@ -971,7 +971,7 @@ public class ThreatFleetOrders {
 		// the holds too (2026-10-11, hw157: a merged relief force lost the absorbed fleets' holds with their
 		// fleet and stood down "supplies low, 0 aboard" over the world it relieved)
 		for (String k : new String[] { ThreatReturns.MEM_FUEL, ThreatReturns.MEM_SUPPLIES, ThreatReturns.MEM_FP0,
-				ThreatReturns.MEM_HOLD, ThreatReturns.MEM_HOLD_FULL,
+				ThreatReturns.MEM_HOLD, ThreatReturns.MEM_HOLD_FULL, ThreatReturns.MEM_FUEL_ABOARD,
 				ThreatReturns.MEM_FP_ORDER }) {
 			if (!a.contains(k) && !b.contains(k)) continue;
 			a.set(k, (a.contains(k) ? a.getFloat(k) : 0f) + (b.contains(k) ? b.getFloat(k) : 0f));
@@ -1789,6 +1789,26 @@ public class ThreatFleetOrders {
 			n.send();
 		}
 		return o;
+	}
+
+	/**
+	 * An NPC faction's guard of {@code points} fleet points from the base over the player's colony
+	 * (a Request's Fleet lever, ThreatAidRequests.answerNow): built by buildSortie at the points the
+	 * depot pays for, guardDays over the world, then home. Null when nothing could be built.
+	 */
+	public static Order dispatchGuardPoints(FactionAPI faction, MarketAPI market, MarketAPI base, float points) {
+		if (faction == null || market == null || base == null || points <= 0f) return null;
+		ThreatBases.Base target = ThreatBases.of(market);
+		if (target == null || target.entity() == null || target.hyperLoc() == null) return null;
+		List<CampaignFleetAPI> fleets = buildSortie(base, faction, points, target.hyperLoc(), false,
+				"a guard of " + target.name());
+		if (fleets == null) return null;
+		Order lead = null;
+		for (CampaignFleetAPI f : fleets) {
+			Order o = guardOrder(f, faction, target, base, ThreatIncConfig.guardDays(), false);
+			if (lead == null) lead = o;
+		}
+		return lead;
 	}
 
 	/** Puts a built fleet on guard over the base's target: ORBIT_AGGRESSIVE for {@code days}, then home; the recorded order. */

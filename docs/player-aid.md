@@ -144,10 +144,17 @@ every need with its figures), the NPC **Aid** button serves the most urgent good
 tier, and the dock's "Deliver aid for the war effort" lists every need with a hand-over option a
 tier (and "all you carry"). Standing for giving is the goods' value at the receiving market over
 `aidRepPerCredits`, weighted by the purpose served (2.0 / 1.5 / 1.0 / 0.5 surplus), read before the
-goods land, capped a delivery. The player's own colonies **Request**: every faction at Favourable or
-better answers the most urgent need at the convoy tier, each sender's price standing at the giving
-rate x Min 1.0 / Med 1.25 / Max 1.5, never below Favourable, one request a colony per 30 days
-(`ThreatAidRequests`). War comms (`ThreatComms`) speak when a need appears, escalates or is met.
+goods land, capped a delivery. The player's own world under a Threat army **Requests** from its
+fronts-table row (2026-10-29; the colony rows' Request went): a call at the fronts' Marines, Arms
+and Fleet levers, answered after `aidRequestAnswerDays` (7) - each faction at Favourable or better
+sends the levers' share of what its colonies in reach spare, and the Fleet lever's share of its
+free hulls as a guard, LESS ITS BESETNESS: the share of its own worlds under a Threat army,
+blockade or strike (x `aidRequestBesetWeight`), and nothing while that outweighs the player's
+standing with it, Favourable's floor 0 to Cooperative's 1 (`ThreatAidRequests.willingness`,
+`besetCount`, `standing`; the tooltip's line a faction, `standLine`). Each sender's price is
+standing at the giving rate x Med 1.25 / Max 1.5, never below Favourable; one call a world per
+30 days, lifted by Cancel; the answers are one `ThreatAidAnswersIntel`. War comms (`ThreatComms`)
+speak when a need appears, escalates or is met.
 `ThreatAidMissionIntel` is kept only so older saves load; an open contract ends "withdrawn".
 
 ## 5. Allies helping each other
@@ -358,12 +365,14 @@ Where the build departs from the text above, on purpose:
     the front's Supply (`supplyAsk`), Reinforce (`reinforceLoad`) and the fronts-table Aid
     (`ThreatAid.quoteBattle`) read the two; the colony Supplies (`stageLoad`), Aid
     (`ThreatAid.quoteAid`: the best colony by cargo value; hulls from the hull port, as a
-    second convoy when it is not the goods donor, `Quote.hullSource`) and Request
-    (`ThreatAidRequests.request`: answered at once - each candidate sends its levers' share of
-    what its colonies in reach spare in all, colonies under `aidRequestMinSpare` not counting,
-    and a guard when a fleets need stands; the answers are one `ThreatAidAnswersIntel`) read
-    the five. Fleet and Defend read no lever -
-    every hull the nearest source has free (`ThreatFactionView.ALL_HULLS`). Supplies moves
+    second convoy when it is not the goods donor, `Quote.hullSource`) read the five, and so
+    does Deploy (`ThreatDeploy`, docs/war-board.md: Hulls the fleet, the others its load).
+    Request reads the fronts' Marines, Arms and Fleet (2026-10-29, `ThreatAidRequests.request`:
+    answered after `aidRequestAnswerDays`, each candidate's share cut by its besetness against
+    the player's standing, colonies under `aidRequestMinSpare` not counting, the Fleet lever's
+    share of its free hulls as a guard; the answers are one `ThreatAidAnswersIntel`).
+    Defend reads no lever -
+    every hull the nearest source has free (`ThreatFactionView.ALL_HULLS`). Transfer moves
     hulls between the player's colonies off the donor's own share (`ThreatHulls.takeShare` /
     `landShare`, `Convoy.ownHulls`), never the built navy. Defaults: the fronts' Max, the
     colonies' Med. Before: Supply run Min = what the front wanted floored to a worthwhile run

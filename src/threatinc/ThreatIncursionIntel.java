@@ -68,21 +68,29 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	 * None Med and Max, sending 0 half and all respectively ... then the same for the colony list
 	 * underneath. one for fuel, one for supplies, one for marines, one for arms" and Hulls): one
 	 * per good a hand order can move, each None (0) / Med (half the source's spare) / Max (all of
-	 * it), ThreatConvoys.share. The fronts table's two size its Reinforce, Aid and Supply runs; the
-	 * colonies table's five size its Supplies and Aid convoys and what a Request asks each faction
-	 * for. Fleet and Defend take no lever: a task force is every hull the nearest source has free.
+	 * it), ThreatConvoys.share. The fronts table's Marines and Arms size its Reinforce, Aid and
+	 * Supply runs and, with its Fleet lever (2026-10-29), what a Request from a sieged world calls
+	 * each faction for, the Fleet lever doubling as Support / Defend's outcome tier; the colonies
+	 * table's five size its Transfer convoys and the Deploy (ThreatDeploy: Hulls the fleet, the
+	 * others what it carries). An NPC colony's Defend aid takes no lever.
 	 * Indexed by the LEVER_ constants; null in a save from before the levers (then {@link #lever}
 	 * seeds the defaults: the fronts' Max, the colonies' Med).
 	 */
 	protected int[] levers;
 
 	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
-			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6;
-	protected static final int LEVER_COUNT = 7;
+			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6,
+			LEVER_FRONT_FLEET = 7;
+	protected static final int LEVER_COUNT = 8;
+	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max. */
+	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2 };
 
 	public int lever(int which) {
 		if (levers == null || levers.length < LEVER_COUNT) {
-			levers = new int[] { 2, 2, 1, 1, 1, 1, 1 };
+			// a save from before a lever keeps the ones it has; the new one takes its default
+			int[] fresh = LEVER_DEFAULTS.clone();
+			if (levers != null) System.arraycopy(levers, 0, fresh, 0, Math.min(levers.length, fresh.length));
+			levers = fresh;
 		}
 		return which >= 0 && which < LEVER_COUNT ? levers[which] : 0;
 	}
@@ -92,9 +100,9 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		if (which >= 0 && which < LEVER_COUNT) levers[which] = Math.max(0, Math.min(2, tier));
 	}
 
-	/** The fronts table's levers as {marines, arms}. */
+	/** The fronts table's levers as {marines, arms, fleet}; the third sizes only a Request's task force (ThreatAidRequests). */
 	public int[] frontLevers() {
-		return new int[] { lever(LEVER_FRONT_MARINES), lever(LEVER_FRONT_ARMS) };
+		return new int[] { lever(LEVER_FRONT_MARINES), lever(LEVER_FRONT_ARMS), lever(LEVER_FRONT_FLEET) };
 	}
 
 	/** The colonies table's levers in ThreatReserves.AID_COMMODITIES order: marines, arms, fuel, supplies, hulls. */

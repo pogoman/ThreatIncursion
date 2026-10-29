@@ -1342,6 +1342,12 @@
 	# levers' share (half / all) of what its colonies in reach spare of each good, counting only colonies sparing this
 	# much or more (a unit for ship hulls); the answers are one intel entry
 	"threatinc_aidRequestMinSpare": 100,
+	# aidRequestAnswerDays / aidRequestBesetWeight (2026-10-29): a Request is the call from a world of the player's under a
+	# Threat army, at the fronts table's Marines, Arms and Fleet levers, answered after this many days; each faction sends
+	# the levers' share less its besetness (the share of its worlds under a Threat army, blockade or strike) x the weight,
+	# and nothing while that outweighs the player's standing with it, read from Favourable (0) to Cooperative (1)
+	"threatinc_aidRequestAnswerDays": 7,
+	"threatinc_aidRequestBesetWeight": 1.0,
 	"threatinc_aidAskPriceMin": 1.0,
 	"threatinc_aidAskPriceMed": 1.25,
 	"threatinc_aidAskPriceMax": 1.5,

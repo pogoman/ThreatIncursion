@@ -952,6 +952,7 @@ public class ThreatWarBoard {
 	protected static final float FRONT_SUPPORT_W = 62f;
 	protected static final float FRONT_DEFEND_W = 58f;
 	protected static final float FRONT_REINFORCE_W = 76f;
+	protected static final float FRONT_REQUEST_W = 68f;
 	protected static final float FRONT_BUTTON_GAP = 4f;
 
 	/** Every live front, the player's own first, then by world name. */
@@ -1629,6 +1630,32 @@ public class ThreatWarBoard {
 									+ Misc.getWithDGS((int) load[1]) + " heavy armaments" : "marines and heavy armaments")
 							+ " from " + from + " to the stockpile of " + r.market.getName()
 							+ "; it waits at the jump-point while the Threat blockades the world.");
+					// REQUEST (2026-10-29, the user: "On sieged player worlds request button should
+					// appear there instead ... a general call for the combination of levers specified"):
+					// the call for aid at the fronts' Marines, Arms and Fleet levers, answered after
+					// aidRequestAnswerDays by each faction less its besetness (ThreatAidRequests);
+					// Cancel while the call stands
+					rx += FRONT_REINFORCE_W + FRONT_BUTTON_GAP;
+					ThreatAidRequests.Request open = ThreatAidRequests.requestAt(r.market);
+					com.fs.starfarer.api.ui.ButtonAPI ask = intel.addGenericButton(main, FRONT_REQUEST_W,
+							open != null ? "Cancel" : "Request",
+							ThreatFactionView.BUTTON_REQUEST + r.market.getFactionId() + ":" + r.market.getId());
+					ask.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
+					if (open != null) {
+						ThreatFactionView.disableWith(main, ask, true, null, "Withdraws the call for "
+								+ ThreatAidRequests.askText(open.tiers, open.fleets ? Math.max(1, open.fleetTier) : 0)
+								+ "; it is answered in " + (int) Math.ceil(ThreatAidRequests.answerIn(open)) + " days.");
+					} else {
+						String askWhy = ThreatAidRequests.requestOffReason(r.market, fl);
+						StringBuilder tip = new StringBuilder("Calls every faction at Favourable or better for ")
+								.append(ThreatAidRequests.askText(fl)).append(", answered in ")
+								.append((int) ThreatAidRequests.answerDays())
+								.append(" days; each sends less the more of its worlds the Threat besets, nothing past your standing.");
+						for (FactionAPI helper : ThreatAidRequests.candidates()) {
+							tip.append("\n").append(ThreatAidRequests.standLine(helper));
+						}
+						ThreatFactionView.disableWith(main, ask, askWhy == null, askWhy, tip.toString());
+					}
 				} else {
 					ThreatAid.Quote q = ThreatAid.quoteAid(r.market, ThreatFactionView.frontAidLevers(fl));
 					ThreatFactionView.disableWith(main, reinforce, q.ok(), q.ok() ? null : ThreatNotice.text(q.reason),
@@ -1695,7 +1722,8 @@ public class ThreatWarBoard {
 					"A convoy runs " + Misc.getWithDGS((int) asked[0]) + " marines and "
 					+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your nearest "
 					+ "base to this front.");
-			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market, intel.getSiegeTier());
+			// the fronts' Fleet lever is Support / Defend's outcome tier (2026-10-29; the Force ladder went)
+			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market, fl.length > 2 ? fl[2] : 0);
 			ThreatFleetOrders.Reassignable nearSupport = escortWhy == null
 					? ThreatFleetOrders.nearestReassignable(player, r.market) : null;
 			float supportFP = nearSupport != null ? nearSupport.fleet.getFleetPoints()
@@ -1705,7 +1733,7 @@ public class ThreatWarBoard {
 							: "A task force is raised from your nearest base.") + "\n"
 					+ ThreatFleetOrders.supportEffect(r.market, supportFP,
 							nearSupport != null ? nearSupport.fleet : null));
-			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market, intel.getSiegeTier());
+			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market, fl.length > 2 ? fl[2] : 0);
 			ThreatFleetOrders.Reassignable nearDefend = defendWhy == null
 					? ThreatFleetOrders.nearestReassignable(player, r.market, ThreatFleetOrders.KIND_DEFEND)
 					: null;

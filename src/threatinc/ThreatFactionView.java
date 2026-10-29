@@ -571,17 +571,15 @@ public class ThreatFactionView {
 			main.addSpacer(opad);
 		}
 
-		// ---- hives in reach ----
-		List<ThreatWarBoard.Entry> reach = hivesInReach(markets);
+		// ---- known hive systems: the player's tab only (the NPC tabs' "Hive systems in reach" and
+		// its Hunt aid went 2026-10-29, the user: "we dont need to see that table at all") ----
+		List<ThreatWarBoard.Entry> reach = own ? hivesInReach(markets) : new ArrayList<ThreatWarBoard.Entry>();
 		UIPanelAPI hiveTable = null;
-		main.addSectionHeading(own ? "Known hive systems" : "Hive systems in reach", bright, dark,
-				Alignment.MID, opad);
-		// the player's siege-force selector sits in a reserved row under the
-		// heading; its buttons float in later (addSiegeTierSelector), like the
-		// faction selector's do
-		boolean siegeSelector = own && !reach.isEmpty();
-		if (siegeSelector) main.addSpacer(SELECTOR_ROW_H);
-		if (reach.isEmpty()) {
+		if (own) main.addSectionHeading("Known hive systems", bright, dark, Alignment.MID, opad);
+		// no ladder row here since 2026-10-29: the Attack is the fleet deployed on the colonies table
+		if (!own) {
+			// nothing: an NPC faction's tab goes on to its colonies
+		} else if (reach.isEmpty()) {
 			main.addPara("No known infested system lies within expedition reach of this "
 					+ "faction's military worlds.", gray, opad);
 		} else {
@@ -691,21 +689,22 @@ public class ThreatFactionView {
 				// only the outposts after this one and the Total row sit below
 				float up = (outposts.size() + 1 - j) * ThreatWarBoard.ROW_H
 						- (ThreatWarBoard.ROW_H - 20f) / 2f;
-				ButtonAPI guard = intel.addGenericButton(main, SMALL_BUTTON_W - 8f, "Fleet",
+				ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, "Deploy",
 						BUTTON_GUARD + factionId + ":" + b.id());
 				guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
-				ButtonAPI stage = intel.addGenericButton(main, SMALL_BUTTON_W + 8f, "Supplies",
+				ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
 						BUTTON_STAGE + factionId + ":" + b.id());
 				stage.getPosition().belowRight(colonyTable, -up)
-						.setXAlignOffset(-6f - (SMALL_BUTTON_W - 8f) - 4f);
-				ThreatAid.Quote q = ThreatAid.quoteDefend(b, ALL_HULLS);
+						.setXAlignOffset(-6f - DEPLOY_W - 4f);
+				ThreatDeploy.Plan d = ThreatDeploy.plan(b, levers);
 				MarketAPI donor = ThreatConvoys.stageDonor(b, faction, levers);
 				float[] load = donor != null ? ThreatConvoys.stageLoad(donor, b, levers) : null;
-				disableWith(main, guard, mayOrder && q.ok(),
-						blocked != null ? blocked : ThreatNotice.text(q.reason),
-						"A task force of " + forceText(q) + " from "
-						+ (q.ok() ? q.source.getName() : "the nearest colony") + " holds this "
-						+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled") + ".");
+				disableWith(main, guard, mayOrder && d.ok(),
+						blocked != null ? blocked : ThreatDeploy.offReason(d),
+						"A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
+						+ (d.ok() ? d.source.getName() : "the nearest colony") + "'s hulls holds this "
+						+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
+						+ ", carrying " + ThreatDeploy.loadText(d.load) + ".");
 				disableWith(main, stage, mayOrder && donor != null, blocked != null ? blocked
 						: !ThreatIncConfig.convoyEnabled() ? "Convoys are disabled in the mod settings."
 						: "No colony of yours can spare anything right now.",
@@ -724,56 +723,39 @@ public class ThreatFactionView {
 				float up = (n + outpostRows + 1 - i) * ThreatWarBoard.ROW_H
 						- (ThreatWarBoard.ROW_H - 20f) / 2f;
 				if (own) {
-					// the user's labels (2026-09-05): a task force is "Fleet", a
-					// convoy is "Supplies"
-					ButtonAPI guard = intel.addGenericButton(main, SMALL_BUTTON_W - 8f, "Fleet",
+					// the user's labels (2026-10-29): the colony's own hulls become a fleet over it at
+					// the levers - "Deploy", "Redeploy" while one is up (ThreatDeploy); a convoy between
+					// colonies is "Transfer" ("Fleet" / "Supplies" from 2026-09-05 to then)
+					ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(r.market), levers);
+					ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, d.redeploy() ? "Redeploy" : "Deploy",
 							BUTTON_GUARD + factionId + ":" + r.market.getId());
 					guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
-					ButtonAPI stage = intel.addGenericButton(main, SMALL_BUTTON_W + 8f, "Supplies",
+					ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
 							BUTTON_STAGE + factionId + ":" + r.market.getId());
 					stage.getPosition().belowRight(colonyTable, -up)
-							.setXAlignOffset(-6f - (SMALL_BUTTON_W - 8f) - 4f);
-					ThreatAid.Quote q = ThreatAid.quoteDefend(r.market, ALL_HULLS);
-					boolean guardOk = mayOrder && q.ok();
+							.setXAlignOffset(-6f - DEPLOY_W - 4f);
+					boolean guardOk = mayOrder && (d.ok() || d.dissolve);
 					// the order fails after Confirm otherwise: the gate is on the button
 					MarketAPI donor = ThreatConvoys.stageDonor(r.market, faction, levers);
 					boolean stageOk = mayOrder && donor != null;
 					float[] load = donor != null ? ThreatConvoys.stageLoad(donor, r.market, levers) : null;
-					// a guard over an own colony is staging: it stays, and its
-					// points are the colony's to send out (docs/strategy-layer.md)
-					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatNotice.text(q.reason),
-							"A task force of " + forceText(q) + " from "
-							+ (q.ok() ? q.source.getName() : "the nearest colony") + " holds this "
-							+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
-							+ "; while here, its points are this colony's.");
+					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatDeploy.offReason(d),
+							d.dissolve ? "The fleet over this colony dissolves: its "
+									+ Misc.getWithDGS((int) d.livePts) + " fleet points back as hulls, "
+									+ ThreatDeploy.loadText(d.aboard) + " back in the reserve."
+							: d.redeploy() ? "The fleet over this colony is resized to " + Misc.getWithDGS((int) d.targetPts)
+									+ " fleet points (" + Misc.getWithDGS((int) d.livePts) + " now) and reloaded to "
+									+ ThreatDeploy.loadText(d.load) + "; what comes off goes back as hulls and reserve."
+							: "A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from this colony's "
+									+ "hulls holds its orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
+									+ ", carrying " + ThreatDeploy.loadText(d.load) + ". Attack sails it.");
 					disableWith(main, stage, stageOk, blocked != null ? blocked
 							: ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours"),
 							"A convoy from " + (donor != null ? donor.getName() : "the nearest colony")
 							+ " brings " + (load != null ? cargoText(load[0], load[1], load[2], load[3], ThreatConvoys.hullsIn(load))
 									: "what the levers allow") + ".");
-					// REQUEST AID (2026-10-23, docs/war-effort-rework.md 3): the sector answers the colony's
-					// most urgent need at the tier, each sender's price standing; Cancel while one stands
-					ThreatAidRequests.Request open = ThreatAidRequests.requestAt(r.market);
-					ButtonAPI ask = intel.addGenericButton(main, SMALL_BUTTON_W + 16f, open != null ? "Cancel" : "Request",
-							BUTTON_REQUEST + factionId + ":" + r.market.getId());
-					ask.getPosition().belowRight(colonyTable, -up)
-							.setXAlignOffset(-6f - (SMALL_BUTTON_W - 8f) - 4f - (SMALL_BUTTON_W + 8f) - 4f);
-					if (open != null) {
-						disableWith(main, ask, true, null, "Withdraws the request for " + open.purpose + " ("
-								+ ThreatReserves.label(open.good) + "); what has sailed still comes.");
-					} else {
-						String why = ThreatAidRequests.requestOffReason(r.market, levers);
-						boolean askFleets = ThreatNeeds.fleets(r.market) != null;
-						StringBuilder tip = new StringBuilder("Asks every faction at Favourable or better for ")
-								.append(ThreatAidRequests.askText(levers, askFleets))
-								.append(", answered at once; colonies sparing under ")
-								.append(Misc.getWithDGS((int) ThreatIncConfig.aidRequestMinSpare()))
-								.append(" do not count. Each sender's price is standing.");
-						for (FactionAPI helper : ThreatAidRequests.candidates()) {
-							tip.append("\n").append(ThreatAidRequests.budgetLine(helper));
-						}
-						disableWith(main, ask, why == null, why, tip.toString());
-					}
+					// the Request went to the sieged world's row on the fronts table (2026-10-29,
+					// ThreatWarBoard.addFrontButtons): a colony row holds Deploy and Transfer
 				} else {
 					ButtonAPI defend = intel.addGenericButton(main, SMALL_BUTTON_W + 6f, "Defend",
 							BUTTON_AID_DEFEND + factionId + ":" + r.market.getId());
@@ -836,26 +818,11 @@ public class ThreatFactionView {
 			for (int i = 0; i < n; i++) {
 				ThreatWarBoard.Entry e = reach.get(i);
 				float up = (n - i) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
-				if (!own) {
-					ButtonAPI strike = intel.addGenericButton(main, SMALL_BUTTON_W + 6f, "Hunt",
-							BUTTON_AID_STRIKE + factionId + ":" + e.systemId);
-					strike.getPosition().belowRight(hiveTable, -up).setXAlignOffset(-6f);
-					ThreatAid.Quote q = ThreatAid.quoteStrike(e.system);
-					ThreatNotice.Reason unready = ThreatAid.playerNotMobilised();
-					disableWith(main, strike, ThreatAidCapacity.enabled() && unready == null && q.ok(),
-							!ThreatAidCapacity.enabled() ? "Player aid is disabled in the mod settings."
-							: unready != null ? ThreatNotice.text(unready)
-							: ThreatNotice.text(q.reason),
-							"A task force of " + forceText(q) + " from "
-							+ (q.ok() ? q.source.getName() : "your nearest colony") + " hunts "
-							+ "this hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
-							+ " days.");
-					continue;
-				}
-				// ONE ORDER ON A HIVE ROW (phase D, docs/strata-are-the-threat.md 8): Attack, sized by the
-				// Fleet / Fuel / Marines ladders above the table to the base's own stock. Off only when the
-				// base cannot field one fleet or pay the passage (IncursionManager.attackBlockFacts)
-				MarketAPI siegeBase = nearestBase(markets, e.system);
+				// ONE ORDER ON A HIVE ROW (phase D, docs/strata-are-the-threat.md 8): Attack - the fleet
+				// deployed at the nearest colony (ThreatDeploy), with everything aboard it. Off while no
+				// fleet is deployed or it carries less than the passage's fuel or the expedition's
+				// supplies (IncursionManager.attackBlockFacts)
+				MarketAPI siegeBase = IncursionManager.attackBase(faction, e.system);
 				String attackWhy = IncursionManager.attackBlockReason(siegeBase, faction, e.system);
 				boolean attackOk = mayOrder && e.isColony() && attackWhy == null;
 				ButtonAPI attack = intel.addGenericButton(main, SMALL_BUTTON_W + 10f, "Attack",
@@ -863,40 +830,16 @@ public class ThreatFactionView {
 				attack.getPosition().belowRight(hiveTable, -up).setXAlignOffset(-6f);
 				disableWith(main, attack, attackOk, blocked != null ? blocked : attackWhy != null ? attackWhy
 						: "Nothing there to attack yet.",
-						"A task force from " + (siegeBase != null ? siegeBase.getName() : "the nearest base")
-						+ " holds the orbit, razes the strata for the fuel it carries past the passage and lands its marines.");
+						"The fleet deployed at " + (siegeBase != null ? siegeBase.getName() : "the nearest colony")
+						+ " holds the orbit, razes the strata for the fuel aboard past the passage and lands its marines.");
 			}
 		}
 		if (colonyTable != null) {
 			addColonyLevers(intel, main, colonyTable);
 		}
-		if (hiveTable != null && own) {
-			addAttackLadders(intel, main, hiveTable);
-		}
+		// the Attack's Fleet / Fuel / Marines ladders over the hives table went on 2026-10-29: the
+		// colonies table's levers size the Deploy, and the Attack is what is deployed (ThreatDeploy)
 			main.setHeightSoFar(heightBefore);
-	}
-
-	/**
-	 * The Attack's three ladders in the row reserved under the "Known hive systems" heading (phase D,
-	 * docs/strata-are-the-threat.md 8): Fleet, Fuel and Marines, each a share of the staging colony's
-	 * own stock and nothing of the target's. Min is the least that still sails.
-	 */
-	protected static void addAttackLadders(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
-		String share = Math.round(Math.max(0f, Math.min(1f, ThreatIncConfig.attackMedShare())) * 100f) + "%";
-		float ladder = ATTACK_LABEL_W + 3f * (SMALL_BUTTON_W - 8f + 4f) + 14f;
-		addTierSelector(intel, main, anchor, "Fleet", ATTACK_LABEL_W, BUTTON_SIEGE_TIER, intel.getSiegeTier(), new String[] {
-				"One fleet of the base's task-force size, the task forces on station first.",
-				"Half the base's hulls free.",
-				"Every hull the base has free."}, 0f);
-		addTierSelector(intel, main, anchor, "Fuel", ATTACK_LABEL_W, BUTTON_FUEL_TIER, intel.getFuelTier(), new String[] {
-				"The passage only: a blockade, nothing razed.",
-				share + " of the base's fuel above the passage: every " + (int) ThreatIncConfig.bombardFuelPerStratum()
-						+ " fuel razes a stratum.",
-				"All the base's fuel above its floor."}, ladder);
-		addTierSelector(intel, main, anchor, "Marines", ATTACK_LABEL_W, BUTTON_MARINE_TIER, intel.getMarineTier(), new String[] {
-				"No marines: the fleet holds the orbit and bombs.",
-				share + " of the base's marines above its floor, as many as the fleets carry.",
-				"Every marine above the base's floor, as many as the fleets carry."}, ladder * 2f);
 	}
 
 	/**
@@ -909,12 +852,25 @@ public class ThreatFactionView {
 	protected static void addFrontLevers(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
 		addLever(intel, main, anchor, "Marines", ThreatIncursionIntel.LEVER_FRONT_MARINES, "marines", 0);
 		addLever(intel, main, anchor, "Arms", ThreatIncursionIntel.LEVER_FRONT_ARMS, "heavy armaments", 1);
+		// the Fleet lever (2026-10-29): a Request's task force - that share of each faction's free hulls -
+		// and the outcome tier of Support / Defend (match the swarm / x1.25 / x1.5), which the Force
+		// ladder set until the Attack's ladders went
+		String[] fleetTips = {
+				"Request: no task force. Support / Defend: match the swarm over the world.",
+				"Request: half the hulls a faction has free. Support / Defend: x"
+						+ String.format("%.2f", ThreatIncConfig.orbitTierMedMargin()) + " the swarm.",
+				"Request: all the hulls a faction has free. Support / Defend: x"
+						+ String.format("%.2f", ThreatIncConfig.orbitTierMaxMargin()) + " the swarm." };
+		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
+				BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_FLEET + ":",
+				intel.lever(ThreatIncursionIntel.LEVER_FRONT_FLEET), fleetTips, 2 * LEVER_PITCH, LEVER_LABELS, LEVER_BUTTON_W);
 	}
 
 	/**
-	 * The colonies table's five levers - Fuel, Supplies, Marines, Arms, Hulls: its Supplies and
-	 * Aid convoys and what a Request asks each faction for. Fleet and Defend take no lever: every
-	 * hull the nearest source has free ({@link #ALL_HULLS}). They replace the Amount ladder (the
+	 * The colonies table's five levers - Fuel, Supplies, Marines, Arms, Hulls: its Transfer and
+	 * Aid convoys, what a Request asks each faction for, and the Deploy (ThreatDeploy, 2026-10-29:
+	 * the Hulls lever sizes the fleet, the other four load it). Defend takes no lever: every hull
+	 * the nearest source has free ({@link #ALL_HULLS}). They replace the Amount ladder (the
 	 * shortfall / x2 / everything, and one fleet / half / all the hulls).
 	 */
 	protected static void addColonyLevers(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
@@ -1550,6 +1506,7 @@ public class ThreatFactionView {
 			f.kind = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind) ? (o.raid ? "Raid" : "Support")
 					: ThreatFleetOrders.KIND_DEFEND.equals(o.kind) ? "Defend"
 					: ThreatFleetOrders.KIND_HUNT.equals(o.kind) ? (o.aid ? "Aid hunt" : "Hunt")
+					: ThreatDeploy.isDeployed(o) ? "Deployed"
 					: (o.aid ? "Aid " : "") + (ThreatFleetOrders.KIND_GUARD.equals(o.kind)
 					? (o.aid ? "guard" : "Guard") : (o.aid ? "intercept" : "Intercept"));
 			f.color = o.fleet != null && o.fleet.isAlive() ? pos : neg;
@@ -1720,8 +1677,14 @@ public class ThreatFactionView {
 	/** The pitch between two levers on one row: the label, three buttons with their gaps, a gutter. */
 	protected static final float LEVER_PITCH = LEVER_LABEL_W + 3f * (LEVER_BUTTON_W + 4f) + 10f;
 
-	/** Fleet and Defend take no lever: every hull the nearest source has free (the user, 2026-10-28: "fleet for each colony button always takes all from next source"). */
+	/** Defend takes no lever: every hull the nearest source has free (the user, 2026-10-28: "fleet for each colony button always takes all from next source"; Fleet became Deploy at the Hulls lever on 2026-10-29). */
 	public static final int ALL_HULLS = 2;
+
+	/** The Deploy / Redeploy button's width ("Redeploy" fits). */
+	protected static final float DEPLOY_W = SMALL_BUTTON_W + 10f;
+
+	/** The Transfer button's width. */
+	protected static final float TRANSFER_W = SMALL_BUTTON_W + 8f;
 
 	/** "2" for 2.0, "1.5" for 1.5 - a factor without a trailing zero. */
 	protected static String trimZero(float f) {
@@ -1840,7 +1803,7 @@ public class ThreatFactionView {
 		String[] parts = parse(id);
 		if (parts == null) return;
 		int siegeTier = intel != null ? intel.getSiegeTier() : 0;
-		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0};
+		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0, 0};
 		int[] levers = intel != null ? intel.colonyLevers() : new int[ThreatReserves.AID_COMMODITIES.length];
 		FactionAPI faction = Global.getSector().getFaction(parts[1]);
 		String who = faction == null ? parts[1] : faction.isPlayerFaction() ? "your"
@@ -1860,35 +1823,9 @@ public class ThreatFactionView {
 			return;
 		}
 		if (BUTTON_GUARD.equals(parts[0])) {
-			// a colony, or the player's outpost
+			// DEPLOY / REDEPLOY (ThreatDeploy, 2026-10-29): a colony, or the player's outpost
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
-			// an own colony guards itself when it has own points free (staging)
-			boolean own = faction != null && faction.isPlayerFaction() && target != null
-					&& faction.getId().equals(target.factionId());
-			MarketAPI base = target != null
-					? ThreatAid.pickTaskForceSource(target.hyperLoc(), own ? target.market : null)
-					: null;
-			boolean self = base != null && target != null && base == target.market;
-			float days = own ? ThreatIncConfig.guardOwnDays() : ThreatIncConfig.guardDays();
-			// whole-fleet points, the FP column's unit, at the colony table's Amount
-			float points = base != null ? ThreatAid.forcePoints(base, self, ALL_HULLS)
-					: ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
-			float free = base != null ? ThreatAid.freePoints(base, self) : points;
-			int fleets = ThreatAid.forceFleets(base, points);
-			String from = base != null ? base.getName() : "the nearest base";
-			String task = self ? "to hold its own orbit"
-					: "to take the orbit of " + (target != null ? target.name() : "the world");
-			if (days > 0f) {
-				String[] f = forcePrompt(points, free, fleets, "" + (int) days);
-				prompt.addPara("Order a task force of " + f[0] + " from " + from + " "
-						+ task + " for %s days?", 0f, h, highlights(f));
-			} else {
-				String[] f = forcePrompt(points, free, fleets);
-				prompt.addPara("Order a task force of " + f[0] + " from " + from + " "
-						+ task + " until recalled?", 0f, h, highlights(f));
-			}
-			addProvisionsLine(prompt, base, ThreatAid.forceFP(base, self, ALL_HULLS),
-					target != null ? target.hyperLoc() : null, self);
+			addDeployPrompt(prompt, ThreatDeploy.plan(target, levers));
 		} else if (BUTTON_STAGE.equals(parts[0])) {
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			MarketAPI donor = ThreatConvoys.stageDonor(target, faction, levers);
@@ -1932,16 +1869,12 @@ public class ThreatFactionView {
 			}
 		} else if (BUTTON_SIEGE.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
-			MarketAPI base = null;
-			if (faction != null && system != null) {
-				base = nearestBase(ThreatReserves.marketsOf(faction.getId()), system);
-			}
+			MarketAPI base = IncursionManager.attackBase(faction, system);
 			String why = IncursionManager.attackBlockReason(base, faction, system);
 			if (why != null) {
 				prompt.addPara(why, 0f);
 			} else {
-				addAttackPrompt(prompt, IncursionManager.attackPlan(base, faction, system, siegeTier,
-						intel != null ? intel.getFuelTier() : 0, intel != null ? intel.getMarineTier() : 0));
+				addAttackPrompt(prompt, IncursionManager.attackPlan(base, faction, system));
 			}
 		} else if (BUTTON_BOMBARD.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
@@ -2041,26 +1974,21 @@ public class ThreatFactionView {
 			if (target == null) {
 				prompt.addPara("There is no colony there any more.", 0f);
 			} else if (open != null) {
-				prompt.addPara("Withdraw the request for " + target.getName() + " (" + open.purpose
-						+ ")? What has sailed still comes, and was paid for.", 0f);
+				prompt.addPara("Withdraw the call for aid for " + target.getName() + "? Nothing has sailed yet.", 0f);
 			} else {
-				String why = ThreatAidRequests.requestOffReason(target, levers);
+				String why = ThreatAidRequests.requestOffReason(target, frontLevers);
 				if (why != null) {
 					prompt.addPara(why, 0f);
 				} else {
-					boolean fleets = ThreatNeeds.fleets(target) != null;
-					prompt.addPara("Ask the sector for %s for " + target.getName()
-							+ "? Every faction at Favourable or better answers at once with that share of what its "
-							+ "colonies spare (those sparing %s or more); each sender's price is "
-							+ "standing, at x%s of the giving rate for Med and x%s for Max, never below Favourable. "
-							+ "One request a colony every %s days.", 0f, h,
-							ThreatAidRequests.askText(levers, fleets),
-							Misc.getWithDGS((int) ThreatIncConfig.aidRequestMinSpare()),
-							String.format("%.2f", ThreatAidRequests.askPrice(1)),
-							String.format("%.2f", ThreatAidRequests.askPrice(2)),
+					prompt.addPara("Call the sector to the defence of " + target.getName() + " for %s? "
+							+ "Answered in %s days: each faction sends that share less the share of its worlds the "
+							+ "Threat besets, nothing past your standing; each sender's price is standing, "
+							+ "never below Favourable. One call a world every %s days.", 0f, h,
+							ThreatAidRequests.askText(frontLevers),
+							"" + (int) ThreatAidRequests.answerDays(),
 							"" + (int) ThreatIncConfig.aidRequestCooldownDays());
 					for (FactionAPI helper : ThreatAidRequests.candidates()) {
-						prompt.addPara(ThreatAidRequests.budgetLine(helper) + ".", 3f);
+						prompt.addPara(ThreatAidRequests.standLine(helper) + ".", 3f);
 					}
 				}
 			}
@@ -2088,7 +2016,9 @@ public class ThreatFactionView {
 			MarketAPI base = faction == null || hive == null ? null : faction.isPlayerFaction()
 					? ThreatAid.pickTaskForceSource(hive.getLocationInHyperspace())
 					: ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
-			String why = ThreatFleetOrders.orbitBlockReason(faction, hive, kind, siegeTier);
+			// the fronts' Fleet lever is the outcome tier since 2026-10-29 (the Force ladder went with the Attack's)
+			int orbitTier = frontLevers.length > 2 ? frontLevers[2] : siegeTier;
+			String why = ThreatFleetOrders.orbitBlockReason(faction, hive, kind, orbitTier);
 			ThreatFleetOrders.Reassignable near = why == null && faction != null && hive != null
 					? ThreatFleetOrders.nearestReassignable(faction, hive, kind) : null;
 			if (why != null) {
@@ -2099,7 +2029,7 @@ public class ThreatFactionView {
 				prompt.addPara(ThreatFleetOrders.orbitEffect(hive, near.fleet.getFleetPoints(), kind, near.fleet), 10f);
 			} else {
 				// sized for the outcome (ThreatAid.orbitAskFP: the swarm over the world by the tier's margin)
-				ThreatAid.Quote q = ThreatAid.quoteOrbit(hive, kind, siegeTier);
+				ThreatAid.Quote q = ThreatAid.quoteOrbit(hive, kind, orbitTier);
 				if (!q.ok()) {
 					prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
 				} else {
@@ -2253,6 +2183,39 @@ public class ThreatFactionView {
 		}
 	}
 
+	/** The Deploy / Redeploy order's confirmation: the fleet's size and load at the levers, one line a fact (ThreatDeploy.Plan). */
+	protected static void addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d) {
+		Color h = Misc.getHighlightColor();
+		if (d == null || d.target == null || (!d.ok() && !d.dissolve)) {
+			prompt.addPara(d != null && d.reason != null ? d.reason.toString() : "The situation has changed.", 0f);
+			return;
+		}
+		if (d.dissolve) {
+			prompt.addPara("Dissolve the fleet over " + d.target.name() + "?", 0f);
+			prompt.addPara("%s fleet points back as hulls.", 10f, h, Misc.getWithDGS((int) d.livePts));
+			prompt.addPara("Back in the reserve: %s.", 3f, h, ThreatDeploy.loadText(d.aboard));
+			return;
+		}
+		boolean self = d.target.market != null && d.target.market == d.source;
+		if (d.redeploy()) {
+			prompt.addPara("Redeploy the fleet over " + d.target.name() + "?", 0f);
+			prompt.addPara("Fleet: %s fleet points, %s now.", 10f, h, Misc.getWithDGS((int) d.targetPts),
+					Misc.getWithDGS((int) d.livePts));
+		} else {
+			prompt.addPara("Deploy a fleet " + (self ? "over " : "from " + d.source.getName() + " to ")
+					+ d.target.name() + "?", 0f);
+			prompt.addPara("Fleet: %s fleet points of " + d.source.getName() + "'s %s free.", 10f, h,
+					Misc.getWithDGS((int) d.targetPts), Misc.getWithDGS((int) d.ownFree));
+		}
+		String[] goods = { "Marines", "Arms", "Fuel", "Supplies" };
+		for (int i = 0; i < 4; i++) {
+			String aboard = d.redeploy() ? ", " + Misc.getWithDGS((int) d.aboard[i]) + " aboard now" : "";
+			prompt.addPara(goods[i] + ": %s" + aboard + (i < 2 ? ", as many as the fleet carries." : "."), 3f, h,
+					Misc.getWithDGS((int) d.load[i]));
+		}
+		prompt.addPara("What comes off a resized fleet goes back as hulls and into the reserve. Attack sails what is deployed.", 3f);
+	}
+
 	/** The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8): one line per fact, figures as "N to what it buys". */
 	protected static void addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a) {
 		Color h = Misc.getHighlightColor();
@@ -2260,8 +2223,9 @@ public class ThreatFactionView {
 			prompt.addPara("The situation has changed.", 0f);
 			return;
 		}
-		prompt.addPara("Attack the " + a.system.getNameWithLowercaseType() + "?", 0f);
-		prompt.addPara("From " + a.base.getName() + ": %s fleet points in %s fleets.", 10f, h,
+		prompt.addPara("Attack the " + a.system.getNameWithLowercaseType() + " with the fleet deployed at "
+				+ a.base.getName() + "?", 0f);
+		prompt.addPara("Fleet: %s fleet points" + (a.sizes.size() > 1 ? " in %s fleets." : "."), 10f, h,
 				Misc.getWithDGS((int) a.points), "" + a.sizes.size());
 		if (a.razeFuel > 0.5f && a.target != null) {
 			float now = ThreatStrata.of(a.target);
@@ -2278,12 +2242,14 @@ public class ThreatFactionView {
 			prompt.addPara("Fuel: the passage only, nothing razed.", 3f);
 		}
 		if (a.marines > 0f && a.target != null) {
-			prompt.addPara("Marines %s against %s strata on the ground"
-					+ (a.marines < a.lift - 0.5f ? "." : ", all the fleets carry."), 3f, h,
-					Misc.getWithDGS((int) a.marines), ThreatStrata.fmt(ThreatStrata.standing(a.target)));
+			prompt.addPara("Marines %s against %s strata on the ground" + (a.arms > 0.5f ? ", %s arms." : "."), 3f, h,
+					Misc.getWithDGS((int) a.marines), ThreatStrata.fmt(ThreatStrata.standing(a.target)),
+					Misc.getWithDGS((int) a.arms));
 		} else {
 			prompt.addPara("Marines: none.", 3f);
 		}
+		prompt.addPara("Supplies %s aboard, the attack takes %s.", 3f, h, Misc.getWithDGS((int) a.supplies),
+				Misc.getWithDGS((int) Math.ceil(a.suppliesWant)));
 		if (a.budFP > 0f) {
 			prompt.addPara(a.system.getBaseName() + " can bud %s fleet points against it in %s days.", 3f, h,
 					Misc.getWithDGS((int) a.budFP), "" + (int) a.budDays);
@@ -2298,7 +2264,7 @@ public class ThreatFactionView {
 		String[] parts = parse(id);
 		if (parts == null) return null;
 		int siegeTier = intel != null ? intel.getSiegeTier() : 0;
-		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0};
+		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0, 0};
 		int[] levers = intel != null ? intel.colonyLevers() : new int[ThreatReserves.AID_COMMODITIES.length];
 		Random random = new Random();
 		FactionAPI faction = Global.getSector().getFaction(parts[1]);
@@ -2329,7 +2295,7 @@ public class ThreatFactionView {
 			if (ThreatAidRequests.requestAt(target) != null) {
 				return ThreatAidRequests.cancel(target) ? "request-cancel" : null;
 			}
-			return ThreatAidRequests.request(target, levers) ? "request" : null;
+			return ThreatAidRequests.request(target, frontLevers) ? "request" : null;
 		}
 		if (BUTTON_AID_STRIKE.equals(parts[0])) {
 			// the aid tab shows no Force selector: the hunt it quotes is Min (quoteStrike at 0 on its button and prompt)
@@ -2365,9 +2331,9 @@ public class ThreatFactionView {
 		}
 		if (!ThreatFleetOrders.canPlayerOrder(faction)) return null;
 		if (BUTTON_GUARD.equals(parts[0])) {
-			// a colony, or the player's outpost
+			// DEPLOY / REDEPLOY (ThreatDeploy, 2026-10-29): a colony, or the player's outpost
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
-			return ThreatFleetOrders.dispatchGuard(faction, target, ALL_HULLS) != null ? "guard" : null;
+			return ThreatDeploy.execute(ThreatDeploy.plan(target, levers), faction);
 		}
 		if (BUTTON_STAGE.equals(parts[0])) {
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
@@ -2411,15 +2377,14 @@ public class ThreatFactionView {
 		if (BUTTON_SIEGE.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			if (system == null) return null;
-			MarketAPI base = nearestBase(ThreatReserves.marketsOf(faction.getId()), system);
+			MarketAPI base = IncursionManager.attackBase(faction, system);
 			// the button's gate again (the board may have been open a while)
 			ThreatNotice.Reason why = IncursionManager.attackBlockFacts(base, faction, system);
 			if (why != null) {
 				ThreatNotice.titled("Attack Refused").bad().icon(faction).lines(why).send();
 				return null;
 			}
-			IncursionManager.Attack a = IncursionManager.attackPlan(base, faction, system, siegeTier,
-					intel != null ? intel.getFuelTier() : 0, intel != null ? intel.getMarineTier() : 0);
+			IncursionManager.Attack a = IncursionManager.attackPlan(base, faction, system);
 			ThreatPurgeFGI purge = IncursionManager.launchAttack(a, faction, random);
 			if (purge == null) {
 				ThreatNotice.titled("Attack Refused").bad().icon(faction)
@@ -2427,11 +2392,12 @@ public class ThreatFactionView {
 				return null;
 			}
 			ThreatNotice n = ThreatNotice.titled("Attack Sails").icon(faction)
-					.line("From %s: %s fleet points in %s fleets", ThreatNotice.market(base),
-							Misc.getWithDGS((int) a.points), "" + a.sizes.size())
+					.line("The fleet deployed at %s: %s fleet points", ThreatNotice.market(base),
+							Misc.getWithDGS((int) a.points))
 					.line("Bound for the %s", system.getNameWithLowercaseType());
 			if (a.razeFuel > 0.5f) n.line("%s fuel to raze %s strata", Misc.getWithDGS(Math.round(a.razeFuel)), ThreatStrata.fmt(a.strata));
 			if (a.marines > 0f) n.line("%s marines to land", Misc.getWithDGS((int) a.marines));
+			n.line("%s supplies aboard", Misc.getWithDGS((int) a.supplies));
 			n.send();
 			return "attack";
 		}
@@ -2558,8 +2524,9 @@ public class ThreatFactionView {
 			// a front can stand on a human world too: the same resolver the prompt uses
 			MarketAPI hive = ThreatGroundFronts.resolveMarket(parts[2]);
 			if (hive == null) return null;
-			ThreatNotice.Reason why = ThreatFleetOrders.orbitRefusal(faction, hive, kind, siegeTier);
-			if (why == null && ThreatFleetOrders.dispatchOrbit(faction, hive, kind, siegeTier) != null) {
+			int orbitTier = frontLevers.length > 2 ? frontLevers[2] : siegeTier;
+			ThreatNotice.Reason why = ThreatFleetOrders.orbitRefusal(faction, hive, kind, orbitTier);
+			if (why == null && ThreatFleetOrders.dispatchOrbit(faction, hive, kind, orbitTier) != null) {
 				return ThreatFleetOrders.orbitName(kind).toLowerCase();
 			}
 			ThreatNotice n = ThreatNotice.titled(ThreatFleetOrders.orbitName(kind) + " Refused").bad()

@@ -90,6 +90,21 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
 
 ## 3. Requesting aid for the player's colonies
 
+**Since 2026-10-29 (the user: "it really shouldnt be guaranteed and instant, as other factions
+might need all their resources / be busy with their own defences ... needs to depend on factions
+current level of besetness by the threat cross referenced with your overall standing"):** the
+Request sits on the player's sieged world's row of the fronts table (beside Reinforce), not the
+colony rows, and is a general call at the fronts' Marines, Arms and Fleet levers
+(`ThreatAidRequests.request(market, frontLevers)`). It stands `aidRequestAnswerDays` (7) and the
+slow tick then answers it (`answer` -> `answerNow`); Cancel withdraws it and lifts the cooldown.
+Each candidate sends the levers' share of its spare, and the Fleet lever's share of its free
+hulls as a guard (`ThreatFleetOrders.dispatchGuardPoints`), times `willingness` = 1 - besetness x
+`aidRequestBesetWeight`, where besetness is the share of its own worlds under a Threat army,
+blockaded or with strikes bound (`besetCount`); and nothing at all while that beset share
+outweighs the player's standing with it, read from Favourable's floor (0) to Cooperative's (1)
+(`standing`). The tooltip and prompt carry a line a faction (`standLine`). The paragraphs below
+are the 2026-10-24 and 2026-10-28 designs the rest still follows (candidates, budgets, prices).
+
 The mirror of giving. The player presses Request aid on an own colony; the Amount tier picks
 Min / Med / Max of the row's most urgent need (the tooltip names it; the confirmation is the
 question and the numbers). (Since 2026-10-28 the colonies table's levers instead, answered AT

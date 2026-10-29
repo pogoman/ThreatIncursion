@@ -103,6 +103,51 @@ public class ThreatReturns {
 		fleet.getMemoryWithoutUpdate().set(MEM_HOLD, hold(fleet) + amount);
 	}
 
+	/**
+	 * Fleet memory: fuel a DEPLOYED fleet carries (ThreatDeploy, the user, 2026-10-29: "deploy ... with
+	 * fuel sized on its modifiers"): the Fuel lever's share of its colony's reserve, aboard as a figure
+	 * like the hold - what an Attack sails with (the passage first, the rest razes), back in the
+	 * colony's reserve whole when the fleet is dissolved or settled ({@link #settle}). Kept apart from
+	 * MEM_FUEL, the voyage draw, of which a settle refunds only the leg home.
+	 */
+	public static final String MEM_FUEL_ABOARD = "$threatinc_fuelAboard";
+
+	/** Fuel aboard a deployed fleet ({@link #MEM_FUEL_ABOARD}); 0 for any other. */
+	public static float fuelAboard(CampaignFleetAPI fleet) {
+		return fleet == null ? 0f : Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL_ABOARD));
+	}
+
+	/** Sets the fuel aboard a deployed fleet. */
+	public static void setFuelAboard(CampaignFleetAPI fleet, float fuel) {
+		if (fleet == null) return;
+		fleet.getMemoryWithoutUpdate().set(MEM_FUEL_ABOARD, Math.max(0f, fuel));
+	}
+
+	/**
+	 * Takes everything a deployed fleet carries off it for the Attack that sails it
+	 * (IncursionManager.launchSiegeExpedition in deployed mode): {marines, arms, fuel aboard, hold},
+	 * ThreatReserves.COMMODITIES order. The cargo's marines and heavy armaments are removed, the fuel
+	 * aboard and the hold zeroed (the hold's full mark too, so nothing restocks it). Nothing is
+	 * deposited anywhere: the expedition carries it from here.
+	 */
+	public static float[] unloadAboard(CampaignFleetAPI fleet) {
+		float[] took = new float[4];
+		if (fleet == null || !fleet.isAlive()) return took;
+		CargoAPI cargo = fleet.getCargo();
+		int marines = cargo.getMarines();
+		float arms = cargo.getCommodityQuantity(Commodities.HAND_WEAPONS);
+		if (marines > 0) cargo.removeMarines(marines);
+		if (arms > 0f) cargo.removeCommodity(Commodities.HAND_WEAPONS, arms);
+		took[0] = marines;
+		took[1] = arms;
+		took[2] = fuelAboard(fleet);
+		took[3] = hold(fleet);
+		fleet.getMemoryWithoutUpdate().unset(MEM_FUEL_ABOARD);
+		fleet.getMemoryWithoutUpdate().set(MEM_HOLD, 0f);
+		fleet.getMemoryWithoutUpdate().set(MEM_HOLD_FULL, 0f);
+		return took;
+	}
+
 	/** Days the hold keeps the fleet's ships, at their maintenance; a large figure for a fleet that burns nothing. */
 	public static float holdDays(CampaignFleetAPI fleet) {
 		if (fleet == null) return 0f;
@@ -207,7 +252,8 @@ public class ThreatReturns {
 	public static float[] carried(CampaignFleetAPI fleet) {
 		if (fleet == null || !fleet.isAlive()) return new float[] {0f, 0f};
 		float h = health(fleet);
-		float fuel = fuelBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL), h, false);
+		float fuel = fuelBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL), h, false)
+				+ fuelAboard(fleet) * Math.max(0f, Math.min(1f, h));
 		float supplies = suppliesBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES), h, playerFleet(fleet))
 				+ hold(fleet) * Math.max(0f, Math.min(1f, h));
 		return new float[] {fuel, supplies};
@@ -498,6 +544,9 @@ public class ThreatReturns {
 		}
 		// the voyage's fuel: only the lost hulls' leg home comes back (fuelBack)
 		float drawFuel = fuelBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL), health(fleet), flownHome);
+		// a deployed fleet's fuel rides its ships, like the hold (ThreatDeploy)
+		drawFuel += fuelAboard(fleet) * Math.max(0f, Math.min(1f, health(fleet)));
+		fleet.getMemoryWithoutUpdate().unset(MEM_FUEL_ABOARD);
 		// an NPC fleet's hulls come home at what survived (suppliesBack)
 		float drawSupplies = suppliesBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES), health(fleet),
 				playerFleet(fleet));

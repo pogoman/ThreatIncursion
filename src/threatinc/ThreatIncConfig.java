@@ -1075,6 +1075,10 @@ public class ThreatIncConfig {
 	public static float aidRequestCooldownDays() { return f("threatinc_aidRequestCooldownDays"); }
 	/** The least a colony must spare of a good to answer the player's request with it (ThreatAidRequests.donors; one unit for ship hulls). */
 	public static float aidRequestMinSpare()   { return f("threatinc_aidRequestMinSpare"); }
+	/** Days a Request stands before the sector answers it (2026-10-29; answered at once before). */
+	public static float aidRequestAnswerDays() { return f("threatinc_aidRequestAnswerDays"); }
+	/** How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) cuts its answer: it sends 1 - besetness x this of the share, nothing while that outweighs the player's standing (ThreatAidRequests.willingness; 0 answers in full). */
+	public static float aidRequestBesetWeight() { return f("threatinc_aidRequestBesetWeight"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }
