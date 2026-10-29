@@ -1847,3 +1847,18 @@ watcher `watch-seeds-39.sh`, tasks ThreatIncSeeds39 / WatchSeeds39. Read against
 (the dwell: dig-ins 33-62, retaken 55-84, hives 251-377). What to see: districts taken by a front
 that dug in and pushed again (a resumed push finishing its district), dig-in lines about the same,
 the swarm's consumed count up a little, retaken not up; 0 exceptions, the heap on three games.
+
+**hw320 END (08:02, set B on the keep-progress jar; hw318 in brackets - the dwell alone):**
+
+| game | war day | hives | took | consumed | lift-offs | restores | retaken | dig-ins (worlds 5+) | marines flips | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw320a | 3,821 | 341 (377) | 414 (349) | 228 (215) | 103 (88) | 93 (36) | 88 (55) | 51 (2) | 131 | 10 | 0 |
+| hw320b | 3,835 | 352 (292) | 278 (270) | 155 (170) | 72 (57) | 93 (94) | 68 (84) | 49 (2) | 114 | 26 | 0 |
+| hw320c | 3,815 | 347 (251) | 385 (200) | 214 (101) | 126 (28) | 40 (76) | 32 (83) | 20 (0) | 85 | 15 | 0 |
+
+- **A resumed push finishes its district:** districts taken 414 / 278 / 385 against 349 / 270 / 200,
+  consumed 228 / 155 / 214 against 215 / 170 / 101, lift-offs 103 / 72 / 126 against 88 / 57 / 28.
+  Hives 341 / 352 / 347 - the lump jar's 349 / 274 / 344 and above, the tightest set-B read of the
+  week. Retaken 88 / 68 / 32 (hw318 55 / 84 / 83): no gift to the defenders.
+- Dig-in lines 51 / 49 / 20, two or no worlds past 5 - the dwell holds with progress kept. 0
+  exceptions, no heap failure on three games this time. hw321 (set A) started 08:02.
