@@ -976,6 +976,10 @@ public class ThreatFleetOrders {
 			if (!a.contains(k) && !b.contains(k)) continue;
 			a.set(k, (a.contains(k) ? a.getFloat(k) : 0f) + (b.contains(k) ? b.getFloat(k) : 0f));
 		}
+		// the cargo too (2026-10-29, oneFleet - every fold is whole): the crew that mans the ships, the
+		// marines and arms aboard, the supplies and fuel - until now a merged fleet sailed on the lead's alone
+		to.getCargo().addAll(from.getCargo());
+		from.getCargo().clear();
 		to.getFleetData().sort();
 		to.getFleetData().setSyncNeeded();
 		to.getFleetData().syncIfNeeded();

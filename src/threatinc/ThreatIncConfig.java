@@ -951,8 +951,18 @@ public class ThreatIncConfig {
 	public static float softenMusterStragglerMult() { return f("threatinc_softenMusterStragglerMult"); }
 	/** Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet. */
 	public static boolean softenMerge()       { return b("threatinc_softenMerge", true); }
-	/** Most ships a hunting force's lead grows to by merging; the rest follow it. */
-	public static int softenMergeMaxShips()   { return i("threatinc_softenMergeMaxShips"); }
+	/** Most ships a hunting force's lead grows to by merging; the rest follow it. No stop under {@link #oneFleet}. */
+	public static int softenMergeMaxShips()   { return oneFleet() ? NO_SHIP_CAP : i("threatinc_softenMergeMaxShips"); }
+	/**
+	 * ONE FLEET (the user, 2026-10-29: "remove the fleet size cap when we spawn fleets ... 8 300FP fleets ...
+	 * it causes more lag"): every force the mod builds sails as ONE fleet, however many ships. An expedition's
+	 * built fleets fold at the spawn (ThreatPurgeFGI.createFleet), a strike packs whole
+	 * (ThreatColonyManager.maxShipsPerFleet), garrisons (ThreatFrontlines.sendGarrison), reliefs, hunts and the
+	 * player's forces fold with no softenMergeMaxShips stop. Off: fleets split at the per-fleet sizes as before.
+	 */
+	public static boolean oneFleet()          { return b("threatinc_oneFleet", true); }
+	/** "No cap" for a ship count under {@link #oneFleet}: finite, so a sum with it never overflows. */
+	public static final int NO_SHIP_CAP = 1000000;
 	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */

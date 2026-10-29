@@ -7,8 +7,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.ModSpecAPI;
 import com.fs.starfarer.api.combat.MutableStat;
 import com.fs.starfarer.api.combat.StatBonus;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
@@ -22,6 +24,8 @@ import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker;
+import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD;
+import com.fs.starfarer.api.loading.IndustrySpecAPI;
 import com.fs.starfarer.api.util.Misc;
 
 import threatinc.ThreatGroundFronts.GroundFront;
@@ -646,6 +650,74 @@ public class ThreatOccupation {
 	public static String rebuildText(Industry ind) {
 		int d = Math.max(1, rebuildDaysLeft(ind));
 		return "Rebuilding: " + d + (d == 1 ? " day" : " days") + " left";
+	}
+
+	// ------------------------------------------------------------------
+	// NO "CANCEL UPGRADE" ON A HELD CARD (the user, 2026-10-29: "the upgrading bug is unfortunately a
+	// dealbreaker, that button cannot be available"). Vanilla's industry popup (marketinfo.b) offers
+	// "Cancel upgrade..." when the industry reports upgrading AND its spec names an upgrade; pressing
+	// it refunds the upgrade's cost x industryRefundFraction, then cancelUpgrade() - which, rebuilding,
+	// stood the structure up whole, and, consumed, paid the refund again at every press. The plugins'
+	// getSpec hands the game a spec that names no upgrade while the swarm holds the structure
+	// (consuming) or it rebuilds from the eaten share, so the button is never built; and they refuse
+	// cancelUpgrade in those states.
+	// ------------------------------------------------------------------
+
+	/** Whether the structure is in the swarm's hands on its card: consumed, or rebuilding from the eaten share. */
+	public static boolean held(Industry ind) {
+		return ind != null && (consuming(ind) || rebuilding(ind));
+	}
+
+	/** The plugins' spec: vanilla's, naming no upgrade while the structure is held (no "Cancel upgrade" on the popup). */
+	public static IndustrySpecAPI heldSpec(Industry ind, IndustrySpecAPI real) {
+		if (real == null || ind == null) return real;
+		if (real instanceof HeldSpec) return real;
+		return new HeldSpec(ind, real);
+	}
+
+	/** Vanilla's spec, every call passed through, but getUpgrade is null while the industry is held. */
+	public static final class HeldSpec implements IndustrySpecAPI {
+		private final Industry ind;
+		private final IndustrySpecAPI real;
+		HeldSpec(Industry ind, IndustrySpecAPI real) { this.ind = ind; this.real = real; }
+		public String getUpgrade() { return held(ind) ? null : real.getUpgrade(); }
+		public String getId() { return real.getId(); }
+		public void setId(String id) { real.setId(id); }
+		public Industry getNewPluginInstance(MarketAPI market) { return real.getNewPluginInstance(market); }
+		public String getPluginClass() { return real.getPluginClass(); }
+		public void setPluginClass(String c) { real.setPluginClass(c); }
+		public Set<String> getTags() { return real.getTags(); }
+		public void addTag(String tag) { real.addTag(tag); }
+		public boolean hasTag(String tag) { return real.hasTag(tag); }
+		public String getName() { return real.getName(); }
+		public String getDesc() { return real.getDesc(); }
+		public void setDesc(String desc) { real.setDesc(desc); }
+		public float getCost() { return real.getCost(); }
+		public void setCost(float cost) { real.setCost(cost); }
+		public float getBuildTime() { return real.getBuildTime(); }
+		public void setBuildTime(float t) { real.setBuildTime(t); }
+		public float getUpkeep() { return real.getUpkeep(); }
+		public void setUpkeep(float u) { real.setUpkeep(u); }
+		public float getIncome() { return real.getIncome(); }
+		public void setIncome(float i) { real.setIncome(i); }
+		public String getImageName() { return real.getImageName(); }
+		public void setImageName(String n) { real.setImageName(n); }
+		public void setName(String n) { real.setName(n); }
+		public void setUpgrade(String u) { real.setUpgrade(u); }
+		public String getDowngrade() { return real.getDowngrade(); }
+		public void setDowngrade(String d) { real.setDowngrade(d); }
+		public int getOrder() { return real.getOrder(); }
+		public void setOrder(int o) { real.setOrder(o); }
+		public Industry getDowngradePluginInstance(MarketAPI market) { return real.getDowngradePluginInstance(market); }
+		public Industry getUpgradePluginInstance(MarketAPI market) { return real.getUpgradePluginInstance(market); }
+		public String getData() { return real.getData(); }
+		public void setData(String d) { real.setData(d); }
+		public MarketCMD.RaidDangerLevel getDisruptDanger() { return real.getDisruptDanger(); }
+		public void setDisruptDanger(MarketCMD.RaidDangerLevel d) { real.setDisruptDanger(d); }
+		public ModSpecAPI getSourceMod() { return real.getSourceMod(); }
+		@Override public boolean equals(Object o) { return o == this || real.equals(o instanceof HeldSpec ? ((HeldSpec) o).real : o); }
+		@Override public int hashCode() { return real.hashCode(); }
+		@Override public String toString() { return real.toString(); }
 	}
 
 	/**

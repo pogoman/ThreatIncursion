@@ -507,9 +507,23 @@ as vanilla's UPGRADING state - functional (the old structure runs through an upg
 scaled effect applies and the big Building label is not written - with the bar reading "Rebuilding: N
 days left" (`rebuildText`) on all nine plugins, producers included. A producer's output stays off while
 claimed and while rebuilding (vanilla's under-construction rule; it was the swarm's either way). Patrol
-counts and the stability bonus are vanilla's whole, as vanilla leaves them on a shortage. Wrinkle: on a
-player's own world the rebuilding card offers vanilla's cancel-upgrade, which would stand the structure
-up whole at once - not handled, like "cancel construction" on a consumed card. Jar 22:24:30, untested.
+counts and the stability bonus are vanilla's whole, as vanilla leaves them on a shortage. Jar 22:24:30,
+untested.
+
+**No "Cancel upgrade" on a held card (2026-10-29, the user: "the upgrading bug is unfortunately a
+dealbreaker, that button cannot be available").** Vanilla's industry popup (`marketinfo.b`, read from the
+bytecode) builds its buttons from the plugin: "Stop construction..." when building and not upgrading,
+"Cancel upgrade..." when upgrading AND `getSpec().getUpgrade()` is non-null, "Upgrade to X..." when not
+building and the spec names an upgrade, "Downgrade to X..." when not upgrading and the spec names a
+downgrade. Pressing Cancel upgrade adds the upgrade's cost x `industryRefundFraction` to the player's
+credits and then calls `cancelUpgrade()`: rebuilding, that stood the structure up whole; consumed, the
+plugin stayed "upgrading" so the button stayed and paid the refund again at every press. Now the nine
+plugins' `getSpec()` returns `ThreatOccupation.HeldSpec` (vanilla's spec, every call passed through, a
+transient field so XStream skips it) whose `getUpgrade()` is null while the structure is HELD
+(`ThreatOccupation.held`: consumed or rebuilding), so the popup never builds the button, and
+`cancelUpgrade()` is refused in those states. The Downgrade button was already hidden (both states read
+as upgrading); a claimed industry not yet consumed still offers vanilla's upgrade and downgrade. Jar
+09:01:02, untested.
 
 ## 8. THE LUMP (2026-10-28 12:50, the user: troops only once an industry is fully consumed)
 
