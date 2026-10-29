@@ -5007,8 +5007,9 @@ public class ThreatColonyManager {
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 	}
 
-	/** The engine's ship limit for an AI fleet (settings maxShipsInAIFleet, vanilla's 30). */
+	/** The engine's ship limit for an AI fleet (settings maxShipsInAIFleet, vanilla's 30, our settings.json 60); no limit under ThreatIncConfig.oneFleet, so a strike packs into one fleet. */
 	public static int maxShipsPerFleet() {
+		if (ThreatIncConfig.oneFleet()) return ThreatIncConfig.NO_SHIP_CAP;
 		return Global.getSettings().getInt("maxShipsInAIFleet");
 	}
 

@@ -1385,6 +1385,10 @@
 	# up to softenMergeMaxShips; fleets beyond it follow the lead
 	"threatinc_softenMerge": true,
 	"threatinc_softenMergeMaxShips": 90,
+	# ONE FLEET (the user, 2026-10-29): every force sails as one fleet, however many ships - an expedition's
+	# fleets fold at the spawn, a strike packs whole, garrisons / reliefs / hunts / your forces fold with no
+	# softenMergeMaxShips stop. false: fleets split at the per-fleet sizes and vanilla's maxShipsInAIFleet
+	"threatinc_oneFleet": true,
 	"threatinc_softenFleetFP": 1500,
 	"threatinc_softenDays": 60,
 	"threatinc_softenIntervalDays": 30,

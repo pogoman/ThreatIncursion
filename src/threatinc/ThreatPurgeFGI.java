@@ -1206,6 +1206,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (params != null) {
 			for (Integer size : params.fleetSizes) if (size != null) paidPoints += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
 		}
+		oneFleetBuilt = false;
 		try {
 			super.spawnFleets();
 		} finally {
@@ -1571,6 +1572,66 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			m.triggerSetFleetComposition(0.1f, 0.1f,
 					ThreatIncConfig.expeditionTransportMult(), 0f, 0f);
 		}
+	}
+
+	/** Set once a spawn's built fleets have come out as one ({@link #createFleet}); the spawn loop's other sizes then build nothing. Not saved. */
+	protected transient boolean oneFleetBuilt;
+
+	/**
+	 * ONE FLEET (the user, 2026-10-29: "8 300FP fleets ... super annoying ... causes more lag"):
+	 * under ThreatIncConfig.oneFleet the whole flotilla comes out of the first size vanilla's
+	 * spawn asks for - every size in params.fleetSizes built as vanilla builds it (its own
+	 * quality, route damage, transports and share of the landing: configureFleet), then folded
+	 * into the first, ships and cargo ({@link #foldUnplaced}) - and the loop's other sizes build
+	 * nothing (vanilla skips a null). The sizes stay the ledger's and the board's units: the
+	 * same points, as one fleet. Vanilla's difficulty 10 is its FleetSize.MAXIMUM, ~300 FP a
+	 * fleet - the "8 300FP fleets". Staged task forces stay their own fleets.
+	 */
+	@Override
+	protected CampaignFleetAPI createFleet(int size, float damage) {
+		if (!ThreatIncConfig.oneFleet() || params == null || params.fleetSizes == null
+				|| params.fleetSizes.size() <= 1) {
+			return super.createFleet(size, damage);
+		}
+		if (oneFleetBuilt) return null;
+		oneFleetBuilt = true;
+		CampaignFleetAPI lead = null;
+		int folded = 0;
+		for (Integer s : new ArrayList<Integer>(params.fleetSizes)) {
+			if (s == null) continue;
+			CampaignFleetAPI f = super.createFleet(s, damage);
+			if (f == null) continue;
+			if (lead == null) {
+				lead = f;
+			} else {
+				foldUnplaced(lead, f);
+				folded++;
+			}
+		}
+		if (lead != null && folded > 0) {
+			ThreatIncConfig.log("Expedition: " + (folded + 1) + " fleets built as one - "
+					+ lead.getFleetData().getNumMembers() + " ships, " + lead.getFleetPoints() + " FP");
+		}
+		return lead;
+	}
+
+	/**
+	 * Moves a fleet never placed in a location into the lead: its ships (the lead keeps its
+	 * flagship) and its cargo - the crew that mans them, the marines and arms configureFleet
+	 * loaded, the supplies and fuel vanilla gave it. The emptied fleet is dropped.
+	 */
+	protected static void foldUnplaced(CampaignFleetAPI lead, CampaignFleetAPI from) {
+		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : from.getFleetData().getMembersListCopy()) {
+			from.getFleetData().removeFleetMember(m);
+			m.setFlagship(false);
+			lead.getFleetData().addFleetMember(m);
+		}
+		lead.getCargo().addAll(from.getCargo());
+		from.getCargo().clear();
+		lead.getFleetData().sort();
+		lead.getFleetData().setSyncNeeded();
+		lead.getFleetData().syncIfNeeded();
+		lead.forceSync();
 	}
 
 	/** Loads the allotment aboard, as much as each fleet's berths and holds take. */
