@@ -1717,3 +1717,22 @@ than retaken by flapping; the rest unchanged.
 - Human landings on hives: 68-117 fronts deployed, 9-16 ground victories, 0 collapses; the lump
   fires on every consumption (77 / 86 / 179 payments); grand fleets 22 / 33 / 42 sails, 0-3 lost;
   0 exceptions, no hang.
+
+**hw315 END (01:13, set A, 75 min; hw313 in brackets - same seeds, the lump jar):**
+
+| game | war day | hives | consumed | lift-offs | restores | claims / reclaims / rebuilds | retaken | dig-ins (worlds 5+) | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw315a | 3,808 (3,646) | 244 (303) | 155 (157) | 39 (59) | 70 (22) | 373 / 213 / 113 | 183 (59) | 246 (12) | 0 |
+| hw315b | 3,601 (3,810) | 301 (343) | 141 (62) | 42 (13) | 69 (32) | 393 / 240 / 126 | 208 (43) | 275 (9) | 0 |
+| hw315c | 3,814 (3,673) | 318 (350) | 212 (205) | 72 (76) | 79 (69) | 489 / 253 / 120 | 238 (71) | 278 (10) | 0 |
+
+- **Set A reads as set B did, harder:** districts retaken 183 / 208 / 238 against hw313's 59 / 43 /
+  71 (three to five times), restores 69-79 against 22-69; the swarm's hives 244 / 301 / 318 against
+  303 / 343 / 350 - the spread down a tenth to a fifth, where set B's stayed inside the band. The flap
+  is in every game (246-278 dig-in lines, 9-12 worlds past 5). Consumed 141-212 (hw313 62-205).
+- hw315b ran slowly (war 3,601 at the cap) under a vanilla sound.C "Unable to load ... .ogg" spam
+  (455k lines of it in `exc-hw315b.txt`, the files present on disk - a vanilla read failure; the game
+  ran on, 0 mod exceptions). The watcher tripped on it at w0 and stopped; `watch.sh` now filters
+  sound.C from the exc signal (ce7ade56).
+- 0 exceptions, no hang. **The flap costs the swarm** is the hypothesis hw316 / hw317 test: the
+  jar 01:15:03 (320a8199, the hysteresis) launched hw316 (set B) at 01:15 from `handover-36-37.sh`.
