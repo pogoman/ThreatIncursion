@@ -339,19 +339,24 @@ public class ThreatAid {
 	}
 
 	/**
-	 * As above; {@code self} is the colony being guarded when it is one of
-	 * the player's own, sized by its own free points (it is the closest
-	 * source to itself, so a colony with own points free guards itself).
+	 * As above; {@code self} is the colony being guarded when it is one of the player's own: its
+	 * own free hulls made real over it when they field a full guard, else the nearest other colony
+	 * that can, else whichever has the most.
 	 */
 	public static MarketAPI pickTaskForceSource(Vector2f hyperLoc, MarketAPI self) {
 		MarketAPI best = null;
 		float bestFP = 0f;
-		// a guard over an own colony is staging: it brings hulls from the nearest OTHER colony
-		// that can field a full guard (the user, 2026-10-11: hulls reach a base by a Fleet order
-		// to it); the colony's own hulls stage over itself only when no other colony can.
-		// Staging bases first (IncursionManager.isBase), nearest first, then the colonies that
-		// only hold hulls (the hull port): a hunt sails from the base the task forces were
-		// staged at, not from the port beside it (the user, 2026-10-11 evening: "staging base
+		// A GUARD OVER THE PLAYER'S OWN COLONY IS ITS OWN HULLS FIRST (the user, 2026-10-29, at
+		// Haven's Fleet button with Haven's Hulls cell full and Arkoman's 0: "it says it's sending
+		// fleets from ark???"). From 2026-10-11 to 2026-10-29 the nearest OTHER colony came first, a
+		// Fleet order being the way hulls reached a base; the Supplies button's Hulls lever moves
+		// hulls between colonies now (ThreatConvoys.stageLoad, 2026-10-28), and the task forces on
+		// station at Arkoman counted as its free points while its Hulls cell read 0, so Haven's
+		// order sailed - or was refused - from a colony the player read as empty.
+		if (self != null && taskForceFP(self, true) >= ThreatIncConfig.guardFleetFP()) return self;
+		// Past its own hulls: staging bases first (IncursionManager.isBase), nearest first, then the
+		// colonies that only hold hulls (the hull port): a hunt sails from the base the task forces
+		// were staged at, not from the port beside it (the user, 2026-10-11 evening: "staging base
 		// still not being used", a Max hunt quoting 1,045 from Arkoman beside Haven's 605 staged)
 		List<MarketAPI> candidates = sources(hyperLoc);
 		for (int pass = 0; pass < 2; pass++) {
@@ -521,7 +526,8 @@ public class ThreatAid {
 		q.free = freePoints(q.source, own);
 		q.fleets = forceFleets(q.source, q.points);
 		q.distLY = Misc.getDistanceLY(q.source.getStarSystem().getLocation(), hyperLoc);
-		q.carried = own ? new float[] {0f, 0f} : ThreatAidCapacity.foldedProvisions(q.source, q.points);
+		// an own guard folds nothing: null, as buildPlayerForce's gate and the prompt pass it
+		q.carried = own ? null : ThreatAidCapacity.foldedProvisions(q.source, q.points);
 		q.provisions = ThreatFleetOrders.forceProvisions(q.source, q.fp, hyperLoc, q.carried);
 		ThreatNotice.Reason unpaid = ThreatFleetOrders.provisionsShort(q.source, q.fp, hyperLoc, q.carried);
 		if (unpaid != null) q.reason = unpaid;
@@ -529,11 +535,13 @@ public class ThreatAid {
 	}
 
 	/**
-	 * The colony to send a force of {@code askFP} combat points from: the nearest whose hulls free
-	 * field it all (staging bases first, as {@link #pickTaskForceSource(Vector2f, MarketAPI)}
-	 * orders them), else that pick - whose free points the refusal then quotes.
+	 * The colony to send a force of {@code askFP} combat points from: the colony's own hulls for a
+	 * guard over itself, else the nearest whose hulls free field it all (staging bases first, as
+	 * {@link #pickTaskForceSource(Vector2f, MarketAPI)} orders them), else that pick - whose free
+	 * points the refusal then quotes.
 	 */
 	public static MarketAPI pickTaskForceSource(Vector2f hyperLoc, MarketAPI self, float askFP) {
+		if (self != null && forceFP(self, true, 2) >= askFP) return self;
 		List<MarketAPI> candidates = sources(hyperLoc);
 		for (int pass = 0; pass < 2; pass++) {
 			for (MarketAPI m : candidates) {
@@ -542,7 +550,6 @@ public class ThreatAid {
 				if (forceFP(m, false, 2) >= askFP) return m;
 			}
 		}
-		if (self != null && forceFP(self, true, 2) >= askFP) return self;
 		return pickTaskForceSource(hyperLoc, self);
 	}
 
@@ -560,8 +567,8 @@ public class ThreatAid {
 		q.fleets = forceFleets(q.source, q.points);
 		q.distLY = Misc.getDistanceLY(q.source.getStarSystem().getLocation(), hyperLoc);
 		// the provisions the force draws, and the gate on them: a force its source cannot fuel and
-		// supply is not offered (the user, 2026-10-11)
-		q.carried = own ? new float[] {0f, 0f} : ThreatAidCapacity.foldedProvisions(q.source, q.points);
+		// supply is not offered (the user, 2026-10-11); an own guard folds nothing (null)
+		q.carried = own ? null : ThreatAidCapacity.foldedProvisions(q.source, q.points);
 		q.provisions = ThreatFleetOrders.forceProvisions(q.source, q.fp, hyperLoc, q.carried);
 		ThreatNotice.Reason unpaid = ThreatFleetOrders.provisionsShort(q.source, q.fp, hyperLoc, q.carried);
 		if (unpaid != null) q.reason = unpaid;

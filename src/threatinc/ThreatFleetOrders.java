@@ -1384,15 +1384,57 @@ public class ThreatFleetOrders {
 	}
 
 	/**
-	 * As {@link #forceProvisions} less what the task forces folding into the force bring with
-	 * them ({@code carried}, ThreatAidCapacity.foldedProvisions): what the base's reserve is
-	 * actually drawn for, never below zero.
+	 * As {@link #forceProvisions} for a force the task forces on station at the base sail with
+	 * ({@code carried} non-null: what they bring, ThreatAidCapacity.foldedProvisions; null for a
+	 * colony's own guard, which nothing folds into): those fleets priced as the draw prices them
+	 * ({@link #stagedProvisionsGap}), less what they carry - what the base's reserve is actually
+	 * drawn for, never below zero.
 	 */
 	public static float[] forceProvisions(MarketAPI base, float combatFP, Vector2f destinationHyper, float[] carried) {
 		float[] need = forceProvisions(base, combatFP, destinationHyper);
 		if (carried == null) return need;
-		return new float[] {Math.max(0f, need[0] - Math.max(0f, carried[0])),
-				Math.max(0f, need[1] - Math.max(0f, carried[1]))};
+		float[] gap = stagedProvisionsGap(base, ThreatAidCapacity.taskForcePoints(combatFP), destinationHyper);
+		return new float[] {Math.max(0f, need[0] + gap[0] - Math.max(0f, carried[0])),
+				Math.max(0f, need[1] + gap[1] - Math.max(0f, carried[1]))};
+	}
+
+	/**
+	 * {fuel, supplies} the task forces on station at the base that a force of {@code points}
+	 * whole-fleet points sails with (ThreatAidCapacity.stagedToFold, past the base's own free
+	 * hulls) want for the trip beyond what the per-point price counted for them. Each sails as it
+	 * is ({@link #retask}) and is provisioned as its own ships are ({@link #provisionTaskForce}):
+	 * the voyage's deposit on its warship points and its hold at their maintenance for the days
+	 * away, never trimmed - where the price (ThreatReach.sortieHold) counted its live points over
+	 * TASK_FORCE_HULL_MULT at the faction's measured rate. The gate's figure is the draw's since
+	 * 2026-10-29: Haven's Fleet button, enabled at the quote, was refused at the order four times
+	 * over a hold 6-55 supplies short at Arkoman, the staged fleet's hold settled into the reserve
+	 * and restocked out of it at each press, the figure on the button never moving. A part below
+	 * zero stands (a fleet cheaper than its price lowers the draw).
+	 */
+	public static float[] stagedProvisionsGap(MarketAPI base, float points, Vector2f destinationHyper) {
+		float[] gap = new float[] {0f, 0f};
+		if (base == null || !ThreatAidCapacity.enabled()) return gap;
+		float remaining = points - Math.max(0f, ThreatAidCapacity.ownFreeFP(base));
+		if (remaining <= 0f) return gap;
+		float ly = sortieLY(base, destinationHyper);
+		float days = ThreatReach.daysAway(ly, true, ThreatReach.sortieStay(ly));
+		float fuelPerPointLY = ThreatIncConfig.expeditionFuelPerPointLY();
+		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+		for (Order o : ThreatAidCapacity.stagedToFold(base, remaining, null)) {
+			CampaignFleetAPI fleet = o.fleet;
+			float live = ThreatAidCapacity.liveFP(fleet);
+			// what the per-point price counted for this fleet: its share of the points asked
+			float counted = Math.min(live, Math.max(0f, remaining)) / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
+			float[] priced = threatinc.rules.ReachRules.voyageCost(counted, ly, fuelPerPointLY, suppliesPerPoint);
+			priced[1] += ThreatReach.sortieHold(base.getFactionId(), counted, ly);
+			float[] real = threatinc.rules.ReachRules.voyageCost(ThreatSoftening.combatFP(fleet), ly,
+					fuelPerPointLY, suppliesPerPoint);
+			if (ThreatIncConfig.fleetUpkeep()) real[1] += ThreatFrontlines.maintenancePerMonth(fleet) * days / 30f;
+			gap[0] += real[0] - priced[0];
+			gap[1] += real[1] - priced[1];
+			remaining -= live;
+		}
+		return gap;
 	}
 
 	/** Why the base cannot provision a player force of {@code combatFP} to {@code destinationHyper} ({@link #forceProvisions}), one fact per line, or null when it can. */

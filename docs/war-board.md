@@ -123,7 +123,8 @@ swarm point seen in the system / that by the margin (`ThreatAid.huntAskFP`); **S
 over a world matches the swarm over it (a hive's as the player's report shows it) / x
 `orbitTierMedMargin` 1.25 / x `orbitTierMaxMargin` 1.5 (`ThreatAid.orbitAskFP`; one fleet with no
 swarm there). A force asks the nearest colony whose free hulls field it all
-(`ThreatAid.pickTaskForceSource(loc, self, ask)`) and is refused with the figures when none can
+(`ThreatAid.pickTaskForceSource(loc, self, ask)`; a guard over the player's own colony asks its own
+hulls first since 2026-10-29, the nearest other colony past them) and is refused with the figures when none can
 ("Haven has 900 fleet points free / To hunt the swarms seen takes 2,400"); the prompt carries one
 line on what it was sized against (`Quote.sized`). Expedition hulls are the need
 (`playerExpeditionSizes` at Min); the task forces on station still fold in first. Before this
