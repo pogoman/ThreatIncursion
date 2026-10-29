@@ -90,7 +90,38 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
 
 ## 3. Requesting aid for the player's colonies
 
-**Since 2026-10-29 (the user: "it really shouldnt be guaranteed and instant, as other factions
+**Since 2026-10-29 evening (the user: "i want to rework the request and aid system"; BUILT jar
+19:43:00, untested):** no Request button. A request is logged from a **Transfer or Deploy that
+cannot meet what the colony needs** at the colonies table's levers: after the order sails (at once
+when nothing can sail) a yes / no dialog over the board (`ThreatAidRequestDialog`) lists the
+shortfall - each good whose convoy load is under the colony's need at the lever's tier
+(`ThreatAidRequests.transferShortfall`, the largest `ThreatNeeds` need of the good: Med its med
+figure, Max its max), or a Deploy's fleet under the fleets need (`deployShortfall`, a relief task
+force) - and "Call for aid" logs one request a world, a `Part` a good at the lever's tier
+(`request`; an open part of the same good is retiered, one already accepted left alone). It
+**stands until every part lands or the player withdraws it** from the Requests table (`withdraw`;
+parts already sailing still land and are still charged). **Every faction at Favourable or better
+looks at it once a day** on its own clock (`check`, `aidRequestCheckDays` 1; the fixed
+`aidRequestAnswerDays` wait and the `aidRequestCooldownDays` cooldown went) and **accepts a part it
+has the capacity for** (`tryAccept`): **Max is all that one colony of its spares of the good, Med
+half** - the colony sparing the most in reach (`donors`), at least `aidRequestMinSpare` after the
+share; the task force is that share of the hulls its navy has free, as a guard from its nearest
+base (`ThreatFleetOrders.dispatchGuardPoints`), at least a fleet (`ThreatDeploy.minPoints`). It
+answers nothing while its besetness x `aidRequestBesetWeight` outweighs the player's standing
+(`willingness` - a gate now, not a scale). The first faction with the capacity takes the part; the
+convoy or order carries `requestId`, and the "Call Answered" notice gives the **ETA** (`eta`:
+`ThreatReach.days` for the passage plus a day). **Standing is charged on receipt, a whole number**
+(`priceOf` = round(amount x `pricePerUnit`), at least 1; an ask over the budget is cut to it), never
+below Favourable, written with `FactionAPI.setRelationship` on the rounded hundredth so vanilla
+shows no message and plays no sound (`charge`; `onConvoyLanded` from the convoy landing,
+`onGuardArrived` from `ThreatFleetOrders.poll`). A part lost at sea costs nothing and reopens
+(`settleLost`). The Requests table (docs/war-board.md) shows every part's state: the player's tab
+every faction's answer, a faction's tab its own - its part sailing, another's taken, or its last
+reason ("no colony in reach spares 100 or more", "would take you below Favourable", "2 of 7 worlds
+beset by the Threat, past your standing") and when it looks again. `ThreatAidAnswersIntel` is
+retired. The paragraphs below are the earlier designs the rest still follows (candidates, prices).
+
+**Until 2026-10-29 evening (the user: "it really shouldnt be guaranteed and instant, as other factions
 might need all their resources / be busy with their own defences ... needs to depend on factions
 current level of besetness by the threat cross referenced with your overall standing"):** the
 Request sits on the player's sieged world's row of the fronts table (beside Reinforce), not the

@@ -951,8 +951,6 @@ public class ThreatWarBoard {
 	protected static final float FRONT_PULLOUT_W = 72f;
 	protected static final float FRONT_SUPPORT_W = 62f;
 	protected static final float FRONT_DEFEND_W = 58f;
-	protected static final float FRONT_REINFORCE_W = 76f;
-	protected static final float FRONT_REQUEST_W = 68f;
 	protected static final float FRONT_BUTTON_GAP = 4f;
 
 	/** Every live front, the player's own first, then by world name. */
@@ -1012,9 +1010,10 @@ public class ThreatWarBoard {
 	}
 
 	/**
-	 * Whether the player may Reinforce the world this front stands on (2026-10-17): a Threat
-	 * army on a human colony - the player's own while their faction may order, or an ally's
-	 * while the player may aid it (ThreatAid.canAid). The button itself carries the load's gate.
+	 * Whether the player has orders on the world this front stands on (2026-10-17): a Threat
+	 * army on a human colony - the player's own while their faction may order (the defenders'
+	 * Push / Hold), or an ally's while the player may aid it (ThreatAid.canAid; Defend at the Fleet
+	 * lever since 2026-10-29 evening). The button itself carries its gate.
 	 */
 	protected static boolean playerCanReinforce(FrontRow r) {
 		if (!ThreatGroundFronts.isThreatOwned(r.front) || ThreatGroundFronts.isHiveTarget(r.market)) return false;
@@ -1587,9 +1586,8 @@ public class ThreatWarBoard {
 			// the row's distance up from the table's foot, centred in it
 			float up = (fronts.rowCount - rowIndex) * ROW_H - (ROW_H - 20f) / 2f;
 			if (playerCanReinforce(r)) {
-				// REINFORCE (2026-10-17): a Threat army on a human world - a convoy
-				// of marines and heavy armaments into the colony's stockpile, the
-				// player's own colony by order, an ally's as aid
+				// a Threat army on a human world: the player's own colony holds its defenders'
+				// stance orders, an ally's the Defend at the Fleet lever (2026-10-29 evening)
 				boolean ownWorld = r.market.isPlayerOwned();
 				float rx = 6f;
 				if (ownWorld && !ThreatGroundFronts.isHiveTarget(r.market)) {
@@ -1617,54 +1615,26 @@ public class ThreatWarBoard {
 							+ (int) ThreatIncConfig.frontEntrenchDays() + " days, lost with a "
 							+ ThreatGroundFronts.layerName(r.market) + ".");
 				}
-				// an ally's world: the Aid order on the ledger (2026-10-23) - the Reinforce id, so the fronts table's supply tier is the one quoted and sailed
-				com.fs.starfarer.api.ui.ButtonAPI reinforce = intel.addGenericButton(main,
-						FRONT_REINFORCE_W, ownWorld ? "Reinforce" : "Aid",
-						ThreatFactionView.BUTTON_REINFORCE + r.market.getFactionId() + ":" + r.market.getId());
-				reinforce.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
-				if (ownWorld) {
-					MarketAPI donor = ThreatConvoys.reinforceDonor(r.market, player, fl);
-					float[] load = donor != null ? ThreatConvoys.reinforceLoad(donor, r.market, fl) : null;
-					String from = donor != null ? donor.getName() : "your nearest colony";
-					String why = donor != null ? null : ThreatConvoys.reinforceOffReason(r.market, fl, "yours");
-					ThreatFactionView.disableWith(main, reinforce, why == null, why,
-							"A convoy brings " + (load != null ? Misc.getWithDGS((int) load[0]) + " marines and "
-									+ Misc.getWithDGS((int) load[1]) + " heavy armaments" : "marines and heavy armaments")
-							+ " from " + from + " to the stockpile of " + r.market.getName()
-							+ "; it waits at the jump-point while the Threat blockades the world.");
-					// REQUEST (2026-10-29, the user: "On sieged player worlds request button should
-					// appear there instead ... a general call for the combination of levers specified"):
-					// the call for aid at the fronts' Marines, Arms and Fleet levers, answered after
-					// aidRequestAnswerDays by each faction less its besetness (ThreatAidRequests);
-					// Cancel while the call stands
-					rx += FRONT_REINFORCE_W + FRONT_BUTTON_GAP;
-					ThreatAidRequests.Request open = ThreatAidRequests.requestAt(r.market);
-					com.fs.starfarer.api.ui.ButtonAPI ask = intel.addGenericButton(main, FRONT_REQUEST_W,
-							open != null ? "Cancel" : "Request",
-							ThreatFactionView.BUTTON_REQUEST + r.market.getFactionId() + ":" + r.market.getId());
-					ask.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
-					if (open != null) {
-						ThreatFactionView.disableWith(main, ask, true, null, "Withdraws the call for "
-								+ ThreatAidRequests.askText(open.tiers, open.fleets ? Math.max(1, open.fleetTier) : 0)
-								+ "; it is answered in " + (int) Math.ceil(ThreatAidRequests.answerIn(open)) + " days.");
-					} else {
-						String askWhy = ThreatAidRequests.requestOffReason(r.market, fl);
-						StringBuilder tip = new StringBuilder("Calls every faction at Favourable or better for ")
-								.append(ThreatAidRequests.askText(fl)).append(", answered in ")
-								.append((int) ThreatAidRequests.answerDays())
-								.append(" days; each sends less the more of its worlds the Threat besets, nothing past your standing.");
-						for (FactionAPI helper : ThreatAidRequests.candidates()) {
-							tip.append("\n").append(ThreatAidRequests.standLine(helper));
-						}
-						ThreatFactionView.disableWith(main, ask, askWhy == null, askWhy, tip.toString());
-					}
-				} else {
-					ThreatAid.Quote q = ThreatAid.quoteAid(r.market, ThreatFactionView.frontAidLevers(fl));
-					ThreatFactionView.disableWith(main, reinforce, q.ok(), q.ok() ? null : ThreatNotice.text(q.reason),
-							q.ok() ? q.purpose + ": " + ThreatFactionView.aidCargo(q) + " from " + q.source.getName()
-									+ " to the stockpile of " + r.market.getName()
-									+ "; it waits at the jump-point while the Threat blockades the world. Earns standing on arrival."
-									: null);
+				// the own world's Reinforce and Request went on 2026-10-29 evening (the user: "remove the
+				// reinforce and request button from there"): a Transfer on the colony row reinforces it,
+				// and a Transfer or Deploy short of its needs asks whether to call for aid
+				if (!ownWorld) {
+					// DEFEND an ally's sieged world (2026-10-29 evening, the user: "defend button for faction
+					// under human faction ground front entry should use the fleet sizing buttons"): the
+					// player's task force over it at the Fleet lever's outcome - match the swarm / x1.25 /
+					// x1.5 (ThreatAid.quoteDefend) - as the player's own Defend; it was the colony row's
+					// Defend at every hull free, beside an Aid convoy, both gone
+					int orbitTier = fl.length > 2 ? fl[2] : 0;
+					com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
+							FRONT_DEFEND_W, "Defend",
+							ThreatFactionView.BUTTON_AID_DEFEND + r.market.getFactionId() + ":" + r.market.getId());
+					defend.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
+					ThreatAid.Quote d = ThreatAid.quoteDefend(r.market, orbitTier);
+					ThreatFactionView.disableWith(main, defend, d.ok(), d.ok() ? null : ThreatNotice.text(d.reason),
+							d.ok() ? "A task force of " + ThreatFactionView.forceText(d) + " from " + d.source.getName()
+									+ " holds this orbit for " + (int) ThreatIncConfig.guardDays()
+									+ " days. Paid from that colony's reserve; earns standing on arrival."
+									+ (d.sized != null ? "\n" + d.sized : "") : null);
 				}
 				continue;
 			}

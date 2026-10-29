@@ -99,6 +99,8 @@ public class ThreatConvoys {
 		public String siteId;
 		/** A founding convoy's hive: the found Threat system the base is built toward. */
 		public String hiveSystemId;
+		/** The player's request for aid this convoy answers (ThreatAidRequests.Request.id, 2026-10-29): charged on landing, the part reopened if lost. Null otherwise. */
+		public String requestId;
 
 		public boolean isFrontRun() {
 			return frontMarketId != null;
@@ -3376,7 +3378,8 @@ public class ThreatConvoys {
 				ThreatAid.onDelivered(base.market, c.recipientFactionId, marines, armaments, fuel,
 						supplies, ships, true, null, weights);
 			} else {
-				ThreatCoalition.onAllyDelivered(c, base.market);
+				// an answer to the player's request for aid lands: the part is received and charged (ThreatAidRequests); any other ally's convoy, its word
+				if (!ThreatAidRequests.onConvoyLanded(c, base.market)) ThreatCoalition.onAllyDelivered(c, base.market);
 			}
 		}
 

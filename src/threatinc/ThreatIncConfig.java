@@ -1071,13 +1071,11 @@ public class ThreatIncConfig {
 	public static float aidRepFrontTotal()    { return f("threatinc_aidRepFrontTotal"); }
 	/** REQUEST AID (2026-10-23, docs/war-effort-rework.md 3): whether the player may ask the sector for a colony's need (ThreatAidRequests). */
 	public static boolean aidRequestsEnabled(){ return b("threatinc_aidRequestsEnabled", true); }
-	/** Days between the player's requests for one colony. */
-	public static float aidRequestCooldownDays() { return f("threatinc_aidRequestCooldownDays"); }
 	/** The least a colony must spare of a good to answer the player's request with it (ThreatAidRequests.donors; one unit for ship hulls). */
 	public static float aidRequestMinSpare()   { return f("threatinc_aidRequestMinSpare"); }
-	/** Days a Request stands before the sector answers it (2026-10-29; answered at once before). */
-	public static float aidRequestAnswerDays() { return f("threatinc_aidRequestAnswerDays"); }
-	/** How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) cuts its answer: it sends 1 - besetness x this of the share, nothing while that outweighs the player's standing (ThreatAidRequests.willingness; 0 answers in full). */
+	/** Days between one faction's looks at a request for aid (2026-10-29 evening: "24 hours between each check"; ThreatAidRequests.check). */
+	public static float aidRequestCheckDays()  { return f("threatinc_aidRequestCheckDays"); }
+	/** How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) gates its answer: it answers nothing while besetness x this outweighs the player's standing (ThreatAidRequests.willingness; 0 always answers). */
 	public static float aidRequestBesetWeight() { return f("threatinc_aidRequestBesetWeight"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }

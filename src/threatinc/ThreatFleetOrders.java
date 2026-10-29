@@ -186,6 +186,8 @@ public class ThreatFleetOrders {
 		public String groupId;
 		/** The loose swarm fleet a player hunt is chasing (chaseLoose); null while it holds an orbit. */
 		public String chasingId;
+		/** The player's request for aid this guard answers (ThreatAidRequests.Request.id, 2026-10-29): charged on arrival, the part reopened if lost. Null otherwise. */
+		public String requestId;
 		/**
 		 * A RAID (2026-10-01, ThreatAttackPlanner): an NPC Support sortie over a
 		 * hive with no front of its own - it holds the orbit and bombs it, sized
@@ -305,6 +307,8 @@ public class ThreatFleetOrders {
 					if (KIND_GUARD.equals(o.kind)) ThreatAid.onGuardArrived(o);
 					else ThreatAid.onStrikeArrived(o);
 				}
+				// an NPC guard answering the player's request for aid: received, charged (ThreatAidRequests)
+				if (o.requestId != null) ThreatAidRequests.onGuardArrived(o);
 				if (o.raid) raidArrived(o);
 			}
 			// the player's guard over their own colony: its hulls are the host's (every poll - a

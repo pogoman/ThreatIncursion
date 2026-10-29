@@ -53,9 +53,9 @@ threatinc_pathTithes,Pather Tithes,Boolean,true,"Pather cells on other factions'
 playerHeader,Your War Board Header,Header,Your War Board,What the war board offers you.,,
 threatinc_ordersEnabled,Fleet Orders,Boolean,true,"Guard, Support, Defend, Siege and Recall orders for your own navy.",,
 threatinc_aidEnabled,Aid to Other Factions,Boolean,true,Send task forces and convoys to other factions' colonies from the board.,,
-threatinc_aidRequestsEnabled,Request Aid,Boolean,true,Call friendly factions to the defence of a world of yours under a Threat army.,,
-threatinc_aidRequestAnswerDays,Request Answer Days,Double,7,Days before the sector answers a call for aid.,1,60
-threatinc_aidRequestBesetWeight,Request Beset Weight,Double,1.0,"How hard a faction's own worlds under the Threat cut its answer: 0 answers in full, 1 a faction with half its worlds beset sends half and only at half way to Cooperative.",0,2
+threatinc_aidRequestsEnabled,Request Aid,Boolean,true,Call friendly factions for what a Transfer or Deploy of yours cannot meet.,,
+threatinc_aidRequestCheckDays,Request Check Days,Double,1,Days between each friendly faction's looks at a request for aid.,0.5,30
+threatinc_aidRequestBesetWeight,Request Beset Weight,Double,1.0,"How a faction's own worlds under the Threat gate its answer: 0 always answers, 1 a faction with half its worlds beset answers only from half way to Cooperative.",0,2
 threatinc_aidCommsEnabled,War Comms,Boolean,true,Notices from colonies when they need something. Off silences them.,,
 threatinc_missionsEnabled,Defence Contracts,Boolean,true,Factions post contracts against hive infrastructure on their mission boards.,,
 threatinc_missionBaseReward,Contract Reward per Hive Size,Double,150000,Credits a contract pays per size of its target.,25000,1000000

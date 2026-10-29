@@ -100,9 +100,26 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		if (which >= 0 && which < LEVER_COUNT) levers[which] = Math.max(0, Math.min(2, tier));
 	}
 
-	/** The fronts table's levers as {marines, arms, fleet}; the third sizes only a Request's task force (ThreatAidRequests). */
+	/**
+	 * The fronts table's levers as {marines, arms, fleet}: Supply's marines and arms are the colonies
+	 * table's levers (2026-10-29 evening - the fronts' own two went, "remove resource selectors from
+	 * ground fronts table"), the Fleet lever Support / Defend's outcome tier.
+	 */
 	public int[] frontLevers() {
-		return new int[] { lever(LEVER_FRONT_MARINES), lever(LEVER_FRONT_ARMS), lever(LEVER_FRONT_FLEET) };
+		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_FRONT_FLEET) };
+	}
+
+	/** The intel screen the board was last drawn in; the call-for-aid prompt redraws the board through it ({@link #refreshBoard}). */
+	protected transient com.fs.starfarer.api.ui.IntelUIAPI lastUi;
+
+	/** Redraws the board where it stands once a dialog over it has closed (ThreatAidRequestDialog); nothing without a screen. */
+	public void refreshBoard() {
+		if (lastUi == null) return;
+		try {
+			rerenderInPlace(lastUi);
+		} catch (Throwable t) {
+			ThreatIncConfig.log("Board refresh after the dialog failed: " + t);
+		}
 	}
 
 	/** The colonies table's levers in ThreatReserves.AID_COMMODITIES order: marines, arms, fuel, supplies, hulls. */
@@ -341,6 +358,9 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	@Override
 	public boolean doesButtonHaveConfirmDialog(Object buttonId) {
 		if (buttonId instanceof String && ThreatFactionView.isOrderButton((String) buttonId)) {
+			// a Transfer or Deploy that would send nothing yet leaves the colony short opens the
+			// call-for-aid prompt alone (2026-10-29 evening): nothing to confirm first
+			if (ThreatFactionView.promptOnly((String) buttonId, this)) return false;
 			return true;
 		}
 		return super.doesButtonHaveConfirmDialog(buttonId);
@@ -362,6 +382,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			return;
 		}
 		String id = (String) buttonId;
+		lastUi = ui;
 		if (id.startsWith(ThreatFactionView.BUTTON_FACTION)) {
 			selectedFactionId = id.substring(ThreatFactionView.BUTTON_FACTION.length());
 			ui.updateUIForItem(this);
@@ -396,9 +417,25 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			return;
 		}
 		if (ThreatFactionView.isOrderButton(id)) {
-			String result = ThreatFactionView.executeOrder(id, this);
-			ThreatIncConfig.log("Board order " + id + " -> " + result);
+			// THE CALL-FOR-AID PROMPT (2026-10-29 evening): what a Transfer or Deploy leaves short at the
+			// player's colony is read before the order sails (the need is net of what is at sea), and the
+			// prompt opens over the redrawn board; a button that would send nothing opens it alone
+			java.util.List<ThreatAidRequests.Part> shorts = ThreatFactionView.shortfallFor(id, this);
+			com.fs.starfarer.api.campaign.econ.MarketAPI shortMarket = ThreatFactionView.shortfallMarket(id);
+			String result = ThreatFactionView.promptOnly(id, this) ? "prompt-only"
+					: ThreatFactionView.executeOrder(id, this);
+			ThreatIncConfig.log("Board order " + id + " -> " + result
+					+ (shorts.isEmpty() ? "" : ", short of " + ThreatAidRequests.shortText(shorts)));
 			rerenderInPlace(ui);
+			if (!shorts.isEmpty() && shortMarket != null && shortMarket.getPrimaryEntity() != null) {
+				final ThreatIncursionIntel self = this;
+				ui.showDialog(shortMarket.getPrimaryEntity(), new ThreatAidRequestDialog(shortMarket, shorts,
+						new Runnable() {
+							public void run() {
+								self.refreshBoard();
+							}
+						}));
+			}
 			return;
 		}
 		if (id.startsWith(ThreatWarBoard.BUTTON_COLONY)) {

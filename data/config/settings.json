@@ -1330,23 +1330,22 @@
 	# accepted or paid. aidRequestsEnabled: the player may ask the sector for one of their own colony's
 	# needs; every faction at Favourable or better answers, and each sender's price is standing - the
 	# goods' value at the player's market / aidRepPerCredits (a guard: its points x aidRepGuardArrived
-	# / 100), times the tier (aidAskPrice Min / Med / Max), never below Favourable; one request a
-	# colony per aidRequestCooldownDays. aidComms: the voiced war comms when a need appears, escalates
+	# / 100), times the tier (aidAskPrice Min / Med / Max), never below Favourable, a whole number of
+	# points charged on receipt. aidComms: the voiced war comms when a need appears, escalates
 	# or is met, aidCommsMinDays apart for one world and purpose. aidExpeditionNoteDays: how long a
 	# postponed siege's provisions need stands. aidRepWeight: standing for giving by the purpose served
 	# (critical: hold the line, lift the orbit; urgent: push back, arm, provision; routine: the depot,
 	# the navy; surplus: beyond Max, or a good nobody needs)
 	"threatinc_aidRequestsEnabled": true,
-	"threatinc_aidRequestCooldownDays": 30,
-	# aidRequestMinSpare (2026-10-28): a request is answered at once by every faction at Favourable or better with the
-	# levers' share (half / all) of what its colonies in reach spare of each good, counting only colonies sparing this
-	# much or more (a unit for ship hulls); the answers are one intel entry
+	# aidRequestMinSpare: the least a colony must spare of a good for its faction to answer a request with it (a unit for
+	# ship hulls) - Max asks all of what one colony spares, Med half
 	"threatinc_aidRequestMinSpare": 100,
-	# aidRequestAnswerDays / aidRequestBesetWeight (2026-10-29): a Request is the call from a world of the player's under a
-	# Threat army, at the fronts table's Marines, Arms and Fleet levers, answered after this many days; each faction sends
-	# the levers' share less its besetness (the share of its worlds under a Threat army, blockade or strike) x the weight,
-	# and nothing while that outweighs the player's standing with it, read from Favourable (0) to Cooperative (1)
-	"threatinc_aidRequestAnswerDays": 7,
+	# aidRequestCheckDays / aidRequestBesetWeight (2026-10-29 evening): a request is logged when a Transfer or Deploy cannot
+	# meet what the colony needs, and stands until answered or withdrawn; every faction at Favourable or better looks at it
+	# this many days apart and accepts what it has the capacity for; it answers nothing while its besetness (the share of
+	# its worlds under a Threat army, blockade or strike) x the weight outweighs the player's standing with it, read from
+	# Favourable (0) to Cooperative (1)
+	"threatinc_aidRequestCheckDays": 1,
 	"threatinc_aidRequestBesetWeight": 1.0,
 	"threatinc_aidAskPriceMin": 1.0,
 	"threatinc_aidAskPriceMed": 1.25,

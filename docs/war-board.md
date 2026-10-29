@@ -121,11 +121,27 @@ aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` dep
 off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
 nothing), greyed with the figures while nothing is deployed, the fuel aboard is under the passage
 or the supplies under the expedition's deposit and hold (`attackBlockFacts`). The Attack's Fleet /
-Fuel / Marines ladders went. The colony rows' **Request** went too, to the player's sieged worlds
-on the fronts table (beside Reinforce, `ThreatWarBoard.addFrontButtons`): a call for aid at the
-fronts' Marines, Arms and the new **Fleet** lever, answered after `aidRequestAnswerDays` by each
-faction less its besetness (`ThreatAidRequests.willingness`; docs/player-aid.md). The NPC tabs'
-"Hive systems in reach" table and its Hunt went ("we dont need to see that table at all").
+Fuel / Marines ladders went. The NPC tabs' "Hive systems in reach" table and its Hunt went ("we
+dont need to see that table at all").
+
+**The call for aid (2026-10-29 evening, the user: "i want to rework the request and aid system";
+`ThreatAidRequests`, docs/war-effort-rework.md 3).** No Request button anywhere. A Transfer or
+Deploy whose load at the levers is under what the colony needs (a good's convoy load under the
+colony's need at the lever's tier, `ThreatAidRequests.transferShortfall`; a Deploy's fleet under
+the fleets need, `deployShortfall` - "deploy would be for a relief task force") sails, then a yes /
+no dialog over the board (`ThreatAidRequestDialog`) lists the shortfall and offers to call for aid;
+a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
+alone. The request is one a world, a part a good, and stands until every part lands or Withdraw.
+**Requests for aid** is a table at the top of every faction tab (`ThreatFactionView.addRequests`;
+nothing drawn with none): World, Asked (all or half of what one colony of each faction spares),
+Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on each
+request's first row. The player's tab shows every faction's answer, an NPC tab that faction's own
+(its part sailing, another's taken, or its last reason and when it looks again). The colony rows'
+Transfer and Deploy tooltips end with the shortfall when there is one. An ally's colony rows hold
+no buttons any more (the Defend at every hull free and the Aid convoy went); its sieged world's
+front row holds **Defend** at the Fleet lever instead (`BUTTON_AID_DEFEND` ->
+`ThreatAid.quoteDefend(market, fleetTier)`). The fronts' Reinforce and Request went: a Transfer
+reinforces an own world. The colonies table's hulls column reads **Hulls/FP**.
 
 **Load ladders** (2026-09-07, `ThreatFactionView.addTierSelector`, docs/player-aid.md): a table
 whose buttons move a quantity carries a **Min / Med / Max** selector in a row reserved under its
@@ -158,16 +174,16 @@ and home, its report the player's, from the nearest colony with the hulls, fuel 
 it (`playerScoutHome`), greyed with `scoutOffReason`. Then THE LEVERS (2026-10-28, the user:
 "two sets of the 3 buttons, one for marines one for arms. None Med and Max, sending 0 half and
 all"; `ThreatFactionView.addFrontLevers` / `addColonyLevers`, one `addLever` a good): over the
-ground fronts **Marines** and **Arms**, over the colonies **Fuel**, **Supplies**, **Marines**,
-**Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare / all of it
-(`ThreatConvoys.share`, `handSpare`, `leverLoad`). The fronts' Marines and Arms size Reinforce,
-Aid and Supply, and with the **Fleet** lever (2026-10-29) what a Request calls each faction for
-(`ThreatAidRequests.askText`), and the Fleet lever is also Support / Defend's outcome tier (match
-the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's ladders); the
-colonies' five size Transfer and Aid and the Deploy (above). An NPC colony's Defend aid takes no
-lever - every hull the nearest source has free (`ALL_HULLS`). Transfer moves
-hulls between the player's colonies off the donor's share
-(`ThreatHulls.takeShare`). They replaced the **Supply run** ladder (what the front wanted / x2 /
+ground fronts only **Fleet** since 2026-10-29 evening ("remove resource selectors from ground
+fronts table"; Marines and Arms sat there until then), over the colonies **Fuel**, **Supplies**,
+**Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
+all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`). The Fleet lever is Support / Defend's
+outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
+ladders), for the player's own fronts and the Defend of an ally's sieged world alike; the colonies'
+five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms
+(`ThreatIncursionIntel.frontLevers`), and a shortfall's request asks each faction at the same tier
+(Max all one colony spares, Med half). Transfer moves hulls between the player's colonies off the
+donor's share (`ThreatHulls.takeShare`). They replaced the **Supply run** ladder (what the front wanted / x2 /
 everything) and the **Amount** ladder (the shortfall / x2 / everything, and one fleet / half /
 all the hulls for Fleet and Defend, 2026-10-11 to 2026-10-28; "Convoy load" and sized by the
 hives table's Force before that). A ladder reaches only the buttons in its own table. The tier is a view toggle like the faction
