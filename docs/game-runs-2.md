@@ -1862,3 +1862,24 @@ the swarm's consumed count up a little, retaken not up; 0 exceptions, the heap o
   week. Retaken 88 / 68 / 32 (hw318 55 / 84 / 83): no gift to the defenders.
 - Dig-in lines 51 / 49 / 20, two or no worlds past 5 - the dwell holds with progress kept. 0
   exceptions, no heap failure on three games this time. hw321 (set A) started 08:02.
+
+**hw321 END (09:23, set A on the keep-progress jar; hw319 in brackets - the dwell alone):**
+
+| game | war day | hives | took | consumed | lift-offs | restores | retaken | dig-ins (worlds 5+) | marines flips | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw321a | 3,808 | 273 (274) | 327 (272) | 186 (178) | 73 (60) | 90 (83) | 100 (60) | 56 (2) | 144 | 22 | 0 |
+| hw321b | 3,532 | 260 (297 at w3,571) | 329 (236) | 183 (129) | 61 (50) | 73 (61) | 111 (76) | 89 (7) | 171 | 22 | 0 |
+| hw321c | 3,807 | 316 (297 at w3,106) | 334 (232) | 187 (150) | 73 (46) | 71 (49) | 109 (62) | 58 (2) | 140 | 12 | 0 |
+
+- Set A as set B: districts taken 327 / 329 / 334 against 272 / 236 / 232, consumed 186 / 183 / 187
+  against 178 / 129 / 150, lift-offs up; hives 273 / 260 / 316 at the day reached (hw319 274 / 297 /
+  297). Retaken 100 / 111 / 109 against 60 / 76 / 62 - up on this set where set B's were not; the
+  defenders also keep their progress across a Hold now, so the sword cuts both ways and the line
+  moves more in both directions. 0 exceptions, no heap failure, no hang.
+
+**ROUNDS 88-89 VERDICT (09:30, six games):** the keep-progress rule is confirmed and KEPT: a resumed
+push finishes its district (taken +15-90% a game), the swarm's consumption and lift-offs up, its
+spread at or above the lump jar's band on set B (341-352) and inside it on set A (260-316), the
+dwell's dig-in count unchanged (20-89), 0 exceptions in twenty-four games since the pull. The
+current jar is origin's (the other machine's build of the merged tree, 8d24a655: keep-progress +
+dwell + hysteresis + fleet-on-own-row + gate pricing). Nothing running.
