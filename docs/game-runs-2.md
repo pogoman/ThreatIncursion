@@ -1746,3 +1746,22 @@ before the doctrine looks again - both ticks, `GroundFront.doctrineDaysLeft` /
 `defenderDoctrineDaysLeft`. Source only (the jar is hw316's); `handover-37-38.sh` (task
 HandoverSeeds38) rebuilds when round 37 is done and runs **hw318 (set B) / hw319 (set A)** as
 rounds 86-87 on it. hw317 (set A) runs on the hysteresis jar as planned, a second read of it.
+
+**hw316 END (02:31, set B on the hysteresis jar 01:15:03; hw314 / hw312 in brackets):**
+
+| game | war day | hives (hw314 / hw312) | consumed (hw314) | lift-offs | restores | retaken (hw314 / hw312) | dig-ins (worlds 5+, worst) | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw316a | 3,820 | 345 (239 at w3,453 / 349) | 188 (77) | 94 | 39 | 102 (83 / 71) | 818 (20, Eldfell 123) | 2 | 0 |
+| hw316b | 3,831 | 202 (295 / 274) | 138 (86) | 37 | 75 | 127 (134 / 70) | 532 (18, Citadel Arcadia 97) | 54 | 0 |
+| hw316c | 3,810 | 333 (310 / 344) | 175 (179) | 61 | 110 | 144 (170 / 60) | 749 (25, Derinkuyu 125) | 28 | 0 |
+
+- **The hysteresis moved the flap, it did not stop it:** dig-in lines 818 / 532 / 749 against hw314's
+  237 / 117 / 296, on 18-25 worlds. With the sign gap closed the front now flaps on the bleed-out
+  test alone (cover spent pushing, regrown dug in), on more worlds than before.
+- The war's shape under it: the swarm consumed more in a and b (188 / 138 against 77 / 86), hives a
+  345 (hw312's 349) and c 333, b 202 - a low read with 54 grand-fleet sails and 30 human victories
+  on hives (hw314b 33 sails, 9); retaken 102 / 127 / 144, between hw312's and hw314's.
+- hw316a: 2 grand fleet sails and 0 human victories all war (hw314a 22 / 10) - seed variance to
+  watch on hw318a. 0 exceptions, no hang.
+- hw317 (set A) started 02:32 on the same jar; **hw318 / hw319 on THE DWELL jar** follow from
+  `handover-37-38.sh` (~03:50).
