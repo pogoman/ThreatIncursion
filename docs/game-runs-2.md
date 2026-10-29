@@ -1808,3 +1808,32 @@ and lose districts as before (took 59 / 69 / 90, retaken 5 / 30 / 7).
   takes and keeps districts the flapping one lost. hw318c: 80 grand-fleet sails, 35 human victories
   on hives, 143 swarm break-ups - the human offence at its strongest in this seed, hives 251.
 - 0 exceptions, no hang. hw319 (set A) started 05:15 on the same jar.
+
+**hw319 END (06:36, set A on THE DWELL jar; hw317 / hw315 / hw313 in brackets):**
+
+| game | war day | hives (hw317 / hw315 / hw313) | consumed | lift-offs | restores | retaken (hw317 / hw315 / hw313) | dig-ins (worlds 5+, worst) | marines flips | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw319a | 3,804 | 274 (299 / 244 / 303) | 178 | 60 | 83 | 60 (109 / 183 / 59) | 59 (5, Ancyra 10) | 116 | 36 | 0 |
+| hw319b | 3,571 | 297 (259 / 301 / 343) | 129 | 50 | 61 | 76 (134 / 208 / 43) | 33 (1, Raesvelg 5) | 95 | 24 | 0 |
+| hw319c | 3,106 | 297 (344 / 318 / 350) | 150 | 46 | 49 | 62 (134 / 238 / 71) | 45 (2, Suddene 9) | 119 | 8 | 0* |
+
+- **Set A confirms set B:** dig-in lines 59 / 33 / 45 all war (hysteresis alone 813 / 591 / 960,
+  merged jar 246-278), retaken 60 / 76 / 62 - the lump jar's 43-71 again (the merged jar's 183-238
+  was the flap), hives 274 / 297 / 297 at the day reached.
+- *hw319c: `Java heap space` from vanilla's `CampaignGameManager` at 58 minutes (a snapshot save
+  failed), the game ran on at a crawl to war 3,106 at the cap; the two hull-spec lines otherwise.
+  Three games of 3.6 GB on this machine are at the memory edge (performance.md, 2026-10-27: two at
+  a time was the user's decision) - every round since hw310 ran three; the first heap failure.
+
+**ROUNDS 82-87 VERDICT (2026-10-29 06:40, twelve games on the merged jar's three builds):** the
+pulled changes (share rule, pressure breaks cover, bleed-out doctrine, manned defences, consumption
+fixes 5-6, the army rising, station-over-front strikes) run clean - 0 mod exceptions in eighteen
+games, no hang, the lump on every consumption, grand fleets sailing and coming home. The one
+defect was THE FLAP in the new doctrine: push / dig-in every half-day tick at parity (merged jar
+117-296 dig-ins a game), which the hysteresis alone made worse (532-960) and THE DWELL ends (33-62,
+the worst world 5-10 decisions in a war). With the flap gone the humans' retakes are back at the
+lump jar's 43-84 (the merged jar's 83-238 were the flap's gift), the swarm's hives 251-377 at
+d3,800 - inside the lump jar's 274-350 band. Open: the human offence varies by seed more than
+before (grand sails 2-80, hive victories 0-35 a game); the heap on three games at once; and the
+push-progress wipe on a doctrine dig-in (`orderEntrench`), which the dwell bounds but keeps - the
+user's call whether a doctrine dig-in should keep a half-taken district.
