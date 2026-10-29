@@ -37,7 +37,10 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
   "Needs N marines pushing to hold") sizes marines pushing back. A is `effectiveStrength`; D is the hive's
   `defenderStrength`, or for a colony MANNED DEFENCES (2026-10-28): `mannedGarrison` - the
   ground-defence score only as far as the armed marines man it, `groundDefencePerMarine` (20) a
-  marine, none man nothing - plus the armed marines at weight 1; an NPC colony keeps `manningNeed`
+  marine, none man nothing - plus, CREW FIRST (2026-10-29), the armed marines beyond the crew at weight 1:
+  `manningCrew` = min(armed, ceil(score / 20)) marines crew the defences and `spareMarines` (the rest)
+  are the marine term of `colonyMarineDefense`, `lineRateWith` and `reliefRate` (until then every marine
+  counted as crew and infantry both); an NPC colony keeps `manningNeed`
   marines as a reserve floor (`ThreatReserves.floor`). The older text: D is the hive's
   `defenderStrength`, or a colony's garrison plus armed marines at weight 1 (`colonyGarrison +
   colonyMarineDefense`); D' is `defenderPressure` - `counterAttackStrength` (the force

@@ -307,7 +307,7 @@ public class ThreatFactionView {
 				Color h = Misc.getHighlightColor();
 				tooltip.addPara("Navy %s FP = %s free hulls + %s at sea.", 0f, h,
 						ThreatWarBoard.n(str.navy()), ThreatWarBoard.n(str.freeFP), ThreatWarBoard.n(str.atSeaFP));
-				tooltip.addPara("Army %s = %s ground strength (%s garrisons + %s armed marines on %s colonies) / %s troops a point.", 4f, h,
+				tooltip.addPara("Army %s = %s ground strength (%s manned garrisons + %s marines beyond their crews on %s colonies) / %s troops a point.", 4f, h,
 						ThreatWarBoard.n(str.army()), ThreatWarBoard.n(str.garrisons + str.marineDefence), ThreatWarBoard.n(str.garrisons),
 						ThreatWarBoard.n(str.marineDefence), ThreatWarBoard.n(str.colonies), ThreatWarBoard.n(str.troopsPerPoint));
 				tooltip.addPara("Depots %s FP of sieges = the lesser of %s supplies / %s a point = %s and %s fuel / (%s a point-ly x %s ly) = %s.", 4f, h,
@@ -1060,7 +1060,7 @@ public class ThreatFactionView {
 			if (m == null || !m.isInEconomy()) continue;
 			s.colonies++;
 			s.garrisons += ThreatGroundFronts.mannedGarrison(m); // the defences the marines man (2026-10-28)
-			s.marineDefence += ThreatGroundFronts.colonyMarineDefense(m, 1f);
+			s.marineDefence += ThreatGroundFronts.colonyMarineDefense(m, 1f); // the marines beyond the crews (2026-10-29)
 		}
 		s.supplies = ThreatReserves.factionStock(factionId, Commodities.SUPPLIES);
 		s.fuel = ThreatReserves.factionStock(factionId, Commodities.FUEL);

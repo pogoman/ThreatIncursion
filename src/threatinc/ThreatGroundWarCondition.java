@@ -187,9 +187,11 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		// disagree with nothing to explain them.
 		float garrison = ThreatGroundFronts.mannedGarrison(market); // the defences the marines man (2026-10-28)
 		float armed = ThreatReserves.armedMarines(market);
+		float crew = ThreatGroundFronts.manningCrew(market); // crew first, the rest fight (2026-10-29)
 		if (armed > 0f) {
-			tooltip.addPara("Of that, %s garrison and %s marines deployed, %s.", 3f, h,
-					Misc.getWithDGS(Math.round(garrison)), Misc.getWithDGS(Math.round(armed)),
+			tooltip.addPara("Of that, %s garrison manned by %s marines, and %s marines deployed, %s.", 3f, h,
+					Misc.getWithDGS(Math.round(garrison)), Misc.getWithDGS(Math.round(crew)),
+					Misc.getWithDGS(Math.round(Math.max(0f, armed - crew))),
 					ThreatMarineXP.colonyRank(market).toLowerCase());
 		} else {
 			tooltip.addPara("Of that, %s garrison and %s marines deployed.", 3f, h,

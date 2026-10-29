@@ -1415,7 +1415,9 @@ public class ThreatWarBoard {
 			float garrisonAll = ThreatGroundFronts.colonyGarrison(m);
 			armed = ThreatReserves.armedMarines(m);
 			float garrison = ThreatGroundFronts.mannedGarrison(garrisonAll, armed); // manned defences (2026-10-28)
-			String mannedWord = garrison < garrisonAll - 0.5f ? " of " + n(garrisonAll) + " manned" : "";
+			String mannedWord = garrison < garrisonAll - 0.5f ? " of " + n(garrisonAll) : "";
+			float crew = ThreatGroundFronts.manningCrew(garrisonAll, armed); // crew first, the rest fight (2026-10-29)
+			float spare = ThreatGroundFronts.spareMarines(garrisonAll, armed);
 			float stock = ThreatReserves.stock(m.getId(), Commodities.MARINES);
 			float overD = ThreatGroundFronts.defenderOverExtendMult(f);
 			float xpD = ThreatMarineXP.effectMult(ThreatMarineXP.colonyLevel(m));
@@ -1426,8 +1428,8 @@ public class ThreatWarBoard {
 			d = (garrison + ThreatGroundFronts.colonyMarineDefense(m, 1f)) * overD;
 			String coverD_ = ThreatGroundFronts.coverWord(f.defenderEntrenchDays)
 					+ " (" + (int) Math.max(-days, Math.min(days, f.defenderEntrenchDays)) + "/" + (int) days + " d)";
-			tooltip.addPara(World + " %s = (%s" + mannedWord + " ground defence + %s marines deployed x %s armed" + extraD + ") x %s " + coverD_ + "."
-					+ needD, 4f, text, h, n(defender), n(garrison), n(armed), f2(ThreatIncConfig.reserveDefenseMult()),
+			tooltip.addPara(World + " %s = (%s" + mannedWord + " ground defence manned by %s + %s marines x %s armed" + extraD + ") x %s " + coverD_ + "."
+					+ needD, 4f, text, h, n(defender), n(garrison), n(crew), n(spare), f2(ThreatIncConfig.reserveDefenseMult()),
 					f2(coverD * overD));
 			// the marines not deployed: reserves arming, and any staging for a siege (the user, 2026-10-24: "don't call
 			// them stock when they aren't deployed. Call them reserves. And any being used for a siege are staging for x")

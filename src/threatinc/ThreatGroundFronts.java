@@ -973,6 +973,31 @@ public class ThreatGroundFronts {
 		return mannedGarrison(colonyGarrison(market), ThreatReserves.armedMarines(market));
 	}
 
+	/**
+	 * CREW FIRST (the user, 2026-10-29: "shouldnt it be 79 marines manning 1590 ground defences + 104
+	 * marines so total force is 1694"): the armed marines crew the defences before any of them fight as
+	 * infantry - {@code garrison / groundDefencePerMarine} of them, every one while they are short - and
+	 * only the rest count as marines in the force. Until today the manning gate capped the score and the
+	 * same marines were then added at weight 1 on top, counted as crew and infantry both. 0 with the
+	 * knob off (every marine fights).
+	 */
+	public static float manningCrew(float garrison, float armed) {
+		float per = ThreatIncConfig.groundDefencePerMarine();
+		if (per <= 0f || armed <= 0f) return 0f;
+		return Math.min(Math.max(0f, armed), (float) Math.ceil(Math.max(0f, garrison) / per));
+	}
+
+	/** The armed marines left to fight once the defences are crewed ({@link #manningCrew(float, float)}). */
+	public static float spareMarines(float garrison, float armed) {
+		return Math.max(0f, armed - manningCrew(garrison, armed));
+	}
+
+	/** {@link #manningCrew(float, float)} for the colony's garrison and armed marines now. */
+	public static float manningCrew(MarketAPI market) {
+		if (market == null) return 0f;
+		return manningCrew(colonyGarrison(market), ThreatReserves.armedMarines(market));
+	}
+
 	/** Marines that man the colony's whole garrison - the standing stock an NPC colony keeps (ThreatReserves.floor); 0 with the knob off or on a hive. */
 	public static float manningNeed(MarketAPI market) {
 		if (market == null || isHiveTarget(market)) return 0f;
@@ -986,13 +1011,14 @@ public class ThreatGroundFronts {
 	 * are actually armed ({@link ThreatReserves#armedMarines}), times
 	 * {@code reserveDefenseMult}, times what their experience is worth
 	 * ({@link ThreatMarineXP}). {@code weight} is 1 for holding ground and
-	 * {@code marineCounterAttackMult} for going over the top.
+	 * {@code marineCounterAttackMult} for going over the top. CREW FIRST (2026-10-29): only the
+	 * marines beyond the defences' crew ({@link #spareMarines(float, float)}) count here.
 	 */
 	public static float colonyMarineDefense(MarketAPI market, float weight) {
 		if (market == null || weight <= 0f) return 0f;
 		float mult = ThreatIncConfig.reserveDefenseMult();
 		if (mult <= 0f) return 0f;
-		float armed = ThreatReserves.armedMarines(market);
+		float armed = spareMarines(colonyGarrison(market), ThreatReserves.armedMarines(market));
 		if (armed <= 0f) return 0f;
 		// marines with no heavy armaments to fight with fight as a dry front does (2026-10-17)
 		if (defendersDry(market)) mult *= ThreatIncConfig.frontDryEffectivenessMult();
@@ -1449,9 +1475,10 @@ public class ThreatGroundFronts {
 					* (defendersDry(market) ? Math.max(0f, ThreatIncConfig.frontDryEffectivenessMult()) : 1f)
 					* ThreatMarineXP.effectMult(ThreatMarineXP.colonyLevel(market));
 			float manned = mannedGarrison(garrison, armed); // the defences this many marines man (2026-10-28)
-			d = (manned + perMarine * armed) * over;
+			float spare = spareMarines(garrison, armed); // crew first, the rest fight (2026-10-29)
+			d = (manned + perMarine * spare) * over;
 			coverD = defenderCoverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
-			pressure = (manned + perMarine * Math.max(0f, ThreatIncConfig.marineCounterAttackMult()) * armed) * over;
+			pressure = (manned + perMarine * Math.max(0f, ThreatIncConfig.marineCounterAttackMult()) * spare) * over;
 		}
 		return lineRateOf(a, coverA, d, coverD, pressure, landingPushes, worldPushes);
 	}
@@ -5490,8 +5517,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	private static float reliefRate(float a, float coverA, float coverD, float garrison, float perMarine,
 			float counter, float staff, float armed, boolean landingPushes, boolean worldPushes) {
 		float manned = mannedGarrison(garrison, armed); // the defences this many marines man (2026-10-28)
-		float d = manned + perMarine * armed;
-		float pressure = (manned + perMarine * counter * armed) * staff;
+		float spare = spareMarines(garrison, armed); // crew first, the rest fight (2026-10-29)
+		float d = manned + perMarine * spare;
+		float pressure = (manned + perMarine * counter * spare) * staff;
 		return lineRateOf(a, coverA, d, coverD, pressure, landingPushes, worldPushes);
 	}
 
