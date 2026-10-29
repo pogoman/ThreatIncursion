@@ -1837,3 +1837,13 @@ d3,800 - inside the lump jar's 274-350 band. Open: the human offence varies by s
 before (grand sails 2-80, hive victories 0-35 a game); the heap on three games at once; and the
 push-progress wipe on a doctrine dig-in (`orderEntrench`), which the dwell bounds but keeps - the
 user's call whether a doctrine dig-in should keep a half-taken district.
+
+## 89. hw320-hw321 - rounds 88-89, day-0 seeds on the KEEP-PROGRESS jar 06:53:50 (2026-10-29 06:54-)
+
+The user, 07:00, on the open item: "digging in shouldn't wipe ground taken/progress wtf" ->
+01d1ebb3: `orderPush` / `orderEntrench` leave `pushProgress` as it stands. Jar 06:53:50 on the dwell
+build; driver `run-seeds-39.ps1`, hw320 set B, hw321 set A, from day 0 `-Days 3800 -Snapshots 300`,
+watcher `watch-seeds-39.sh`, tasks ThreatIncSeeds39 / WatchSeeds39. Read against hw318 / hw319
+(the dwell: dig-ins 33-62, retaken 55-84, hives 251-377). What to see: districts taken by a front
+that dug in and pushed again (a resumed push finishing its district), dig-in lines about the same,
+the swarm's consumed count up a little, retaken not up; 0 exceptions, the heap on three games.
