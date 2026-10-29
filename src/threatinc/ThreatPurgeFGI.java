@@ -1217,7 +1217,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (params != null) {
 			for (Integer size : params.fleetSizes) if (size != null) paidPoints += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
 		}
-		oneFleetBuilt = false;
+		builtQueue = null;
 		try {
 			super.spawnFleets();
 		} finally {
@@ -1585,45 +1585,53 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 	}
 
-	/** Set once a spawn's built fleets have come out as one ({@link #createFleet}); the spawn loop's other sizes then build nothing. Not saved. */
-	protected transient boolean oneFleetBuilt;
+	/** The fleets a spawn's first {@link #createFleet} built and folded, not yet handed to vanilla's loop; null before it. Not saved. */
+	protected transient List<CampaignFleetAPI> builtQueue;
 
 	/**
-	 * ONE FLEET (the user, 2026-10-29: "8 300FP fleets ... super annoying ... causes more lag"):
-	 * under ThreatIncConfig.oneFleet the whole flotilla comes out of the first size vanilla's
-	 * spawn asks for - every size in params.fleetSizes built as vanilla builds it (its own
-	 * quality, route damage, transports and share of the landing: configureFleet), then folded
-	 * into the first, ships and cargo ({@link #foldUnplaced}) - and the loop's other sizes build
-	 * nothing (vanilla skips a null). The sizes stay the ledger's and the board's units: the
-	 * same points, as one fleet. Vanilla's difficulty 10 is its FleetSize.MAXIMUM, ~300 FP a
-	 * fleet - the "8 300FP fleets". Staged task forces stay their own fleets.
+	 * THE FLEET CAP (the user, 2026-10-29: "8 300FP fleets ... super annoying ... causes more
+	 * lag", then one 7,000 FP fleet was "way too laggy"): the whole flotilla is built on the
+	 * first size vanilla's spawn asks for - every size in params.fleetSizes as vanilla builds
+	 * it (its own quality, route damage, transports and share of the landing: configureFleet)
+	 * - and folded, ships and cargo ({@link #foldUnplaced}), into as few fleets of up to
+	 * ThreatIncConfig.fleetMaxFP as take it; the loop's later calls hand those out one at a
+	 * time, then nothing (vanilla skips a null). The sizes stay the ledger's and the board's
+	 * units. Vanilla's difficulty 10 is its FleetSize.MAXIMUM, ~300 FP a fleet - the "8 300FP
+	 * fleets". Staged task forces stay their own fleets.
 	 */
 	@Override
 	protected CampaignFleetAPI createFleet(int size, float damage) {
-		if (!ThreatIncConfig.oneFleet() || params == null || params.fleetSizes == null
-				|| params.fleetSizes.size() <= 1) {
+		if (params == null || params.fleetSizes == null || params.fleetSizes.size() <= 1) {
 			return super.createFleet(size, damage);
 		}
-		if (oneFleetBuilt) return null;
-		oneFleetBuilt = true;
-		CampaignFleetAPI lead = null;
-		int folded = 0;
-		for (Integer s : new ArrayList<Integer>(params.fleetSizes)) {
-			if (s == null) continue;
-			CampaignFleetAPI f = super.createFleet(s, damage);
-			if (f == null) continue;
-			if (lead == null) {
-				lead = f;
-			} else {
-				foldUnplaced(lead, f);
-				folded++;
+		if (builtQueue == null) {
+			builtQueue = new ArrayList<CampaignFleetAPI>();
+			int built = 0;
+			for (Integer s : new ArrayList<Integer>(params.fleetSizes)) {
+				if (s == null) continue;
+				CampaignFleetAPI f = super.createFleet(s, damage);
+				if (f == null) continue;
+				built++;
+				CampaignFleetAPI into = null;
+				for (CampaignFleetAPI lead : builtQueue) {
+					if (ThreatIncConfig.fitsFleet(lead.getFleetPoints(), f.getFleetPoints())) {
+						into = lead;
+						break;
+					}
+				}
+				if (into == null) {
+					builtQueue.add(f);
+				} else {
+					foldUnplaced(into, f);
+				}
+			}
+			if (built > builtQueue.size()) {
+				float cap = ThreatIncConfig.fleetMaxFP();
+				ThreatIncConfig.log("Expedition: " + built + " fleets built as " + builtQueue.size()
+						+ (cap < Float.MAX_VALUE ? " under the " + (int) cap + " FP fleet cap" : ", no fleet cap"));
 			}
 		}
-		if (lead != null && folded > 0) {
-			ThreatIncConfig.log("Expedition: " + (folded + 1) + " fleets built as one - "
-					+ lead.getFleetData().getNumMembers() + " ships, " + lead.getFleetPoints() + " FP");
-		}
-		return lead;
+		return builtQueue.isEmpty() ? null : builtQueue.remove(0);
 	}
 
 	/**

@@ -796,7 +796,7 @@ public class ThreatFleetOrders {
 	 * Builds relief at the base until its fleets reach {@code owed} points or
 	 * the depot cannot provision another (2026-09-29: no siegeMaxFleets cap, 50
 	 * fleets of reliefFleetFP held a relief to ~15,000 FP), then
-	 * folds them into one fleet up to softenMergeMaxShips - vanilla's AI never
+	 * folds them into as few fleets as fleetMaxFP takes - vanilla's AI never
 	 * keeps separate fleets together, and a guard a tenth the swarm's size
 	 * only ever kept its distance (Coatl, 2026-09-27). Each fleet left over
 	 * guards beside the lead. Returns the points sent.
@@ -835,7 +835,7 @@ public class ThreatFleetOrders {
 
 	/**
 	 * The sendRelief build: fleets at the base until {@code owed} points or the depot
-	 * cannot provision another, folded into as few as softenMergeMaxShips allows. Built
+	 * cannot provision another, folded into as few as fleetMaxFP allows. Built
 	 * and provisioned, not yet ordered anywhere: {@link #sailRelief} or
 	 * {@link #standDownUnsailed} takes them.
 	 */
@@ -868,15 +868,30 @@ public class ThreatFleetOrders {
 			sent += fleet.getFleetPoints();
 		}
 		if (built.isEmpty()) return sailing;
-		CampaignFleetAPI lead = built.get(0);
-		sailing.add(lead);
-		for (int i = 1; i < built.size(); i++) {
-			CampaignFleetAPI f = built.get(i);
-			if (lead.getFleetData().getNumMembers() + f.getFleetData().getNumMembers()
-					<= ThreatIncConfig.softenMergeMaxShips()) {
-				absorb(lead, f);
-			} else {
+		return foldUnderCap(built);
+	}
+
+	/**
+	 * Built fleets folded into as few as the fleet cap takes (ThreatIncConfig.fleetMaxFP):
+	 * each into the first that has room for its points ({@link #absorb}), else it sails
+	 * beside them. Lead first.
+	 */
+	public static List<CampaignFleetAPI> foldUnderCap(List<CampaignFleetAPI> built) {
+		List<CampaignFleetAPI> sailing = new ArrayList<CampaignFleetAPI>();
+		if (built == null) return sailing;
+		for (CampaignFleetAPI f : built) {
+			if (f == null) continue;
+			CampaignFleetAPI into = null;
+			for (CampaignFleetAPI lead : sailing) {
+				if (ThreatIncConfig.fitsFleet(lead.getFleetPoints(), f.getFleetPoints())) {
+					into = lead;
+					break;
+				}
+			}
+			if (into == null) {
 				sailing.add(f);
+			} else {
+				absorb(into, f);
 			}
 		}
 		return sailing;
@@ -976,7 +991,7 @@ public class ThreatFleetOrders {
 			if (!a.contains(k) && !b.contains(k)) continue;
 			a.set(k, (a.contains(k) ? a.getFloat(k) : 0f) + (b.contains(k) ? b.getFloat(k) : 0f));
 		}
-		// the cargo too (2026-10-29, oneFleet - every fold is whole): the crew that mans the ships, the
+		// the cargo too (2026-10-29, the fleet cap - every fold is whole): the crew that mans the ships, the
 		// marines and arms aboard, the supplies and fuel - until now a merged fleet sailed on the lead's alone
 		to.getCargo().addAll(from.getCargo());
 		from.getCargo().clear();
@@ -1577,7 +1592,7 @@ public class ThreatFleetOrders {
 	 * convoys banked for a siege stays. It stops when the next fleet cannot be
 	 * paid or a fleet adds nothing. Before, every NPC Support, Defend, guard
 	 * and single hunt sailed at exactly guardFleetFP (100) whatever it faced.
-	 * Folded into one fleet up to softenMergeMaxShips (vanilla's AI never keeps
+	 * Folded into as few fleets as fleetMaxFP takes (vanilla's AI never keeps
 	 * separate fleets together), the rest sailing beside it. With {@code whole},
 	 * a sortie short of the need does not sail: its provisions go back and it
 	 * returns null. Lead first; null when nothing was built.
@@ -1643,18 +1658,7 @@ public class ThreatFleetOrders {
 					+ " for " + what + " stood down: built " + (int) got + " FP of the " + (int) need + " it needs");
 			return null;
 		}
-		CampaignFleetAPI lead = built.get(0);
-		List<CampaignFleetAPI> sailing = new ArrayList<CampaignFleetAPI>();
-		sailing.add(lead);
-		for (int i = 1; i < built.size(); i++) {
-			CampaignFleetAPI f = built.get(i);
-			if (lead.getFleetData().getNumMembers() + f.getFleetData().getNumMembers()
-					<= ThreatIncConfig.softenMergeMaxShips()) {
-				absorb(lead, f);
-			} else {
-				sailing.add(f);
-			}
-		}
+		List<CampaignFleetAPI> sailing = foldUnderCap(built);
 		if (built.size() > 1 || need > min) {
 			ThreatIncConfig.log("Sortie from " + base.getName() + " for " + what + ": " + (int) got + " FP in "
 					+ sailing.size() + " fleet(s) against a need of " + (int) need);

@@ -1388,13 +1388,13 @@
 	# them up to this many muster spells
 	"threatinc_softenMusterStragglerMult": 3,
 	# once gathered, the fleets fold into the lead and fight as one fleet,
-	# up to softenMergeMaxShips; fleets beyond it follow the lead
+	# up to fleetMaxFP; fleets beyond it follow the lead
 	"threatinc_softenMerge": true,
-	"threatinc_softenMergeMaxShips": 90,
-	# ONE FLEET (the user, 2026-10-29): every force sails as one fleet, however many ships - an expedition's
-	# fleets fold at the spawn, a strike packs whole, garrisons / reliefs / hunts / your forces fold with no
-	# softenMergeMaxShips stop. false: fleets split at the per-fleet sizes and vanilla's maxShipsInAIFleet
-	"threatinc_oneFleet": true,
+	# THE FLEET CAP (the user, 2026-10-29: one 7,000 FP fleet was "way too laggy"; the biggest seen before,
+	# ~2,400): the most fleet points one fleet holds - a bigger force sails as several fleets of up to this.
+	# An expedition's fleets fold to it at the spawn, a strike packs to it, garrisons / reliefs / hunts / your
+	# forces fold to it. 0: no cap. Replaces softenMergeMaxShips (90 ships)
+	"threatinc_fleetMaxFP": 2400,
 	"threatinc_softenFleetFP": 1500,
 	"threatinc_softenDays": 60,
 	"threatinc_softenIntervalDays": 30,

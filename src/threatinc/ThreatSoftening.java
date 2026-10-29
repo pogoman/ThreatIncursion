@@ -1131,19 +1131,16 @@ public class ThreatSoftening {
 	}
 
 	/**
-	 * As above within {@code range}. Stops at softenMergeMaxShips: one merged
-	 * fleet reached 900 ships (Marad, Run 6); what is beyond the cap follows
-	 * the lead and fights beside it.
+	 * As above within {@code range}. Stops at the fleet cap (fleetMaxFP; one
+	 * merged fleet reached 900 ships at Marad, Run 6); what is beyond the cap
+	 * follows the lead and fights beside it.
 	 */
 	protected static boolean mergeInto(ThreatFleetOrders.Order lead, ThreatFleetOrders.Order o, float range) {
 		CampaignFleetAPI to = lead.fleet, from = o.fleet;
 		if (from.getContainingLocation() != to.getContainingLocation()) return false;
 		if (Misc.getDistance(from, to) > range) return false;
 		if (from.getBattle() != null || to.getBattle() != null) return false;
-		if (to.getFleetData().getNumMembers() + from.getFleetData().getNumMembers()
-				> ThreatIncConfig.softenMergeMaxShips()) {
-			return false;
-		}
+		if (!ThreatIncConfig.fitsFleet(to.getFleetPoints(), from.getFleetPoints())) return false;
 		ThreatFleetOrders.all().remove(o);
 		ThreatFleetOrders.absorb(to, from);
 		ThreatIncConfig.log("Hunting fleet merged into the lead over " + o.targetName + ": now "

@@ -951,18 +951,18 @@ public class ThreatIncConfig {
 	public static float softenMusterStragglerMult() { return f("threatinc_softenMusterStragglerMult"); }
 	/** Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet. */
 	public static boolean softenMerge()       { return b("threatinc_softenMerge", true); }
-	/** Most ships a hunting force's lead grows to by merging; the rest follow it. No stop under {@link #oneFleet}. */
-	public static int softenMergeMaxShips()   { return oneFleet() ? NO_SHIP_CAP : i("threatinc_softenMergeMaxShips"); }
 	/**
-	 * ONE FLEET (the user, 2026-10-29: "remove the fleet size cap when we spawn fleets ... 8 300FP fleets ...
-	 * it causes more lag"): every force the mod builds sails as ONE fleet, however many ships. An expedition's
-	 * built fleets fold at the spawn (ThreatPurgeFGI.createFleet), a strike packs whole
-	 * (ThreatColonyManager.maxShipsPerFleet), garrisons (ThreatFrontlines.sendGarrison), reliefs, hunts and the
-	 * player's forces fold with no softenMergeMaxShips stop. Off: fleets split at the per-fleet sizes as before.
+	 * THE FLEET CAP (the user, 2026-10-29: "remove the fleet size cap when we spawn fleets ... 8 300FP fleets"
+	 * in the morning, then "i did 7k one and it was way too laggy ... 2.4k? probably switch to that"): the most
+	 * fleet points one fleet the mod builds holds - a force past it sails as several fleets of up to this. An
+	 * expedition's built fleets fold to it at the spawn (ThreatPurgeFGI.createFleet), a strike packs to it
+	 * (ThreatStrikeFGI.pack), garrisons (ThreatFrontlines.sendGarrison), reliefs, hunts and the player's forces
+	 * fold to it (ThreatFleetOrders.foldUnderCap, ThreatSoftening.mergeInto). 0: no cap. Retires
+	 * softenMergeMaxShips (90 ships).
 	 */
-	public static boolean oneFleet()          { return b("threatinc_oneFleet", true); }
-	/** "No cap" for a ship count under {@link #oneFleet}: finite, so a sum with it never overflows. */
-	public static final int NO_SHIP_CAP = 1000000;
+	public static float fleetMaxFP()          { float v = f("threatinc_fleetMaxFP"); return v > 0f ? v : Float.MAX_VALUE; }
+	/** Whether a fleet of fp points takes another of more points under {@link #fleetMaxFP}. */
+	public static boolean fitsFleet(float fp, float more) { return fp + more <= fleetMaxFP(); }
 	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */

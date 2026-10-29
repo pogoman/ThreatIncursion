@@ -1,7 +1,7 @@
 fieldID,fieldName,fieldType,defaultValue,fieldDescription,minValue,maxValue
 warHeader,The War Header,Header,The War,When the Threat wakes and how it ends.,,
 threatinc_enabled,War Enabled,Boolean,true,"Master switch. Off, the war freezes where it stands.",,
-threatinc_oneFleet,One Fleet Per Force,Boolean,true,"Every force sails as one fleet, however many ships. Off: forces split into fleets of a few hundred FP.",,
+threatinc_fleetMaxFP,Fleet Size Cap (FP),Int,2400,"The most fleet points one fleet holds; a bigger force sails as several fleets of up to this. 0: no cap.",0,20000
 threatinc_startAtGameStart,Start at Game Start,Boolean,true,The war begins at once in a new game. Off: it waits for the abyss story or the colony trigger below.,,
 threatinc_colonySizeTrigger,Colony Size Trigger,Boolean,true,A colony of yours reaching the size below wakes the swarm.,,
 threatinc_triggerColonySize,Trigger Colony Size,Int,6,Colony size that wakes the swarm.,4,10

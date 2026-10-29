@@ -1239,12 +1239,8 @@ public class ThreatFrontlines {
 			}
 			return false;
 		}
-		// ONE FLEET (2026-10-29): the garrison sails and fights as one fleet, however many the yards built it as
-		if (ThreatIncConfig.oneFleet() && fleets.size() > 1) {
-			CampaignFleetAPI lead = fleets.get(0);
-			for (int i = 1; i < fleets.size(); i++) ThreatFleetOrders.absorb(lead, fleets.get(i));
-			fleets = new ArrayList<CampaignFleetAPI>(java.util.Collections.singletonList(lead));
-		}
+		// THE FLEET CAP (2026-10-29): the garrison sails as few fleets as fleetMaxFP takes
+		if (fleets.size() > 1) fleets = ThreatFleetOrders.foldUnderCap(fleets);
 		float fp = fpOf(fleets);
 		float[] cost = voyageCost(fp, ly);
 		// paid in full: the base first, then the markets reaching it

@@ -1979,32 +1979,32 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 
 	/**
 	 * A strike's swarms (an expedition size each) packed into as few fleets as
-	 * maxShipsInAIFleet allows: biggest first, each into the first fleet with
-	 * room for its ships (shipsEstimate), else a fleet of its own. Every swarm
-	 * goes into exactly one fleet, so it ends.
+	 * the fleet cap allows (ThreatIncConfig.fleetMaxFP, 2026-10-29; was vanilla's
+	 * maxShipsInAIFleet in ships): biggest first, each into the first fleet with
+	 * room for its expected points (swarmCostEstimate), else a fleet of its own.
+	 * Every swarm goes into exactly one fleet, so it ends.
 	 */
 	public static List<List<Integer>> pack(List<Integer> sizes) {
-		int max = ThreatColonyManager.maxShipsPerFleet();
 		List<Integer> sorted = new ArrayList<Integer>();
 		for (Integer size : sizes) {
 			if (size != null) sorted.add(size);
 		}
 		java.util.Collections.sort(sorted, java.util.Collections.reverseOrder());
 		List<List<Integer>> out = new ArrayList<List<Integer>>();
-		List<Integer> ships = new ArrayList<Integer>();
+		List<Float> fp = new ArrayList<Float>();
 		for (int size : sorted) {
-			int s = shipsEstimate(specFor(size, 0f));
+			float s = ThreatColonyManager.swarmCostEstimate(ThreatFleetComposer.JOB_STRIKE, specFor(size, 0f));
 			int at = -1;
 			for (int i = 0; i < out.size() && at < 0; i++) {
-				if (ships.get(i) + s <= max) at = i;
+				if (ThreatIncConfig.fitsFleet(fp.get(i), s)) at = i;
 			}
 			if (at < 0) {
 				out.add(new ArrayList<Integer>());
-				ships.add(0);
+				fp.add(0f);
 				at = out.size() - 1;
 			}
 			out.get(at).add(size);
-			ships.set(at, ships.get(at) + s);
+			fp.set(at, fp.get(at) + s);
 		}
 		return out;
 	}
@@ -2190,29 +2190,28 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	protected CampaignFleetAPI createFleet(int size, float damage) {
 		List<Integer> pack = takePack(size);
 		if (pack == null) pack = java.util.Collections.singletonList(size);
-		int max = ThreatColonyManager.maxShipsPerFleet();
 		CampaignFleetAPI fleet = null;
 		for (Integer swarmSize : pack) {
 			CampaignFleetAPI swarm = createSwarm(swarmSize, damage);
 			if (swarm == null) continue;
 			if (fleet == null) {
 				fleet = swarm;
-			} else if (fleet.getFleetData().getNumMembers() + swarm.getFleetData().getNumMembers() <= max) {
+			} else if (ThreatIncConfig.fitsFleet(fleet.getFleetPoints(), swarm.getFleetPoints())) {
 				ThreatColonyManager.mergeInto(fleet, swarm);
 			} else {
-				stowOverflow(swarm, max);
+				stowOverflow(swarm);
 			}
 		}
 		if (fleet != null) finishFleet(fleet);
 		return fleet;
 	}
 
-	/** A swarm a packed fleet had no room for: into an overflow fleet with room, else a fleet of its own. */
-	protected void stowOverflow(CampaignFleetAPI swarm, int max) {
+	/** A swarm a packed fleet had no room for under the fleet cap: into an overflow fleet with room, else a fleet of its own. */
+	protected void stowOverflow(CampaignFleetAPI swarm) {
 		if (overflow == null) overflow = new ArrayList<CampaignFleetAPI>();
-		int ships = swarm.getFleetData().getNumMembers();
+		float fp = swarm.getFleetPoints();
 		for (CampaignFleetAPI curr : overflow) {
-			if (curr.getFleetData().getNumMembers() + ships <= max) {
+			if (ThreatIncConfig.fitsFleet(curr.getFleetPoints(), fp)) {
 				ThreatColonyManager.mergeInto(curr, swarm);
 				return;
 			}
