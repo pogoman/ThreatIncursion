@@ -1765,3 +1765,29 @@ rounds 86-87 on it. hw317 (set A) runs on the hysteresis jar as planned, a secon
   watch on hw318a. 0 exceptions, no hang.
 - hw317 (set A) started 02:32 on the same jar; **hw318 / hw319 on THE DWELL jar** follow from
   `handover-37-38.sh` (~03:50).
+
+**hw317 END (03:53, set A on the hysteresis jar; hw315 / hw313 in brackets):**
+
+| game | war day | hives (hw315 / hw313) | consumed (hw315) | lift-offs | restores | retaken (hw315 / hw313) | dig-ins (worlds 5+) | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw317a | 3,818 | 299 (244 / 303) | 177 (155) | 117 | 26 | 109 (183 / 59) | 813 (19) | 3 | 0 |
+| hw317b | 3,809 | 259 (301 / 343) | 144 (141) | 56 | 58 | 134 (208 / 43) | 591 (15) | 12 | 0 |
+| hw317c | 3,811 | 344 (318 / 350) | 139 (212) | 47 | 69 | 134 (238 / 71) | 960 (26) | 17 | 0 |
+
+- As hw316: the flap moved onto the bleed-out test (591-960 dig-in lines, 15-26 worlds), retaken
+  109-134 (hw315 183-238, hw313 43-71), hives 299 / 259 / 344 (hw315 244 / 301 / 318). 0 exceptions.
+- Grand fleets sailed 3 / 12 / 17 times (hw315 40 / 26 / 11) - the human offence is quieter on
+  this jar in a and b of both sets; open, read on hw318 / hw319.
+
+## 88. hw318-hw319 - rounds 86-87, day-0 seeds on THE DWELL jar 03:54:27 (2026-10-29 03:54-)
+
+Jar 03:54:27 = 925e6424 (e81406e0 THE DWELL `doctrineDwellDays` 10 + a2261df6 the hysteresis on
+fece9daa), launched by `handover-37-38.sh` the moment round 37 ended; driver `run-seeds-38.ps1`,
+hw318 set B, hw319 set A, from day 0 `-Days 3800 -Snapshots 300`, watcher `watch-seeds-38.sh`.
+Read hw318 against hw316 (set B, hysteresis alone: dig-ins 818 / 532 / 749) and hw314 (237 / 117 /
+296).
+
+**hw318 at 25 minutes (war ~1,750, 04:20): THE DWELL HOLDS.** Dig-in lines 15 / 28 / 13 (hw316 at
+the same day 81 / 96 / 8), the worst world 5 in 270 days (Athulf in b: war 1,504 / 1,525 / 1,554 /
+1,673 / 1,769 - weeks apart, where Eldfell and Sphinx flapped daily), 0 exceptions, the fronts take
+and lose districts as before (took 59 / 69 / 90, retaken 5 / 30 / 7).
