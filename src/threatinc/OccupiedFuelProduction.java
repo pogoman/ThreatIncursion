@@ -1,5 +1,6 @@
 package threatinc;
 
+import com.fs.starfarer.api.loading.IndustrySpecAPI;
 import com.fs.starfarer.api.impl.campaign.econ.impl.FuelProduction;
 
 /**
@@ -49,5 +50,18 @@ public class OccupiedFuelProduction extends FuelProduction implements OccupiedIn
 	public String getBuildOrUpgradeDaysText() {
 		if (!super.isBuilding() && ThreatOccupation.consuming(this)) return ThreatOccupation.consumeDaysText(this);
 		return super.getBuildOrUpgradeDaysText();
+	}
+	/** No "Cancel upgrade" on a held card (the user, 2026-10-29): the spec names no upgrade while consumed or rebuilding (ThreatOccupation.heldSpec). Transient: XStream skips it, saves stay portable. */
+	private transient IndustrySpecAPI heldSpec;
+	@Override
+	public IndustrySpecAPI getSpec() {
+		if (heldSpec == null) heldSpec = ThreatOccupation.heldSpec(this, super.getSpec());
+		return heldSpec;
+	}
+	/** Refused while held: it would refund the upgrade and, rebuilding, stand the structure up whole. */
+	@Override
+	public void cancelUpgrade() {
+		if (ThreatOccupation.held(this)) return;
+		super.cancelUpgrade();
 	}
 }
