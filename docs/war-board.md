@@ -26,8 +26,10 @@ is the layout it implements.
    top producers by priority"; 15:30: "get rid of tactical table and just new second last column on
    the threat colony board, Notes, which indicates the objective if relevant"): the ledger's **Notes**
    column (second last, `Cols.NOTES`; the table lived 15:09-15:24) names the system's objectives, best
-   first - the campaign's staging systems
-   (`ThreatOffensive.savingStagings`, "Strike staging", bill and gathered), then each resource's top
+   first - "Strike staging" where the player's report of a world recorded a strike massing
+   (`ThreatIntel.Report.worldStaging`: staged + flying in for it when seen; never the offensive's live
+   plan - 15:45, "kinda cheating. fog of war"; the Strikes column counts expeditions in flight, so a
+   staging has a note and an empty Strikes cell until it sails), then each resource's top
    and next-largest KNOWN producer (fuel plant, refinery, mine) ("Top fuel plant", "Next refinery", "Top
    mine"); the row tooltip adds a line an objective (`addTooltip`): the world, why, what breaks and the
    sat bomb's fuel / strata / days for the player's fleet (`ThreatSatBomb.price`). What breaks when the world is offline - every known importer left to the next-largest known

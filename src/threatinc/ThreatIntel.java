@@ -103,6 +103,12 @@ public final class ThreatIntel {
 			return w != null && w.length > 3 ? (int) w[3] : 0;
 		}
 
+		/** Fleet points massing at the world for a strike when seen (staged and flying in for it), 0 none or not recorded. */
+		public float worldStaging(String marketId) {
+			float[] w = worlds.get(marketId);
+			return w != null && w.length > 4 ? w[4] : 0f;
+		}
+
 		/** The swarms over the strongest world it saw. */
 		public float strongestFP() {
 			float most = 0f;
@@ -184,8 +190,11 @@ public final class ThreatIntel {
 		r.source = source;
 		r.day = today();
 		List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(system.getId());
-		// {swarm FP, fleets, strata, size}: the strata and size as seen, for the board (never the live figure)
-		for (MarketAPI hive : hives) r.worlds.put(hive.getId(), new float[] { 0f, 0f, ThreatStrata.of(hive), hive.getSize() });
+		// {swarm FP, fleets, strata, size, strike gathering}: the strata and size as seen, for the board (never
+		// the live figure), and the strike massing at the world when seen - staged + flying in for it (the
+		// user, 2026-10-30 15:45: a "Strike staging" note "unless a scout has detected [it] ... fog of war")
+		for (MarketAPI hive : hives) r.worlds.put(hive.getId(), new float[] { 0f, 0f, ThreatStrata.of(hive), hive.getSize(),
+				ThreatColonyManager.staged(hive.getId()) + ThreatBudding.strikeInbound(hive) });
 		for (CampaignFleetAPI fleet : system.getFleets()) {
 			if (!swarmFleet(fleet)) continue;
 			float fp = fleet.getFleetPoints();

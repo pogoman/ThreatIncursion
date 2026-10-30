@@ -896,11 +896,8 @@ public class ThreatWarBoard {
 				Global.getSector().getFaction(Factions.THREAT), true);
 		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
 		nameWidths.clear();
-		List<Object[]> cards = new ArrayList<Object[]>();
-		if (selected != null) {
-			addDetailHeading(main, opad, selected);
-			addDetailBody(main, width, opad, selected, cards);
-		}
+		// no drill-down under the ledger since 2026-10-30 15:45 (the user: "get rid of the planet tiles"): the
+		// heading and the colony cards (addDetailHeading / addDetailBody, kept for their helpers) are not drawn
 		// Floating buttons are anchored to siblings already laid out and added
 		// LAST: the tooltip continues its flow from the most recent component,
 		// so anything added after a moved button would land beside it.
@@ -908,23 +905,6 @@ public class ThreatWarBoard {
 		if (selector) ThreatFactionView.addSelector(intel, main, width, view, strip);
 		addFrontButtons(intel, main, fronts);
 		addLedgerButtons(intel, main, ledger);
-		for (Object[] pair : cards) {
-			CustomPanelAPI card = (CustomPanelAPI) pair[0];
-			MarketAPI market = (MarketAPI) pair[1];
-			Entry entry = (Entry) pair[2];
-			// Map and Colony sit flush with the card's right edge on the name line; the
-			// size forecast moved down to line A to make room
-			com.fs.starfarer.api.ui.ButtonAPI colony = intel.addGenericButton(main, COLONY_BUTTON_W,
-					"Colony", BUTTON_COLONY + market.getId());
-			colony.getPosition().aboveRight(card, -24f).setXAlignOffset(-8f);
-			// vanilla's own colony screen, the way "View colony info" opens it - every
-			// figure the card used to carry lives there, maintained by vanilla
-			com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
-					BUTTON_MAP + market.getId());
-			button.getPosition().aboveRight(card, -24f).setXAlignOffset(-8f - COLONY_BUTTON_W - 6f);
-			// a front's own verbs - Supply, Pull out, Support - live on its row in
-			// the fronts table above; the card carries no second copy
-		}
 		main.setHeightSoFar(heightBefore);
 	}
 

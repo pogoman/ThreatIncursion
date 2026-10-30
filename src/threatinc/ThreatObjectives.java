@@ -28,7 +28,7 @@ import com.fs.starfarer.api.util.Misc;
  * no source left) or holding (one short) by the Core's own rule (ThreatColonyManager.coreDemand).
  * Then the next-largest as the follow-up. A sat bomb takes the plant offline for
  * satBombDisruptDays at ThreatSatBomb.price for the player's fleet. The campaign's staging systems
- * (ThreatOffensive.savingStagings) head the list: that is where the strike against the player buds.
+ * massing (ThreatIntel.Report.worldStaging) heads the list: that is where the strike against the player buds.
  * Figures the scouts hold come from the player's report (ThreatIntel: strata and size as last seen);
  * the hive's industries show as the colony screen shows them.
  */
@@ -110,21 +110,20 @@ public class ThreatObjectives {
 		}
 		if (known.isEmpty()) return rows;
 
-		// the stagings the offensive is saving for: where the strike buds
-		Map<String, Float> saving = ThreatOffensive.savingStagings();
-		for (Map.Entry<String, Float> s : saving.entrySet()) {
-			MarketAPI m = ThreatIncData.resolveColonyMarket(s.getKey());
-			if (m == null || !entryOf.containsKey(m.getId())) continue;
-			float gathered = ThreatColonyManager.staged(m.getId()) + ThreatBudding.strikeInbound(m)
-					+ ThreatColonyManager.ownedFleetFP(m, ThreatIncData.garrisonsFor(m.getId()));
+		// a strike massing, as the scouts saw it (ThreatIntel.Report.worldStaging) - never the offensive's live plan
+		// (the user, 2026-10-30 15:45: "unless a scout has detected right. kinda cheating. fog of war")
+		for (MarketAPI m : known) {
+			ThreatWarBoard.Entry e = entryOf.get(m.getId());
+			ThreatIntel.Report seen = ThreatWarBoard.seenOver(e.seen, m);
+			float massing = seen != null ? seen.worldStaging(m.getId()) : 0f;
+			if (massing <= 0f) continue;
 			Row r = new Row();
 			r.objective = "Strike staging";
 			r.world = m;
-			r.entry = entryOf.get(m.getId());
-			r.score = 100f + s.getValue() / 1000f;
-			r.effect = "A strike of " + Misc.getWithDGS(Math.round(s.getValue())) + " FP buds here";
-			r.why = "The swarm's offensive stages its next strike from " + m.getName() + ": " + Misc.getWithDGS(Math.round(s.getValue()))
-					+ " FP priced, " + Misc.getWithDGS(Math.round(gathered)) + " FP gathered. Taking the world offline pushes the strike back to the next staging.";
+			r.entry = e;
+			r.score = 100f + massing / 1000f;
+			r.effect = Misc.getWithDGS(Math.round(massing)) + " FP massing for a strike, seen " + ThreatIntel.when(seen);
+			r.why = "Your scouts saw a strike gathering at " + m.getName() + ": swarms staged and flying in for it. Taking the world offline pushes the strike back to another staging.";
 			rows.add(r);
 		}
 
