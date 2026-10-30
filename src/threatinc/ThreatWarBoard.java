@@ -883,7 +883,6 @@ public class ThreatWarBoard {
 		Fronts fronts = addFronts(intel, main, width, opad, frontRows(),
 				Global.getSector().getFaction(Factions.THREAT), true);
 		addLedger(intel, ui, main, width, opad, entries, selected);
-		addTargets(main, width, opad, entries);
 		nameWidths.clear();
 		List<Object[]> cards = new ArrayList<Object[]>();
 		if (selected != null) {
@@ -1962,98 +1961,6 @@ public class ThreatWarBoard {
 	// ---- sector strip ----
 
 	/** Returns the strip panel so the faction selector can anchor below it (a sibling). */
-	/** Known hive worlds a link lists at most (the user's "top high value targets", 2026-10-30). */
-	public static final int TARGETS_PER_LINK = 3;
-
-	/**
-	 * HIGH-VALUE TARGETS (the user, 2026-10-30, in place of the strike contracts: "a new table
-	 * listing top high value targets for each resource type. basically the worlds that would have
-	 * the most negative impact on the threat if the given industry was disrupted"): for each link
-	 * of the hive chain - rare ore mining, fuel production, refining - the known hive worlds
-	 * (the board's entries) whose loss costs the network most (ThreatMissionIntel.networkImpact,
-	 * the contracts' own scoring), up to TARGETS_PER_LINK a link; a row a world - Link, World,
-	 * System, Size, Impact, State (disrupted N d / running). Clicking a row selects its system.
-	 * Nothing drawn with no known provider.
-	 */
-	protected static void addTargets(TooltipMakerAPI main, float width, float opad, List<Entry> entries) {
-		Set<String> known = new LinkedHashSet<String>();
-		for (Entry e : entries) known.add(e.systemId);
-		int[] types = { ThreatMissionIntel.TYPE_RARE_MINING, ThreatMissionIntel.TYPE_FUEL,
-				ThreatMissionIntel.TYPE_REFINING };
-		List<Object[]> rows = new ArrayList<Object[]>();
-		for (int type : types) {
-			List<Object[]> link = new ArrayList<Object[]>();
-			for (MarketAPI market : ThreatMissionIntel.providersOf(type)) {
-				if (market.getStarSystem() == null || !known.contains(market.getStarSystem().getId())) continue;
-				float impact = ThreatMissionIntel.networkImpact(type, market);
-				if (impact <= 0f) continue;
-				link.add(new Object[] { type, market, impact });
-			}
-			Collections.sort(link, new Comparator<Object[]>() {
-				public int compare(Object[] a, Object[] b) {
-					return Float.compare((Float) b[2], (Float) a[2]);
-				}
-			});
-			for (int i = 0; i < link.size() && i < TARGETS_PER_LINK; i++) rows.add(link.get(i));
-		}
-		if (rows.isEmpty()) return;
-		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
-		Color dark = threat.getDarkUIColor();
-		Color bright = threat.getBrightUIColor();
-		Color h = Misc.getHighlightColor();
-		Color pos = ThreatNotice.goodColor();
-		Color gray = Misc.getGrayColor();
-		Color text = Misc.getTextColor();
-		main.addSectionHeading("High-value targets", bright, dark, Alignment.MID, opad);
-		float tw = width - 24f;
-		String[] names = {"Link", "World", "System", "Size", "Impact", "State"};
-		float[] frac = {.20f, .22f, .22f, .08f, .12f, .16f};
-		List<Object> columns = new ArrayList<Object>();
-		for (int i = 0; i < names.length; i++) {
-			columns.add(names[i]);
-			columns.add((float) Math.floor(tw * frac[i]));
-		}
-		main.beginTable2(threat, ROW_H, true, true, columns.toArray());
-		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(0, "The hive chain the world runs.");
-		main.addTableHeaderTooltip(4, "What the hive network loses if this world's link is cut.");
-		main.addTableHeaderTooltip(5, "Whether the link runs; a raid or bombardment disrupts it.");
-		int lastType = -1;
-		for (Object[] row : rows) {
-			final int type = (Integer) row[0];
-			final MarketAPI market = (MarketAPI) row[1];
-			final float impact = (Float) row[2];
-			List<Object> cells = new ArrayList<Object>();
-			String link = ThreatMissionIntel.typeNoun(type);
-			link = Character.toUpperCase(link.charAt(0)) + link.substring(1);
-			cell(cells, Alignment.LMID, text, type == lastType ? "" : link);
-			lastType = type;
-			cell(cells, Alignment.LMID, bright, main.shortenString(market.getName(), (float) Math.floor(tw * frac[1]) - 10f));
-			cell(cells, Alignment.LMID, text, main.shortenString(market.getStarSystem().getNameWithNoType(),
-					(float) Math.floor(tw * frac[2]) - 10f));
-			cell(cells, Alignment.MID, h, "" + market.getSize());
-			cell(cells, Alignment.MID, h, "" + Math.round(impact * 100f));
-			Industry industry = market.getIndustry(ThreatMissionIntel.industryIdFor(type, market));
-			boolean disrupted = industry != null && industry.isDisrupted();
-			cell(cells, Alignment.MID, disrupted ? pos : gray,
-					disrupted ? "disrupted " + (int) Math.ceil(industry.getDisruptedDays()) + " d" : "running");
-			main.addRow(cells.toArray());
-			main.setIdForAddedRow(market.getStarSystem().getId());
-			final int providers = ThreatMissionIntel.providersOf(type).size();
-			main.addTooltipToAddedRow(new TooltipCreator() {
-				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-				public float getTooltipWidth(Object tooltipParam) { return 420f; }
-				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-					tooltip.addPara(market.getName() + " runs " + ThreatMissionIntel.typeNoun(type) + " for the hive, one of "
-							+ providers + (providers == 1 ? " world that does." : " worlds that do."), Misc.getTextColor(), 0f);
-					tooltip.addPara("Click to select its system.", Misc.getGrayColor(), 6f);
-				}
-			}, TooltipLocation.LEFT, false);
-		}
-		main.addTable("None", -1, 0f);
-		main.addSpacer(opad);
-	}
-
 	protected static CustomPanelAPI addStrip(TooltipMakerAPI main, float width, List<Entry> entries) {
 		int worlds = 0, mass = 0, outbound = 0, inbound = 0;
 		// the swarms the player's reports hold; a system never seen adds nothing
@@ -2076,9 +1983,10 @@ public class ThreatWarBoard {
 		Color gray = Misc.getGrayColor();
 
 		// no Missions figure since 2026-10-30: the contracts are retired, the targets table lists the links
-		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarm fleet",
+		// no Mass either (2026-10-30: real-time information)
+		String[] labels = {"Known systems", "Hive worlds", "Swarm fleet",
 				"Expeditions out", "Sieges in", "Hives burned"};
-		String[] values = {"" + entries.size(), "" + worlds, "" + mass,
+		String[] values = {"" + entries.size(), "" + worlds,
 				anySeen ? Misc.getWithDGS(Math.round(swarmFP)) : "Unknown",
 				"" + outbound, "" + inbound, "" + burned};
 		Color[] colors = {h, h, h, anySeen ? h : gray, outbound > 0 ? neg : h, inbound > 0 ? pos : h, h,
@@ -2125,9 +2033,12 @@ public class ThreatWarBoard {
 			// Activity, which fits the same number of crests either way. Swarm FP
 			// holds a report's figure and age, "12,400 (141 d)" (the fog of war,
 			// 2026-10-01): its points came off System, Worlds, Fed and Activity
+			// THE LEDGER IS WHAT THE SCOUTS KNOW (the user, 2026-10-30: "a lot of the information here
+			// should not be shown as it is real time information"): Mass, the Cores' state, Reach and
+			// Flow are gone (0 width); Worlds is a count; # is the priority score
 			float[] frac = narrow
-					? new float[] {.03f, .14f, 0f, .09f, .05f, .09f, .11f, .08f, .05f, .10f, .12f, 0f, .14f}
-					: new float[] {.028f, .14f, 0f, .08f, .05f, .08f, .11f, .07f, .05f, .10f, .13f, .052f, .11f};
+					? new float[] {.06f, .18f, 0f, .07f, 0f, 0f, .14f, 0f, .07f, .18f, .22f, .08f, 0f}
+					: new float[] {.06f, .20f, 0f, .07f, 0f, 0f, .15f, 0f, .07f, .17f, .20f, .08f, 0f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2179,7 +2090,7 @@ public class ThreatWarBoard {
 		final Cols c = new Cols(width - 24f);
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
-		String[] names = {"#", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
+		String[] names = {"Priority", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
 				"Reach", "Strikes", "Activity", "Supply", "Core", "Flow"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
@@ -2194,15 +2105,14 @@ public class ThreatWarBoard {
 				+ ", a colony declining or starving"
 				+ ", its place in the hive's supply chain, then mass and proximity to the core. The "
 				+ "reason is the first line of the row tooltip.");
-		main.addTableHeaderTooltip(c.visibleIndex(WORLDS), "The size of every hive colony in the "
-				+ "system, largest first.");
-		main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
+		main.addTableHeaderTooltip(c.visibleIndex(WORLDS), "Hive worlds in the system.");
+		if (c.has(MASS)) main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
-		main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
-		main.addTableHeaderTooltip(c.visibleIndex(FLOW), "Swarm on the move: a fleet budding, one being absorbed, or a shift to another world.");
+		if (c.has(VIT)) main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
+		if (c.has(FLOW)) main.addTableHeaderTooltip(c.visibleIndex(FLOW), "Swarm on the move: a fleet budding, one being absorbed, or a shift to another world.");
 		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Threat fleet points last seen in the "
 				+ "system, and days since.");
-		main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
+		if (c.has(REACH)) main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
 				? "Light-years to the world it would strike first."
 				: "How far its expeditions reach, bought with the fuel the staging colony draws from "
 						+ "the hive network.");
@@ -2233,7 +2143,8 @@ public class ThreatWarBoard {
 			rank++;
 			boolean isSelected = selected != null && selected.systemId.equals(e.systemId);
 			List<Object> cells = new ArrayList<Object>();
-			cell(cells, Alignment.MID, h, "" + rank);
+			// the priority score itself (the user, 2026-10-30: "First column should be priority, and sorted descending")
+			cell(cells, Alignment.MID, h, "" + Math.round(e.score));
 			cell(cells, Alignment.LMID, isSelected ? Misc.getBasePlayerColor() : bright,
 					main.shortenString(e.displayName(), c.w[SYSTEM] - 2f * CELL_PAD));
 			if (c.has(THREAT)) cell(cells, Alignment.LMID, e.reasonColor, e.chip);
@@ -2241,22 +2152,26 @@ public class ThreatWarBoard {
 			if (!e.isColony()) {
 				cell(cells, Alignment.MID, gray,
 						ThreatIncData.STAGE_COLONIZING.equals(e.stage) ? "colonizing" : "seeded");
-				cell(cells, Alignment.MID, gray, "-");
+				if (c.has(MASS)) cell(cells, Alignment.MID, gray, "-");
 				String eta = e.inbound.isEmpty() ? "-" : e.inbound.get(0).eta.equals("-")
 						? e.inbound.get(0).status : "planetfall " + e.inbound.get(0).eta;
-				cell(cells, Alignment.LMID, gray, eta);
-				cell(cells, Alignment.MID, gray, "-");
+				if (c.has(VIT)) cell(cells, Alignment.LMID, gray, eta);
+				// the seeding swarm's planetfall sits where the swarm figure would
+				cell(cells, Alignment.MID, gray, c.has(VIT) ? "-" : eta);
 			} else {
-				cell(cells, Alignment.MID, h, sizeDigits(e, c));
-				cell(cells, Alignment.MID, h, "" + e.mass);
+				// a count (the user, 2026-10-30: "worlds should just show total count")
+				cell(cells, Alignment.MID, h, "" + e.markets.size());
+				if (c.has(MASS)) cell(cells, Alignment.MID, h, "" + e.mass);
 				// the Cores' state over the system's worlds: starving before growing before holding
-				cell(cells, Alignment.MID, stateColor(e.core), fedStateName(e.core));
+				if (c.has(VIT)) cell(cells, Alignment.MID, stateColor(e.core), fedStateName(e.core));
 				// the player's report: its figure and age, "Unknown" never seen
 				float seenFP = e.seen != null ? e.seen.totalFP() : 0f;
 				cell(cells, Alignment.MID, e.seen == null ? gray : seenFP <= 0f ? pos : text,
 						ThreatIntel.figure(e.seen, seenFP));
 			}
-			if (billed) {
+			if (!c.has(REACH)) {
+				// no Reach column (2026-10-30: a strike sails as far as its fuel allows)
+			} else if (billed) {
 				// grounded shows whatever else stops it; otherwise no staging
 				// colony strikes nothing, as with the old radius
 				boolean shown = e.grounded || e.staging != null;
@@ -2275,7 +2190,7 @@ public class ThreatWarBoard {
 				cell(cells, Alignment.MID, text, e.coreLY >= 0f ? (int) Math.ceil(e.coreLY) + " ly" : "-");
 			}
 			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
-			cell(cells, Alignment.LMID, e.flow != null ? h : gray,
+			if (c.has(FLOW)) cell(cells, Alignment.LMID, e.flow != null ? h : gray,
 					e.flow != null ? main.shortenString(e.flow, c.w[FLOW] - 2f * CELL_PAD) : "-");
 
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
@@ -2418,7 +2333,7 @@ public class ThreatWarBoard {
 					}
 				}
 
-				if (!e.isColony()) continue;
+				if (!e.isColony() || !c.has(VIT)) continue;
 
 				// the Core column reads its state (the cell); the trend glyph at its right end
 				float vx = x + c.x[VIT] * scale + CELL_PAD;
@@ -2520,8 +2435,7 @@ public class ThreatWarBoard {
 		StringBuilder title = new StringBuilder(e.system.getNameWithNoType());
 		if (e.isColony()) {
 			title.append(" - ").append(e.markets.size())
-					.append(e.markets.size() == 1 ? " hive world" : " hive worlds")
-					.append(" - mass ").append(e.mass);
+					.append(e.markets.size() == 1 ? " hive world" : " hive worlds");
 		} else {
 			title.append(" - ").append(ThreatIncData.STAGE_COLONIZING.equals(e.stage)
 					? "seeding swarm in transit" : "marked for seeding");
@@ -2693,13 +2607,7 @@ public class ThreatWarBoard {
 		probe.addPara(name, bright, 0f);
 		card.addUIElement(probe).inTL(8f, 5f);
 		nameWidths.put(market.getId(), probe.computeStringWidth(name));
-		String[] forecast = forecastParts(market, health);
-		// size forecast, right-aligned on line B beside the fuel bill (line A needs its full width);
-		// in the Core state's colour
-		Color forecastColor = declining ? neg : stateColor(core);
-		textHl(card, cardW - rightW - 8f, 45f, rightW, forecast[0], gray,
-				new Color[] {h, forecastColor},
-				new String[] {forecast[1], forecast[2]}, Alignment.RMID, true);
+		// no size forecast since 2026-10-30 (the user: the tiles keep the strata and the scouts' report, nothing real-time)
 
 		// disruption day counts centred under offline organs, and a hover target
 		// over each tile carrying the industry's name, state, output and inputs
@@ -2721,81 +2629,26 @@ public class ThreatWarBoard {
 			ix += iconStep;
 		}
 
-		// line A, above the organs: supplies paid (vitality), the swarms as last
-		// seen, reach or front
+		// line A, above the organs (the user, 2026-10-30: "remove all that info from the tiles but keep
+		// strata just add the brackets days indicating last update time"): the strata, then the swarms
+		// as last seen - each with the age of the player's report of the system (ThreatIntel, the fog
+		// of war); "Unknown" never seen. No Core state, forecast, reach, front or fuel bill: the
+		// tiles show what the scouts know, nothing real-time
 		List<String> hlA = new ArrayList<String>();
 		List<Color> hlcA = new ArrayList<Color>();
-		StringBuilder a = new StringBuilder("Core %s    Swarm fleet %s");
-		hlA.add(fedStateName(core));
-		hlcA.add(stateColor(core));
-		// the player's report of the swarms over this world (ThreatIntel, the fog
-		// of war, 2026-10-01): its figure and age, "Unknown" never seen. Nothing
-		// of the hive's own plans - the garrison it builds toward, reinforcements
-		// in flight - shows: the player cannot see those either
+		StringBuilder a = new StringBuilder();
 		ThreatIntel.Report over = seenOver(e.seen, market);
+		if (ThreatGroundFronts.strataTarget(market)) {
+			a.append("Strata %s    ");
+			hlA.add(ThreatIntel.figure(over, ThreatStrata.of(market)));
+			hlcA.add(over == null ? gray : text);
+		}
+		a.append("Swarm fleet %s");
 		float seenFP = over != null ? over.worldFP(market.getId()) : 0f;
 		hlA.add(ThreatIntel.figure(over, seenFP));
 		hlcA.add(over == null ? gray : seenFP <= 0f ? pos : text);
-		// a deployed ground front is the siege in progress - it displaces Reach
-		// (a besieged world's strike range is not the question): strength, then
-		// stance or supply trouble, then strata taken of the colony's total
-		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-		if (front != null) {
-			a.append("    Front %s");
-			String stance = ThreatOccupation.holdsAll(front, market) ? "occupying"
-					: ThreatGroundFronts.STANCE_PUSH.equals(front.stance) ? "push"
-					: ThreatGroundFronts.STANCE_CONSOLIDATE.equals(front.stance) ? "regrouping"
-					: "hold";
-			String label = Misc.getWithDGS(Math.round(front.marines)) + " "
-					+ (front.armaments <= 0f ? "no supply" : stance)
-					+ " " + heldCell(front, market)
-					+ (ThreatGroundFronts.Theatre.of(market) == ThreatGroundFronts.HIVE ? " strata" : "");
-			hlA.add(label);
-			hlcA.add(front.armaments <= 0f ? neg
-					: ThreatGroundFronts.STATE_HOLDING.equals(front.state) ? pos
-					: ThreatGroundFronts.STATE_GRINDING.equals(front.state) ? h : neg);
-		} else if (market.getSize() >= ThreatIncConfig.strikeMinSize()) {
-			a.append("    Reach %s");
-			if (ThreatReach.enabled()) {
-				// billed reach: the world the system would strike first, in its
-				// owner's colour, unless the hive cannot keep this world's swarm away
-				boolean noSwarm = grounded(market);
-				hlA.add(reachText(noSwarm, e.facedFaction, e.facedLY));
-				hlcA.add(reachColor(noSwarm, e.facedFaction));
-			} else {
-				float range = ThreatColonyManager.fuelRangeLY(market);
-				hlA.add(range > 0f ? (int) range + " ly" : "grounded");
-				hlcA.add(range > 0f ? neg : pos);
-			}
-		}
 		textHl(card, 8f, 27f, cardW - 16f, a.toString(), gray, hlcA.toArray(new Color[0]),
 				hlA.toArray(new String[0]), Alignment.LMID, true);
-
-		// line B: the fuel bill for the player's fleet as it stands - a day of
-		// saturation (a hive has no bar to finish: ThreatRazing.razes; a colony
-		// shows what razing it takes) and a day of tactical bombardment
-		// over a hive (phase D): the strata, and what a day of the player's fleet razes for what fuel
-		if (ThreatGroundFronts.strataTarget(market)) {
-			float pfp = Global.getSector().getPlayerFleet().getFleetPoints();
-			textHl(card, 8f, 45f, cardW - 16f - rightW, "Strata %s   razes %s a day   %s fuel a day", gray,
-					new Color[] {text, neg, text},
-					new String[] {ThreatStrata.fmt(ThreatStrata.of(market)), ThreatStrata.fmt(ThreatGroundFronts.hiveRazePerDay(pfp)),
-							Misc.getWithDGS(Math.round(ThreatGroundFronts.bombardFuelPerDay(market, pfp)))},
-					Alignment.LMID, true);
-			return card;
-		}
-		int defense = (int) MarketCMD.getDefenderStr(market, true);
-		float fp = Global.getSector().getPlayerFleet().getFleetPoints();
-		boolean razes = ThreatRazing.razes(market);
-		int sat = Math.round(razes ? ThreatRazing.fuelToDestroyThrough(market)
-				: Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * fp);
-		int tac = Math.round(ThreatGroundFronts.bombardFuelPerDay(fp));
-		textHl(card, 8f, 45f, cardW - 16f - rightW,
-				"Def %s   " + (razes ? "raze %s fuel" : "sat %s a day") + "   tac %s a day", gray,
-				new Color[] {text, neg, text},
-				new String[] {Misc.getWithDGS(defense), Misc.getWithDGS(sat), Misc.getWithDGS(tac)},
-				Alignment.LMID, true);
-
 		return card;
 	}
 

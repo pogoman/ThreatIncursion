@@ -20,21 +20,21 @@ is the layout it implements.
    requires a strikeable size-6+ world within the armada-capable hive's fuel range
    (`coreWorldInReach`, the same gate `pickStrikeTarget` applies) - so "Core worlds in reach"
    is literally true, and cutting a hive's fuel can push the phase back.
-2. **Totals strip** (custom panel, two rows of four label/value pairs): known systems, hive
-   worlds, mass, swarms sighted, expeditions out, sieges in, missions, hives burned.
-3. **Ledger**: stock table, one row per known system in priority order. Columns (wide / narrow
-   below `NARROW_WIDTH` = 1050): `#`, System, Worlds (sizes largest first, "+n" overflow), Mass,
-   Fed (Vitality with size upkeep off; bar + trend glyph drawn by the overlay - see "Fed and
-   vitality" below), Swarms ("live/desired +mustered", plus a
-   glyph: green up = a nexus is growing replacements, red down = a short garrison whose nexus is
-   silenced, dash = all garrisons full), Reach (see "Reach" below),
-   Strikes (count), Activity (crests, drawn: every siege expedition, task force, intercept,
-   Support or Defend sortie, front run and ground front against the system - as many as fit the column, the rest
-   in the row tooltip), Supply (commodity icons, drawn), Core (ly, wide only). The
-   Threat/reason column was removed for space; the reason opens the row tooltip. The Missions
-   (View button) and Actions (Purge button) columns were removed 2026-09-05: missions stay in the
-   totals strip and the row tooltip, and the purge commission is gone altogether (below).
-   Clicking a row selects the system (`tableRowClicked` with a String id).
+2. **Totals strip** (custom panel, label/value pairs): known systems, hive worlds, swarm fleet
+   sighted, expeditions out, sieges in, hives burned. Mass and missions went 2026-10-30.
+3. **Ledger**: stock table, one row per known system in priority order. **Since 2026-10-30 (the
+   user: "a lot of the information here should not be shown as it is real time information") the
+   ledger shows what the scouts know:** Priority (the score itself, `Entry.score`, descending -
+   an expedition in flight, a strike it can pay for, decline, its place in the supply chain by
+   `ThreatMissionIntel.networkImpact`, mass, proximity), System, Worlds (a count), Swarm fleet
+   (the report's figure and age), Strikes (count), Activity (crests, drawn: every siege
+   expedition, task force, intercept, Support or Defend sortie, front run and ground front against
+   the system - as many as fit the column, the rest in the row tooltip), Supply (commodity icons,
+   drawn, what the scouts saw it produce), Core (ly). Mass, the Cores' state (with its trend
+   glyph), Reach ("cant the threat sail as far as they like fuel permitting") and Flow are gone -
+   their `Cols` widths are 0 and every cell and tooltip is guarded by `c.has`. The Threat/reason
+   column was removed for space; the reason opens the row tooltip. Clicking a row selects the
+   system (`tableRowClicked` with a String id).
 4. **Selected system heading**, then that system's **Ground fronts table** (2026-09-05, shared
    with the faction view - `ThreatWarBoard.addFronts(rows, tableFaction, showSystem)`; the
    hive view passes `frontRowsIn(selected)` and no System column, a faction view passes
@@ -313,13 +313,9 @@ the hive's weak point.
 them ... missions no longer [make] sense as threat shifts colony sizes constantly").**
 `threatinc_missionsEnabled` is false by default; `IncursionManager.manageMissions` withdraws an
 older save's posted offers and an accepted contract runs out as the player's. The strip's Missions
-figure went. In their place the Threat tab has a **High-value targets** table under the systems
-ledger (`ThreatWarBoard.addTargets`): for each link of the hive chain - rare ore mining, fuel
-production, refining - up to `TARGETS_PER_LINK` (3) known hive worlds ranked by
-`ThreatMissionIntel.networkImpact` (the contracts' own scoring: share x scarcity x lever, the home
-system, strike platforms, reach), a row a world: Link, World, System, Size, Impact (x100), State
-(running / disrupted N d). A row click selects its system; the row tooltip says how many worlds
-run the link.
+figure went. A **High-value targets** table (`addTargets`, 12:17) lived under the ledger for an
+hour; the user ("we dont need the table we just built can just put the priority there") had it
+folded into the ledger's Priority column, which is the score `networkImpact` already feeds.
 
 Before that: missions came from `ThreatMissionIntel`; the board showed their count in the totals
 strip and listed them in the row tooltip. The Missions column's View button was removed 2026-09-05.
