@@ -30,17 +30,22 @@ is the layout it implements.
    the player's report and a lost party, `ageText`). Every note reads the player's report of the system
    (`ThreatIntel.report(PLAYER, ...)`, the newest of the player's own and every Cooperative faction's;
    written daily for every observer with eyes there, `ThreatIntel.advanceDay`, and by a scout home) -
-   never the live world. `lines`, best first: "Scout lost" (a party sent there lost since the last look,
-   `ThreatIntel.markLost` from `ThreatScouts.Sorties.onLost`), "Never scouted", then "Strike staging" where the player's report of a world recorded a strike massing
-   (`ThreatIntel.Report.worldStaging`: staged + flying in for it when seen; never the offensive's live
-   plan - 15:45, "kinda cheating. fog of war"; the Strikes column counts expeditions in flight, so a
-   staging has a note and an empty Strikes cell until it sails), then a producer the hive leans
-   on - the largest or next-largest known holder of a fuel plant, refinery or mine (`rows`), written as
-   the thing and its size, "Size 8 fuel production" (`made`; 16:15, the user: "dont say top or next") -
-   then "Low strata mass (8,000)" under `LOW_MASS` 10,000, the system's best producer as the report saw
-   it ("Size 7 mining", `Report.made` / `bestMade`, unless a producer line names it), "Isolated" (no other
-   known hive system within `ISOLATED_LY` 8) and the mass ("Strata mass 45,000"). **The cell shows the
-   first note alone** ("should just show the most important thing"); the tooltip lists them all. Colours: a loss red, a
+   never the live world. **The cell (16:30, the user: "Each entry should read Worlds: x, Mass: y Remark:
+   Size 8 Fuel Production or Remark: Starving, Remark: Feeding")**: `cellText` = "Worlds: 3, Mass: 24,000,
+   Remark: Size 8 Fuel Production" - the worlds count (the Worlds column went the same minute, width
+   0), the strata mass as the report saw it, and ONE remark (`remark`), the most important: "Scout lost"
+   (a party sent there lost since the last look, `ThreatIntel.markLost` from
+   `ThreatScouts.Sorties.onLost`), "Never scouted", "Strike staging" (the report recorded swarms massing,
+   `Report.worldStaging`; never the offensive's live plan - 15:45, "kinda cheating. fog of war"; the
+   Strikes column counts expeditions in flight, so a staging has a remark and an empty Strikes cell
+   until it sails), "Starving" (a Core starving when seen, `Report.worldFed`), the system's largest
+   producer "Size 8 Fuel Production" / "Refining" / "Mining" (`Report.made`, fuel before metals before
+   ore at a size, always with the size - old reports are backfilled on load, `ThreatIntel.backfill`),
+   "Feeding" (a Core fed in full when seen). A seeded system reads "Remark: Seeded" / "Colonizing".
+   Isolated, low mass and the top / next-producer objectives went ("dont worry about isolated etc
+   player can figure that out via map"). Colours: a loss red, a staging the Threat's, nothing known
+   grey. The row tooltip (`addTooltip`): the loss, the last look, one line a world as seen (size,
+   strata, producers, Core state, FP massing); its live mass and growth / starving lines went. Colours: a loss red, a
    staging the Threat's, nothing known grey. The row tooltip (`addTooltip`) carries the notes, the loss,
    the last look, each objective's reasoning and the sat bomb's fuel / strata / days for the player's
    fleet (`ThreatSatBomb.price`); its live mass and growth / starving lines went. **Scout** floats on

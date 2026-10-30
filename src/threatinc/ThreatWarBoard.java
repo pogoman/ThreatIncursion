@@ -2071,8 +2071,8 @@ public class ThreatWarBoard {
 			// sorted nearest first; the priority score and the Swarm fleet column are gone (0 width), the
 			// Notes column (15:30, in the old Core (ly) slot) says what to hit
 			float[] frac = narrow
-					? new float[] {.07f, .13f, 0f, .06f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .19f, .06f, .19f}
-					: new float[] {.07f, .15f, 0f, .06f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .20f, .06f, .16f};
+					? new float[] {.07f, .15f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .25f, .06f, .17f}
+					: new float[] {.07f, .17f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .25f, .06f, .15f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2122,8 +2122,6 @@ public class ThreatWarBoard {
 
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
-		final Map<String, List<ThreatObjectives.Row>> notes = ThreatObjectives.bySystem(entries);
-		final List<Entry> all = entries;
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
 		String[] names = {"Distance", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
@@ -2137,7 +2135,7 @@ public class ThreatWarBoard {
 		com.fs.starfarer.api.ui.UIPanelAPI table = main.beginTable2(threat, ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
 		main.addTableHeaderTooltip(c.visibleIndex(RANK), "Light-years to the nearest major inhabited world.");
-		main.addTableHeaderTooltip(c.visibleIndex(WORLDS), "Hive worlds in the system.");
+		if (c.has(WORLDS)) main.addTableHeaderTooltip(c.visibleIndex(WORLDS), "Hive worlds in the system.");
 		if (c.has(MASS)) main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
 		if (c.has(VIT)) main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
@@ -2163,8 +2161,8 @@ public class ThreatWarBoard {
 						+ "point.", 0f);
 			}
 		});
-		if (c.has(NOTES)) main.addTableHeaderTooltip(c.visibleIndex(NOTES), "What a world here is to the hive: the staging of "
-				+ "its next strike, or the largest producer of a resource your scouts know of. Details in the row tooltip.");
+		if (c.has(NOTES)) main.addTableHeaderTooltip(c.visibleIndex(NOTES), "As your scouts last saw it: the hive worlds, their strata, and the remark - "
+				+ "a lost party, a strike massing, starving Cores, the largest producer, Cores fed in full.");
 
 		final List<Object> rowObjects = new ArrayList<Object>();
 		final List<Entry> rowEntries = new ArrayList<Entry>();
@@ -2180,7 +2178,8 @@ public class ThreatWarBoard {
 			if (c.has(THREAT)) cell(cells, Alignment.LMID, e.reasonColor, e.chip);
 
 			if (!e.isColony()) {
-				cell(cells, Alignment.MID, gray,
+				// the Worlds column went 2026-10-30 16:30 (the user): the count opens the Notes cell
+				if (c.has(WORLDS)) cell(cells, Alignment.MID, gray,
 						ThreatIncData.STAGE_COLONIZING.equals(e.stage) ? "colonizing" : "seeded");
 				if (c.has(MASS)) cell(cells, Alignment.MID, gray, "-");
 				String eta = e.inbound.isEmpty() ? "-" : e.inbound.get(0).eta.equals("-")
@@ -2190,7 +2189,7 @@ public class ThreatWarBoard {
 				if (c.has(SWARMS)) cell(cells, Alignment.MID, gray, c.has(VIT) ? "-" : eta);
 			} else {
 				// a count (the user, 2026-10-30: "worlds should just show total count")
-				cell(cells, Alignment.MID, h, "" + e.markets.size());
+				if (c.has(WORLDS)) cell(cells, Alignment.MID, h, "" + e.markets.size());
 				if (c.has(MASS)) cell(cells, Alignment.MID, h, "" + e.mass);
 				// the Cores' state over the system's worlds: starving before growing before holding
 				if (c.has(VIT)) cell(cells, Alignment.MID, stateColor(e.core), fedStateName(e.core));
@@ -2220,9 +2219,8 @@ public class ThreatWarBoard {
 			cell(cells, Alignment.MID, gray, e.supplies.isEmpty() ? "-" : ""); // icons by the overlay
 			// NOTES (the user, 2026-10-30 15:30): the system's objectives - a strike staging, a top producer (ThreatObjectives)
 			if (c.has(NOTES)) {
-				List<String> lines = ThreatObjectives.lines(e, notes.get(e.systemId), all);
-				cell(cells, Alignment.LMID, ThreatObjectives.noteColor(lines, bright, h, gray, neg),
-						main.shortenString(ThreatObjectives.noteText(lines), c.w[NOTES] - 2f * CELL_PAD));
+				cell(cells, Alignment.LMID, ThreatObjectives.noteColor(e, bright, h, gray, neg),
+						main.shortenString(ThreatObjectives.cellText(e), c.w[NOTES] - 2f * CELL_PAD));
 			}
 			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
 			if (c.has(AGE)) {
@@ -2237,7 +2235,7 @@ public class ThreatWarBoard {
 				public float getTooltipWidth(Object tooltipParam) { return 440f; }
 				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 					addRowTooltip(tooltip, e, c.narrow);
-					ThreatObjectives.addTooltip(tooltip, e, notes.get(e.systemId), all, 10f);
+					ThreatObjectives.addTooltip(tooltip, e, 10f);
 				}
 			}, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(e.systemId);

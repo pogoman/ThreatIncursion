@@ -122,6 +122,12 @@ public final class ThreatIntel {
 			return s == null || s.isEmpty() ? new String[0] : s.split(",");
 		}
 
+		/** The Core's state when seen (ThreatWarBoard.STARVING / HOLDING / GROWING), 0 when not recorded. */
+		public int worldFed(String marketId) {
+			float[] w = worlds.get(marketId);
+			return w != null && w.length > 5 ? (int) w[5] : 0;
+		}
+
 		/** The swarms over the strongest world it saw. */
 		public float strongestFP() {
 			float most = 0f;
@@ -196,6 +202,54 @@ public final class ThreatIntel {
 	 * The system as it stands now: over each hive world, every Threat fleet the
 	 * contest there would count (within ORBIT_HOLD_RANGE); the rest loose.
 	 */
+	/**
+	 * A world's figures in a report: {swarm FP (filled by the picture), fleets, strata, size, strike massing (staged +
+	 * flying in for it; the user, 2026-10-30 15:45: a "Strike staging" note "unless a scout has detected [it]"), the
+	 * Core's state (ThreatWarBoard.fedState: STARVING / HOLDING / GROWING)}.
+	 */
+	protected static float[] worldFigures(MarketAPI hive) {
+		return new float[] { 0f, 0f, ThreatStrata.of(hive), hive.getSize(),
+				ThreatColonyManager.staged(hive.getId()) + ThreatBudding.strikeInbound(hive), ThreatWarBoard.fedState(hive) };
+	}
+
+	/** The world's producer industries (PRODUCERS), comma-joined, for Report.made. */
+	protected static String madeOf(MarketAPI hive) {
+		StringBuilder b = new StringBuilder();
+		for (String ind : PRODUCERS) {
+			if (!hive.hasIndustry(ind)) continue;
+			if (b.length() > 0) b.append(',');
+			b.append(ind);
+		}
+		return b.toString();
+	}
+
+	/**
+	 * Reports from before 2026-10-30 carry no strata, size, massing, producers or Core state (the "Top fuel plant, Top
+	 * mine" cells of 16:10): filled from the world as it stands, once, on load - the one time the board reads a live
+	 * figure, so no row says "Fuel Production" without its size.
+	 */
+	protected static void backfill() {
+		if (!enabled()) return;
+		for (Map<String, Report> mine : store().values()) {
+			for (Report r : mine.values()) {
+				if (r == null || r.worlds == null) continue;
+				if (r.made == null) r.made = new LinkedHashMap<String, String>();
+				for (Map.Entry<String, float[]> w : r.worlds.entrySet()) {
+					float[] old = w.getValue();
+					if (old != null && old.length >= 6 && r.made.containsKey(w.getKey())) continue;
+					MarketAPI m = Global.getSector().getEconomy().getMarket(w.getKey());
+					if (m == null || m.getPrimaryEntity() == null) continue;
+					if (old == null || old.length < 6) {
+						float[] now = worldFigures(m);
+						for (int i = 0; old != null && i < old.length && i < now.length; i++) now[i] = old[i];
+						w.setValue(now);
+					}
+					if (!r.made.containsKey(w.getKey())) r.made.put(w.getKey(), madeOf(m));
+				}
+			}
+		}
+	}
+
 	protected static Report picture(StarSystemAPI system, String observer, String source) {
 		Report r = new Report();
 		r.systemId = system.getId();
@@ -203,19 +257,10 @@ public final class ThreatIntel {
 		r.source = source;
 		r.day = today();
 		List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(system.getId());
-		// {swarm FP, fleets, strata, size, strike gathering}: the strata and size as seen, for the board (never
-		// the live figure), and the strike massing at the world when seen - staged + flying in for it (the
-		// user, 2026-10-30 15:45: a "Strike staging" note "unless a scout has detected [it] ... fog of war")
-		for (MarketAPI hive : hives) r.worlds.put(hive.getId(), new float[] { 0f, 0f, ThreatStrata.of(hive), hive.getSize(),
-				ThreatColonyManager.staged(hive.getId()) + ThreatBudding.strikeInbound(hive) });
+		// the world as seen, for the board (never the live figure): worldFigures and madeOf
 		for (MarketAPI hive : hives) {
-			StringBuilder b = new StringBuilder();
-			for (String ind : PRODUCERS) {
-				if (!hive.hasIndustry(ind)) continue;
-				if (b.length() > 0) b.append(',');
-				b.append(ind);
-			}
-			r.made.put(hive.getId(), b.toString());
+			r.worlds.put(hive.getId(), worldFigures(hive));
+			r.made.put(hive.getId(), madeOf(hive));
 		}
 		for (CampaignFleetAPI fleet : system.getFleets()) {
 			if (!swarmFleet(fleet)) continue;
@@ -641,6 +686,7 @@ public final class ThreatIntel {
 		LIVE.clear();
 		liveStamp = Long.MIN_VALUE;
 		sweptDay = Long.MIN_VALUE;
+		backfill();
 	}
 
 	/** A new campaign (ThreatColonyManager.resetIncursion): every report goes. */
