@@ -205,6 +205,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return playerCommissioned;
 	}
 
+	/** Whose operation this is for a notice (ThreatNotice.fleetOp): the player's when commissioned, else its faction's. */
+	public com.fs.starfarer.api.campaign.FactionAPI opActor() {
+		return playerCommissioned ? Global.getSector().getPlayerFaction() : getFaction();
+	}
+
 	public void setCargoAllotment(int marines, float armaments) {
 		carriesCargo = true;
 		marinesAllotted = Math.max(0, marines);
@@ -920,7 +925,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		abort();
 		// a grand fleet outweighed here: its system waits grandFleetRetryDays before it is picked again
 		if (grandFleet) ThreatGrandFleets.calledOff(this, at);
-		ThreatNotice.titled(grandFleet ? "Grand Fleet Turns Home" : "Siege Called Off").icon(faction)
+		ThreatNotice.titled(grandFleet ? "Grand Fleet Turns Home" : "Siege Called Off").icon(faction).fleetOp(opActor(), at)
 				.line(grandFleet ? "%s grand fleet over %s turns home." : "%s siege of %s turns home.",
 						ThreatNotice.faction(faction), ThreatNotice.market(at))
 				.line("Defense Swarms %s fleet points against its %s fleet points.", ThreatNotice.hl(Misc.getWithDGS((int) worst)),
@@ -954,7 +959,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		setFailedButNotDefeated(true);
 		abort();
-		ThreatNotice.titled("Siege Called Off").icon(faction)
+		ThreatNotice.titled("Siege Called Off").icon(faction).fleetOp(opActor(), at)
 				.line("%s siege of %s turns home.", ThreatNotice.faction(faction), ThreatNotice.market(at))
 				.line("%s marines aboard against the %s a landing needs.",
 						ThreatNotice.hl(Misc.getWithDGS((int) troops)), ThreatNotice.hl(Misc.getWithDGS(need)))
@@ -997,7 +1002,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		com.fs.starfarer.api.campaign.StarSystemAPI system = targetSystem();
 		setFailedButNotDefeated(true);
 		abort();
-		ThreatNotice.titled(title).icon(faction)
+		ThreatNotice.titled(title).icon(faction).fleetOp(opActor())
 				.line("%s siege of the %s turns home", ThreatNotice.faction(faction),
 						system != null ? system.getNameWithLowercaseTypeShort() : "hive")
 				.line(figureLine, ThreatNotice.hl(Misc.getWithDGS((int) figure)))
@@ -3478,7 +3483,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		ThreatSiegeReportIntel report = new ThreatSiegeReportIntel(
 				getFaction() != null ? getFaction().getId() : null, systemName,
 				new ArrayList<SiegeActionRecord>(siegeActions), outcome);
-		Global.getSector().getIntelManager().addIntel(report);
+		// an AI siege's sitrep is listed, not announced (ThreatNotice.fleetOp)
+		Global.getSector().getIntelManager().addIntel(report, !opActor().isPlayerFaction());
 		ThreatIncConfig.log("Siege expedition " + outcome + " (" + siegeActions.size()
 				+ " ground actions) - sitrep posted.");
 		if (isAborted()) {

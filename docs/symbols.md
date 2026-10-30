@@ -28,7 +28,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `HiveVitalityCondition.unapply(String id)` :54
 - `HiveVitalityCondition.createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded)` :65
 
-## IncursionManager (7045 lines)
+## IncursionManager (7046 lines)
 - `IncursionManager.isDone()` :84 - Set once the bootstrap heal has run this session (transient:
 - `IncursionManager.runWhilePaused()` :88
 - `IncursionManager.advance(float amount)` :95 - The live manager (transient, re-created each load), for static callers such as retaliation.
@@ -291,15 +291,15 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `IncursionManager.siegeFactionsIn(String systemId)` :6757 - Factions with a siege expedition still running against a colony of the system.
 - `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6777 - The worlds the faction's running siege of the system is fighting (its purge's targets);
 - `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6806 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
-- `IncursionManager.sweepOrphanedExpeditions()` :6851 - Catch-all for expeditions orphaned outside the event hooks:
-- `IncursionManager.upgradeInFlightStrikes()` :6901 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
-- `IncursionManager.dedupDecivIntel()` :6933 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
-- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6961
-- `IncursionManager.getPurgeList()` :6969
-- `IncursionManager.countActivePurges()` :6978
-- `IncursionManager.countActiveFGIs(List<Object> list)` :6982
-- `IncursionManager.getSystem(String systemId)` :7005
-- `IncursionManager.syncSystemMarkers()` :7016 - Keeps one map-visible intel marker per infested system:
+- `IncursionManager.sweepOrphanedExpeditions()` :6852 - Catch-all for expeditions orphaned outside the event hooks:
+- `IncursionManager.upgradeInFlightStrikes()` :6902 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
+- `IncursionManager.dedupDecivIntel()` :6934 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
+- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6962
+- `IncursionManager.getPurgeList()` :6970
+- `IncursionManager.countActivePurges()` :6979
+- `IncursionManager.countActiveFGIs(List<Object> list)` :6983
+- `IncursionManager.getSystem(String systemId)` :7006
+- `IncursionManager.syncSystemMarkers()` :7017 - Keeps one map-visible intel marker per infested system:
 
 ## InfestedSystemIntel (323 lines)
 - `InfestedSystemIntel.InfestedSystemIntel(String systemId)` :28
@@ -3586,7 +3586,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNexCompat.log(String msg)` :128 - Always on, unlike ThreatIncConfig.log:
 - `ThreatNexCompat.enumValue(Class<?> enumClass, String name)` :133
 
-## ThreatNotice (364 lines)
+## ThreatNotice (388 lines)
 - `ThreatNotice.Hl(String text, Color color)` :49 - The faction this fragment names or belongs to, for the notice's board tab;
 - `ThreatNotice.of(String format, Object... args)` :73
 - `ThreatNotice.line(String format, Object... args)` :78 - A further fact, on the rules of ThreatNotice#line.
@@ -3595,31 +3595,32 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNotice.titled(String title)` :107
 - `ThreatNotice.bad()` :117 - Bad news.
 - `ThreatNotice.good()` :123 - Good news:
-- `ThreatNotice.threatColor()` :129 - The Threat faction's colour.
-- `ThreatNotice.goodColor()` :134 - The mod's colour for a good outcome or state:
-- `ThreatNotice.icon(FactionAPI faction)` :139 - The crest of this faction instead of the Threat's;
-- `ThreatNotice.line(String format, Object... args)` :145 - A bullet line in body text;
-- `ThreatNotice.lines(Reason reason)` :150 - A reason's facts, one bullet each.
-- `ThreatNotice.lines(String facts)` :158 - Facts as plain text on separate lines (a reason built as a string), one bullet each.
-- `ThreatNotice.add(Line l)` :167
-- `ThreatNotice.toLine(String format, Object... args)` :174 - A line from its format and arguments, the highlights resolved.
-- `ThreatNotice.plain(Line l)` :204 - A line's text without its colours.
-- `ThreatNotice.colourThreat(String format, Object[] args)` :214 - The format with each literal Threat turned into a highlighted argument, as {new format, new args};
-- `ThreatNotice.send()` :243
-- `ThreatNotice.plain()` :258 - Title and lines as one plain string, for the log.
-- `ThreatNotice.faction(FactionAPI faction)` :267 - A faction's display name in its own colour.
-- `ThreatNotice.market(MarketAPI market)` :275 - A market's name in its owner's colour.
-- `ThreatNotice.base(ThreatBases.Base base)` :284 - A base's name:
-- `ThreatNotice.hl(Object text)` :290 - A plain name in the highlight colour.
-- `ThreatNotice.red(Object text)` :294
-- `ThreatNotice.green(Object text)` :299 - A gain, in the good colour (blue, not green).
-- `ThreatNotice.gray(Object text)` :303
-- `ThreatNotice.getName()` :310
-- `ThreatNotice.getTitleColor(ListInfoMode mode)` :315
-- `ThreatNotice.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :324
-- `ThreatNotice.getIcon()` :344
-- `ThreatNotice.getCommMessageSound()` :356
-- `ThreatNotice.hasSmallDescription()` :361
+- `ThreatNotice.fleetOp(FactionAPI actor, MarketAPI... concerns)` :137 - An AI fleet operation - a siege, relief, hunt, grand fleet or task force sailing, turning or standing down:
+- `ThreatNotice.threatColor()` :149 - The Threat faction's colour.
+- `ThreatNotice.goodColor()` :154 - The mod's colour for a good outcome or state:
+- `ThreatNotice.icon(FactionAPI faction)` :159 - The crest of this faction instead of the Threat's;
+- `ThreatNotice.line(String format, Object... args)` :165 - A bullet line in body text;
+- `ThreatNotice.lines(Reason reason)` :170 - A reason's facts, one bullet each.
+- `ThreatNotice.lines(String facts)` :178 - Facts as plain text on separate lines (a reason built as a string), one bullet each.
+- `ThreatNotice.add(Line l)` :187
+- `ThreatNotice.toLine(String format, Object... args)` :194 - A line from its format and arguments, the highlights resolved.
+- `ThreatNotice.plain(Line l)` :224 - A line's text without its colours.
+- `ThreatNotice.colourThreat(String format, Object[] args)` :234 - The format with each literal Threat turned into a highlighted argument, as {new format, new args};
+- `ThreatNotice.send()` :263
+- `ThreatNotice.plain()` :282 - Title and lines as one plain string, for the log.
+- `ThreatNotice.faction(FactionAPI faction)` :291 - A faction's display name in its own colour.
+- `ThreatNotice.market(MarketAPI market)` :299 - A market's name in its owner's colour.
+- `ThreatNotice.base(ThreatBases.Base base)` :308 - A base's name:
+- `ThreatNotice.hl(Object text)` :314 - A plain name in the highlight colour.
+- `ThreatNotice.red(Object text)` :318
+- `ThreatNotice.green(Object text)` :323 - A gain, in the good colour (blue, not green).
+- `ThreatNotice.gray(Object text)` :327
+- `ThreatNotice.getName()` :334
+- `ThreatNotice.getTitleColor(ListInfoMode mode)` :339
+- `ThreatNotice.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :348
+- `ThreatNotice.getIcon()` :368
+- `ThreatNotice.getCommMessageSound()` :380
+- `ThreatNotice.hasSmallDescription()` :385
 
 ## ThreatNoticeClickDialog (124 lines)
 - `ThreatNoticeClickDialog.ThreatNoticeClickDialog(String factionId)` :31
@@ -4046,7 +4047,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1938
 - `ThreatPosture.k(float fp)` :1950
 
-## ThreatPurgeFGI (3496 lines)
+## ThreatPurgeFGI (3502 lines)
 - `ThreatPurgeFGI.ThreatPurgeFGI(GenericRaidParams params, boolean playerCommissioned)` :115
 ### THE GRAND FLEET (ThreatGrandFleets, the user 2026-10-26)
 - `ThreatPurgeFGI.setGrandFleet(int leg)` :133 - The entity the next constructed expedition sails FROM in place of its source - a grand fleet's hop, the system it just fought in.
@@ -4059,149 +4060,150 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPurgeFGI.adoptFleetsFrom(ThreatPurgeFGI old)` :166 - A hop with the fleets spawned:
 - `ThreatPurgeFGI.initActions()` :177 - A hop sails from where the last leg fought (hopFrom), not from the source:
 - `ThreatPurgeFGI.isPlayerCommissioned()` :204
-- `ThreatPurgeFGI.setCargoAllotment(int marines, float armaments)` :208
-- `ThreatPurgeFGI.setProvisions(float fuel, float supplies)` :218
-- `ThreatPurgeFGI.setHold(float supplies)` :233
-- `ThreatPurgeFGI.hold()` :238
-- `ThreatPurgeFGI.holdFull()` :242
-- `ThreatPurgeFGI.burnHold(float amount)` :247 - Takes up to amount from the hold;
-- `ThreatPurgeFGI.stockHold(float amount)` :253
-- `ThreatPurgeFGI.setDownGoal(float days)` :280 - Saturation days-down goal of the Bombard order's tier (IncursionManager.bombardGoalDays;
-- `ThreatPurgeFGI.setOrdnance(float tactical, float razing)` :284
-- `ThreatPurgeFGI.setRazeWorlds(java.util.Collection<String> ids)` :290
-- `ThreatPurgeFGI.getPlayId()` :298 - The war council play this siege serves (ThreatPlays), or null for one the old launch sent.
-- `ThreatPurgeFGI.setPlayId(String id)` :300
-- `ThreatPurgeFGI.friendsNear(MarketAPI world)` :303 - The fleet points of this siege's play already in the target's system (its hunting forces):
-- `ThreatPurgeFGI.getCommMessageSound()` :310 - Vanilla's colony-threat alarm only when a target is the player's (ThreatStrikeFGI.getCommMessageSound).
-- `ThreatPurgeFGI.razesAll()` :316 - Every world the expedition sailed for is one it razes.
-- `ThreatPurgeFGI.finish(boolean isAbort)` :330 - A siege called off inside vanilla's segment-end resolve aborts, and vanilla then finishes the expired route as a plain failure, which would clear the abort (reviewed 2026-09-29):
-- `ThreatPurgeFGI.razes(MarketAPI market)` :338 - Whether the expedition razes this world rather than lands on it.
-- `ThreatPurgeFGI.ordnanceLeft()` :343 - The tactical ordnance left for the siege slices;
-- `ThreatPurgeFGI.razeFuelLeft()` :348 - The fuel left for the razing passes;
-- `ThreatPurgeFGI.burnOrdnance(MarketAPI market, float fp, float days)` :357 - Pays a slice's ordnance out of what the expedition carries:
-- `ThreatPurgeFGI.sendHomeTracked(CampaignFleetAPI fleet)` :373 - Hands a live expedition fleet to the returns ledger:
-- `ThreatPurgeFGI.giveReturnAssignments(CampaignFleetAPI fleet)` :389 - Every road home vanilla knows - the natural return once the siege is done, an abort, a fleet cut below fleetAbortsMissionFPFraction and sent back alone - runs through here.
-- `ThreatPurgeFGI.refundOnReturn()` :431 - The expedition is over, however it ended - natural return, recalled, standing down because its targets are gone, or beaten.
-- `ThreatPurgeFGI.survivingFraction()` :521 - Surviving strength, 0..1:
-- `ThreatPurgeFGI.carriesCargo()` :538
-- `ThreatPurgeFGI.detach(CampaignFleetAPI fleet)` :550 - Takes one fleet out of the expedition (the board's per-fleet Recall and Intercept, 2026-09-06).
-- `ThreatPurgeFGI.detach(CampaignFleetAPI fleet, boolean endIfEmpty)` :562 - endIfEmpty false:
-- `ThreatPurgeFGI.baselineFP()` :607 - The expedition's spawned-strength baseline, fleets that stayed to defend a landing included.
-- `ThreatPurgeFGI.stayOnDefend(CampaignFleetAPI passing, MarketAPI market)` :624 - THE LANDING FLEET STAYS (2026-09-07, the user:
-- `ThreatPurgeFGI.joinDefend(CampaignFleetAPI fleet, MarketAPI market)` :681 - A fleet with nothing left to land joins the defence of the expedition's own front - this world's if it is ours, else the nearest of the sweep's - rather than duelling batteries over a world it can nev
-- `ThreatPurgeFGI.ownFrontWorld(MarketAPI market, CampaignFleetAPI fleet)` :691 - This world if the expedition's own front stands on it, else the sweep's own-front world nearest the fleet, else null.
-- `ThreatPurgeFGI.ownFrontOn(MarketAPI market, String factionId)` :711
-- `ThreatPurgeFGI.cutLoose(CampaignFleetAPI fleet)` :726 - A fleet leaving its group takes nothing of the group's mind with it:
-- `ThreatPurgeFGI.noteSpawnFP()` :757 - Vanilla's incremental spawn (its default) never stamps KEY_SPAWN_FP on a fleet, so its own "cut below fleetAbortsMissionFPFraction" check never fires and #detach had nothing to take off the group's ba
-- `ThreatPurgeFGI.recallFleet(CampaignFleetAPI fleet)` :782 - Detaches one fleet and sends it home on the tracked leg (its cargo refunds on arrival).
-- `ThreatPurgeFGI.resolveOnArrival(com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel intel)` :801 - An expedition that never spawned resolves when it reaches its target (2026-09-29, overnight run N4), not when vanilla's payload segment ends:
-- `ThreatPurgeFGI.sourceBase()` :820 - The base the expedition sailed from, or null for an abstract one.
-- `ThreatPurgeFGI.breaksOff(List<MarketAPI> live)` :836 - THE COMMANDER'S BREAK-OFF (2026-09-28, after run 5):
-- `ThreatPurgeFGI.holdsAFront()` :860 - A front of this faction down on any world the expedition sailed for:
-- `ThreatPurgeFGI.breaksOffAbstract(com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction.FGRaidParams p, com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction action)` :883 - The break-off off-screen (2026-09-29, overnight run N1):
-- `ThreatPurgeFGI.callOff(MarketAPI at, float worst, float ours, float sailed)` :917 - Turn the expedition home intact:
-- `ThreatPurgeFGI.callOffShort(MarketAPI at, float troops, int need)` :947 - Turn a live siege home that cannot land - its beachhead would not hold the world's counter-attack (#doCustomRaidAction, siegeNoDoomedLanding) - and has nothing left to bombard with:
-- `ThreatPurgeFGI.outOfSupplies(float owed)` :970 - Its fleets could not be supplied (ThreatUpkeep):
-- `ThreatPurgeFGI.shortOfSupplies(float aboard)` :980 - Its hold is below what the leg home burns and no base in the system can restock it (ThreatUpkeep, docs/fleet-provisions.md):
-- `ThreatPurgeFGI.targetSystem()` :986 - The target system the expedition sails against, or null.
-- `ThreatPurgeFGI.turnsHomeForSupplies(String title, String figureLine, float figure, String logTail)` :995
-- `ThreatPurgeFGI.getMarinesAllotted()` :1010 - What is aboard:
-- `ThreatPurgeFGI.getArmamentsAllotted()` :1014
-- `ThreatPurgeFGI.abstractNow()` :1019 - The abstract FP the board shows beside its marines:
-- `ThreatPurgeFGI.takes(GenericRaidFGI purge, MarketAPI world)` :1029 - Whether the expedition still takes the world:
+- `ThreatPurgeFGI.opActor()` :209 - Whose operation this is for a notice (ThreatNotice.fleetOp):
+- `ThreatPurgeFGI.setCargoAllotment(int marines, float armaments)` :213
+- `ThreatPurgeFGI.setProvisions(float fuel, float supplies)` :223
+- `ThreatPurgeFGI.setHold(float supplies)` :238
+- `ThreatPurgeFGI.hold()` :243
+- `ThreatPurgeFGI.holdFull()` :247
+- `ThreatPurgeFGI.burnHold(float amount)` :252 - Takes up to amount from the hold;
+- `ThreatPurgeFGI.stockHold(float amount)` :258
+- `ThreatPurgeFGI.setDownGoal(float days)` :285 - Saturation days-down goal of the Bombard order's tier (IncursionManager.bombardGoalDays;
+- `ThreatPurgeFGI.setOrdnance(float tactical, float razing)` :289
+- `ThreatPurgeFGI.setRazeWorlds(java.util.Collection<String> ids)` :295
+- `ThreatPurgeFGI.getPlayId()` :303 - The war council play this siege serves (ThreatPlays), or null for one the old launch sent.
+- `ThreatPurgeFGI.setPlayId(String id)` :305
+- `ThreatPurgeFGI.friendsNear(MarketAPI world)` :308 - The fleet points of this siege's play already in the target's system (its hunting forces):
+- `ThreatPurgeFGI.getCommMessageSound()` :315 - Vanilla's colony-threat alarm only when a target is the player's (ThreatStrikeFGI.getCommMessageSound).
+- `ThreatPurgeFGI.razesAll()` :321 - Every world the expedition sailed for is one it razes.
+- `ThreatPurgeFGI.finish(boolean isAbort)` :335 - A siege called off inside vanilla's segment-end resolve aborts, and vanilla then finishes the expired route as a plain failure, which would clear the abort (reviewed 2026-09-29):
+- `ThreatPurgeFGI.razes(MarketAPI market)` :343 - Whether the expedition razes this world rather than lands on it.
+- `ThreatPurgeFGI.ordnanceLeft()` :348 - The tactical ordnance left for the siege slices;
+- `ThreatPurgeFGI.razeFuelLeft()` :353 - The fuel left for the razing passes;
+- `ThreatPurgeFGI.burnOrdnance(MarketAPI market, float fp, float days)` :362 - Pays a slice's ordnance out of what the expedition carries:
+- `ThreatPurgeFGI.sendHomeTracked(CampaignFleetAPI fleet)` :378 - Hands a live expedition fleet to the returns ledger:
+- `ThreatPurgeFGI.giveReturnAssignments(CampaignFleetAPI fleet)` :394 - Every road home vanilla knows - the natural return once the siege is done, an abort, a fleet cut below fleetAbortsMissionFPFraction and sent back alone - runs through here.
+- `ThreatPurgeFGI.refundOnReturn()` :436 - The expedition is over, however it ended - natural return, recalled, standing down because its targets are gone, or beaten.
+- `ThreatPurgeFGI.survivingFraction()` :526 - Surviving strength, 0..1:
+- `ThreatPurgeFGI.carriesCargo()` :543
+- `ThreatPurgeFGI.detach(CampaignFleetAPI fleet)` :555 - Takes one fleet out of the expedition (the board's per-fleet Recall and Intercept, 2026-09-06).
+- `ThreatPurgeFGI.detach(CampaignFleetAPI fleet, boolean endIfEmpty)` :567 - endIfEmpty false:
+- `ThreatPurgeFGI.baselineFP()` :612 - The expedition's spawned-strength baseline, fleets that stayed to defend a landing included.
+- `ThreatPurgeFGI.stayOnDefend(CampaignFleetAPI passing, MarketAPI market)` :629 - THE LANDING FLEET STAYS (2026-09-07, the user:
+- `ThreatPurgeFGI.joinDefend(CampaignFleetAPI fleet, MarketAPI market)` :686 - A fleet with nothing left to land joins the defence of the expedition's own front - this world's if it is ours, else the nearest of the sweep's - rather than duelling batteries over a world it can nev
+- `ThreatPurgeFGI.ownFrontWorld(MarketAPI market, CampaignFleetAPI fleet)` :696 - This world if the expedition's own front stands on it, else the sweep's own-front world nearest the fleet, else null.
+- `ThreatPurgeFGI.ownFrontOn(MarketAPI market, String factionId)` :716
+- `ThreatPurgeFGI.cutLoose(CampaignFleetAPI fleet)` :731 - A fleet leaving its group takes nothing of the group's mind with it:
+- `ThreatPurgeFGI.noteSpawnFP()` :762 - Vanilla's incremental spawn (its default) never stamps KEY_SPAWN_FP on a fleet, so its own "cut below fleetAbortsMissionFPFraction" check never fires and #detach had nothing to take off the group's ba
+- `ThreatPurgeFGI.recallFleet(CampaignFleetAPI fleet)` :787 - Detaches one fleet and sends it home on the tracked leg (its cargo refunds on arrival).
+- `ThreatPurgeFGI.resolveOnArrival(com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel intel)` :806 - An expedition that never spawned resolves when it reaches its target (2026-09-29, overnight run N4), not when vanilla's payload segment ends:
+- `ThreatPurgeFGI.sourceBase()` :825 - The base the expedition sailed from, or null for an abstract one.
+- `ThreatPurgeFGI.breaksOff(List<MarketAPI> live)` :841 - THE COMMANDER'S BREAK-OFF (2026-09-28, after run 5):
+- `ThreatPurgeFGI.holdsAFront()` :865 - A front of this faction down on any world the expedition sailed for:
+- `ThreatPurgeFGI.breaksOffAbstract(com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction.FGRaidParams p, com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction action)` :888 - The break-off off-screen (2026-09-29, overnight run N1):
+- `ThreatPurgeFGI.callOff(MarketAPI at, float worst, float ours, float sailed)` :922 - Turn the expedition home intact:
+- `ThreatPurgeFGI.callOffShort(MarketAPI at, float troops, int need)` :952 - Turn a live siege home that cannot land - its beachhead would not hold the world's counter-attack (#doCustomRaidAction, siegeNoDoomedLanding) - and has nothing left to bombard with:
+- `ThreatPurgeFGI.outOfSupplies(float owed)` :975 - Its fleets could not be supplied (ThreatUpkeep):
+- `ThreatPurgeFGI.shortOfSupplies(float aboard)` :985 - Its hold is below what the leg home burns and no base in the system can restock it (ThreatUpkeep, docs/fleet-provisions.md):
+- `ThreatPurgeFGI.targetSystem()` :991 - The target system the expedition sails against, or null.
+- `ThreatPurgeFGI.turnsHomeForSupplies(String title, String figureLine, float figure, String logTail)` :1000
+- `ThreatPurgeFGI.getMarinesAllotted()` :1015 - What is aboard:
+- `ThreatPurgeFGI.getArmamentsAllotted()` :1019
+- `ThreatPurgeFGI.abstractNow()` :1024 - The abstract FP the board shows beside its marines:
+- `ThreatPurgeFGI.takes(GenericRaidFGI purge, MarketAPI world)` :1034 - Whether the expedition still takes the world:
 ### the task forces on station that sail with the expedition (2026-10-11)
-- `ThreatPurgeFGI.takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label)` :1083 - Takes the task forces staged at the base into this expedition:
-- `ThreatPurgeFGI.takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label, boolean restock)` :1088 - As above;
-- `ThreatPurgeFGI.departStaged()` :1136 - An expedition the player cannot see sails:
-- `ThreatPurgeFGI.stashLive()` :1146 - The staged forces still on the map leave it from where they are, over the base:
-- `ThreatPurgeFGI.releaseStagedLive()` :1173 - The expedition ends before it ever sailed with the forces still in orbit:
-- `ThreatPurgeFGI.spawnBuiltAndStaged()` :1200 - Vanilla's spawn for the fleets the yards build (their sizes alone), then the task forces taken at the launch:
-- `ThreatPurgeFGI.spawnFleets()` :1296 - Spawn pass:
+- `ThreatPurgeFGI.takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label)` :1088 - Takes the task forces staged at the base into this expedition:
+- `ThreatPurgeFGI.takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label, boolean restock)` :1093 - As above;
+- `ThreatPurgeFGI.departStaged()` :1141 - An expedition the player cannot see sails:
+- `ThreatPurgeFGI.stashLive()` :1151 - The staged forces still on the map leave it from where they are, over the base:
+- `ThreatPurgeFGI.releaseStagedLive()` :1178 - The expedition ends before it ever sailed with the forces still in orbit:
+- `ThreatPurgeFGI.spawnBuiltAndStaged()` :1205 - Vanilla's spawn for the fleets the yards build (their sizes alone), then the task forces taken at the launch:
+- `ThreatPurgeFGI.spawnFleets()` :1301 - Spawn pass:
 ### the hull ledger (2026-09-29: closed economy)
-- `ThreatPurgeFGI.setLedger(String homeMarketId, float paid)` :1367 - Books the flotilla on the base's reserve:
-- `ThreatPurgeFGI.settleLedger(List<CampaignFleetAPI> spawned)` :1377 - Settles the fleets just built against what the expedition still held, prunes what the reserve cannot pay for, and stamps each fleet with the supplies behind it.
-- `ThreatPurgeFGI.pointsOf(List<CampaignFleetAPI> fleets)` :1421 - Fleet points of these fleets now.
-- `ThreatPurgeFGI.pruneBuiltToPaid(List<CampaignFleetAPI> before, float paidPoints)` :1443 - The player's built fleets come out at no more than the fleet points their hulls paid for (ABSTRACT_FP_PER_POINT a size, what the capacity ledger committed and the hold was priced on), cut by #pruneOne
-- `ThreatPurgeFGI.pruneToAllotment(List<CampaignFleetAPI> spawned)` :1467 - Fleets spawned in the middle of a daily siege come out at no more than the flotilla it had left (#abstractAllotment), cut by #pruneOne:
-- `ThreatPurgeFGI.pruneOne(List<CampaignFleetAPI> spawned, float over)` :1486 - Takes one cut off the spawned fleets toward over fleet points:
-- `ThreatPurgeFGI.betterCut(float a, float b, float over)` :1527 - Whether a cut of a points beats one of b toward over:
-- `ThreatPurgeFGI.unloadToBase(CampaignFleetAPI fleet, int marines, float armaments)` :1534 - Takes landing cargo loaded at spawn off a fleet and back into the base's reserve, which paid for it.
-- `ThreatPurgeFGI.settleUnplaced()` :1559 - Fleets vanilla's incremental spawn built and never placed, the expedition ending first:
-- `ThreatPurgeFGI.configureFleet(int size, com.fs.starfarer.api.impl.campaign.missions.FleetCreatorMission m)` :1579 - Cargo-carrying fleets sail with troop transports in the mix.
-- `ThreatPurgeFGI.createFleet(int size, float damage)` :1603 - THE FLEET CAP (the user, 2026-10-29:
-- `ThreatPurgeFGI.foldUnplaced(CampaignFleetAPI lead, CampaignFleetAPI from)` :1642 - Moves a fleet never placed in a location into the lead:
-- `ThreatPurgeFGI.configureFleet(int size, CampaignFleetAPI fleet)` :1658 - Loads the allotment aboard, as much as each fleet's berths and holds take.
-- `ThreatPurgeFGI.anyFleetLive()` :1675 - Whether any expedition fleet is currently a real, living fleet (not in route mode).
-- `ThreatPurgeFGI.advanceImpl(float amount)` :1687 - While the fleets are real, the allotment IS what is aboard:
-- `ThreatPurgeFGI.routeDamage()` :1707 - Route-mode damage fraction (0 = untouched), for the abstract landing figure.
-- `ThreatPurgeFGI.unloadForLanding(MarketAPI market)` :1723 - Takes the landing force off the fleets in this location (or off the abstract allotment in route mode).
-- `ThreatPurgeFGI.readResolve()` :1760
-- `ThreatPurgeFGI.getBaseName()` :1783 - The player faction defines no personNamePrefix, so the vanilla name ("Your Your purge expedition...") and description come out mangled - both get bespoke player-facing text.
-- `ThreatPurgeFGI.addBasicDescription(com.fs.starfarer.api.ui.TooltipMakerAPI info, float width, float height, float opad)` :1789
-- `ThreatPurgeFGI.siegePhase(MarketAPI market)` :1810 - What the expedition is doing to this colony right now.
-- `ThreatPurgeFGI.addStatusSection(com.fs.starfarer.api.ui.TooltipMakerAPI info, float width, float height, float opad)` :1831 - Siege status:
-- `ThreatPurgeFGI.hasCustomRaidAction()` :1868
-- `ThreatPurgeFGI.createPayloadAction()` :1873
-- `ThreatPurgeFGI.SiegeRaidAction(FGRaidParams params, float raidDays)` :1894
-- `ThreatPurgeFGI.orbitHeld(MarketAPI market)` :1898
-- `ThreatPurgeFGI.performRaid(CampaignFleetAPI fleet, MarketAPI market)` :1916 - The orbital duel (the strike's AnnihilationAction, mirrored):
-- `ThreatPurgeFGI.autoresolve()` :1950 - Off-screen, the commander's break-off comes before vanilla's fight (ThreatPurgeFGI#breaksOffAbstract):
-- `ThreatPurgeFGI.passesSpent(MarketAPI market)` :1977 - Every pass the world has left, spent at once:
-- `ThreatPurgeFGI.passDeadWorlds()` :1989 - A world gone from the economy, or no longer the Threat's, is done with:
-- `ThreatPurgeFGI.computeSubstages()` :2008 - The worlds it razes come first (#razingFirst);
-- `ThreatPurgeFGI.dailyStages(ThreatPurgeFGI purge)` :2025 - Fleets spawned in the middle of a daily siege take it up where it is:
-- `ThreatPurgeFGI.razingFirst(ThreatPurgeFGI purge)` :2057 - The worlds it razes come first:
-- `ThreatPurgeFGI.canRaid(CampaignFleetAPI fleet, MarketAPI market)` :2076
-- `ThreatPurgeFGI.directFleets(float amount)` :2095 - The fight for the orbit, scoped to the orbit:
-- `ThreatPurgeFGI.doCustomRaidAction(CampaignFleetAPI fleet, MarketAPI market, float raidStr)` :2121
-- `ThreatPurgeFGI.abstractAllotment()` :2298 - The expedition's allotment in abstract FP less route damage:
-- `ThreatPurgeFGI.abstractFull()` :2303 - The expedition's allotment in abstract FP as it sailed, before route damage:
-- `ThreatPurgeFGI.abstractFlotilla()` :2314 - The part of the abstract flotilla not yet left over a landing as cover.
-- `ThreatPurgeFGI.siegePass(CampaignFleetAPI fleet, MarketAPI market)` :2329 - A live fleet over a hive:
-- `ThreatPurgeFGI.satBombFirst(MarketAPI market, float fp)` :2383 - THE SAT BOMB (the user, 2026-10-27):
-- `ThreatPurgeFGI.liveSlice(CampaignFleetAPI fleet, MarketAPI market)` :2414 - One live slice of the orbital siege by this fleet:
-- `ThreatPurgeFGI.orbitFP(MarketAPI market)` :2464 - The fleet points this expedition bombards the world with:
-- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market)` :2489 - Orbit has nothing more to give this expedition over the world (ThreatGroundFronts.orbitDone):
-- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market, float troops)` :2494 - As above for troops aboard:
-- `ThreatPurgeFGI.fightingFP()` :2511 - What the expedition fights with now:
-- `ThreatPurgeFGI.liveFP()` :2516 - The fleet points the expedition's live fleets hold now, wherever they are - what vanilla weighs against its abort line.
-- `ThreatPurgeFGI.razeReason()` :2527 - The unrest a razing raises is put down to the razer's bombardment, as vanilla names it.
-- `ThreatPurgeFGI.shortOfALevel(MarketAPI market)` :2536 - Whether the razing fuel aboard would not finish even the world's top level (ThreatRazing#shortOfALevel):
-- `ThreatPurgeFGI.razePass(CampaignFleetAPI fleet, MarketAPI market)` :2562 - One pass of the RAZE TASK over a world the expedition razes (IncursionManager.razeWorlds):
-- `ThreatPurgeFGI.squadron(MarketAPI market, String ourId, float orbit)` :2643 - The bombing squadron over this hive, {fleet points sent in, fleet points left}:
-- `ThreatPurgeFGI.abstractRaze(MarketAPI market)` :2664 - An expedition that never spawned razes the world in one go (#razeAbstract), its allotment less route damage standing in for the fleets;
-- `ThreatPurgeFGI.recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed)` :2692 - The razing, for the sitrep:
-- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason)` :2721 - A razing that never spawned (vanilla autoresolve) runs in one go:
-- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason, float downGoal)` :2727 - As above to a saturation days-down goal (downGoal, ThreatGroundFronts.saturationDone;
-- `ThreatPurgeFGI.abstractSiege(MarketAPI market)` :2785 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go (ThreatGroundFronts#abstractSiege), its allotted strength less route damage standing in for the fleets 
-- `ThreatPurgeFGI.advanceDaily()` :2844 - Runs the siege days the payload segment owes.
-- `ThreatPurgeFGI.takeDaily(SiegeRaidAction action, RouteSegment seg)` :2872 - Takes the payload for the daily siege, counting from the whole day the segment is at - an expedition in flight when an older save loads never catches up the days already past - and widens the segment 
-- `ThreatPurgeFGI.dailyWorldId()` :2889 - The world this siege is fighting over off-screen today, its fleets unspawned;
-- `ThreatPurgeFGI.dailyWorlds(SiegeRaidAction action)` :2898 - The worlds the daily siege takes in turn:
-- `ThreatPurgeFGI.dailyWorld(SiegeRaidAction action)` :2918 - The world the daily siege is over:
-- `ThreatPurgeFGI.dailyDay(SiegeRaidAction action, RouteSegment seg)` :2953 - One siege day over the world the daily siege is at:
-- `ThreatPurgeFGI.landStaying(SiegeRaidAction action, MarketAPI w, String why)` :3129 - A staying grand fleet's landing:
-- `ThreatPurgeFGI.stayWindow(RouteSegment seg)` :3142 - A staying grand fleet's segment never closes under it:
-- `ThreatPurgeFGI.endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes)` :3154 - Ends the daily siege of a world.
-- `ThreatPurgeFGI.dailyDone(SiegeRaidAction action, RouteSegment seg)` :3180 - Every world done with:
-- `ThreatPurgeFGI.dailyAutoresolve(SiegeRaidAction action)` :3195 - Vanilla's autoresolve, for a siege the daily siege has taken - from any of its entries:
-- `ThreatPurgeFGI.dailySummary(String name, int days, String outcome)` :3210 - The one line a world's daily siege ends with.
-- `ThreatPurgeFGI.resetWorld()` :3215
-- `ThreatPurgeFGI.dailyKey(MarketAPI w)` :3223
-- `ThreatPurgeFGI.whereName(SiegeRaidAction action)` :3227
-- `ThreatPurgeFGI.livePoints(List<CampaignFleetAPI> fleets)` :3233 - Fleet points of the fleets in the list still alive.
-- `ThreatPurgeFGI.addRouteLoss(float share)` :3242 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
-- `ThreatPurgeFGI.abstractTroops(MarketAPI market)` :3251 - The ground strength an unspawned expedition would land:
-- `ThreatPurgeFGI.ourFactionId()` :3257
-- `ThreatPurgeFGI.waitsInOrbit(MarketAPI market)` :3267 - Whether a pass here should wait rather than spend itself:
-- `ThreatPurgeFGI.combinedRaidStr(MarketAPI market, float fallback)` :3281 - The expedition's total ground strength against a market:
-- `ThreatPurgeFGI.raidWeight(String commodityId)` :3323 - What one unit of hive-wide availability of each commodity is worth taking away.
-- `ThreatPurgeFGI.pickRaidTarget(MarketAPI market)` :3354 - The industry whose disruption takes the most from the hive, scored on this world right now - the same reasoning the mission board applies:
-- `ThreatPurgeFGI.raidValue(MarketAPI market, Industry ind)` :3374 - This industry's raid value on this world, 0 for anything not worth a landing.
-- `ThreatPurgeFGI.estimateMarineLosses(MarketAPI market, float raidStr, boolean success)` :3416 - Casualty ESTIMATE for the after-action report - NPC ground actions are abstract (no marines are actually simulated), so this mirrors the shape of the player-side loss math:
-- `ThreatPurgeFGI.notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action)` :3437 - The sitrep goes out the moment the siege operations finish - when the payload action completes and the fleets turn for home - not when they arrive weeks later.
-- `ThreatPurgeFGI.notifyEnding()` :3449
-- `ThreatPurgeFGI.postSiegeReport()` :3461 - Posts the after-action sitrep once, however the expedition ended.
+- `ThreatPurgeFGI.setLedger(String homeMarketId, float paid)` :1372 - Books the flotilla on the base's reserve:
+- `ThreatPurgeFGI.settleLedger(List<CampaignFleetAPI> spawned)` :1382 - Settles the fleets just built against what the expedition still held, prunes what the reserve cannot pay for, and stamps each fleet with the supplies behind it.
+- `ThreatPurgeFGI.pointsOf(List<CampaignFleetAPI> fleets)` :1426 - Fleet points of these fleets now.
+- `ThreatPurgeFGI.pruneBuiltToPaid(List<CampaignFleetAPI> before, float paidPoints)` :1448 - The player's built fleets come out at no more than the fleet points their hulls paid for (ABSTRACT_FP_PER_POINT a size, what the capacity ledger committed and the hold was priced on), cut by #pruneOne
+- `ThreatPurgeFGI.pruneToAllotment(List<CampaignFleetAPI> spawned)` :1472 - Fleets spawned in the middle of a daily siege come out at no more than the flotilla it had left (#abstractAllotment), cut by #pruneOne:
+- `ThreatPurgeFGI.pruneOne(List<CampaignFleetAPI> spawned, float over)` :1491 - Takes one cut off the spawned fleets toward over fleet points:
+- `ThreatPurgeFGI.betterCut(float a, float b, float over)` :1532 - Whether a cut of a points beats one of b toward over:
+- `ThreatPurgeFGI.unloadToBase(CampaignFleetAPI fleet, int marines, float armaments)` :1539 - Takes landing cargo loaded at spawn off a fleet and back into the base's reserve, which paid for it.
+- `ThreatPurgeFGI.settleUnplaced()` :1564 - Fleets vanilla's incremental spawn built and never placed, the expedition ending first:
+- `ThreatPurgeFGI.configureFleet(int size, com.fs.starfarer.api.impl.campaign.missions.FleetCreatorMission m)` :1584 - Cargo-carrying fleets sail with troop transports in the mix.
+- `ThreatPurgeFGI.createFleet(int size, float damage)` :1608 - THE FLEET CAP (the user, 2026-10-29:
+- `ThreatPurgeFGI.foldUnplaced(CampaignFleetAPI lead, CampaignFleetAPI from)` :1647 - Moves a fleet never placed in a location into the lead:
+- `ThreatPurgeFGI.configureFleet(int size, CampaignFleetAPI fleet)` :1663 - Loads the allotment aboard, as much as each fleet's berths and holds take.
+- `ThreatPurgeFGI.anyFleetLive()` :1680 - Whether any expedition fleet is currently a real, living fleet (not in route mode).
+- `ThreatPurgeFGI.advanceImpl(float amount)` :1692 - While the fleets are real, the allotment IS what is aboard:
+- `ThreatPurgeFGI.routeDamage()` :1712 - Route-mode damage fraction (0 = untouched), for the abstract landing figure.
+- `ThreatPurgeFGI.unloadForLanding(MarketAPI market)` :1728 - Takes the landing force off the fleets in this location (or off the abstract allotment in route mode).
+- `ThreatPurgeFGI.readResolve()` :1765
+- `ThreatPurgeFGI.getBaseName()` :1788 - The player faction defines no personNamePrefix, so the vanilla name ("Your Your purge expedition...") and description come out mangled - both get bespoke player-facing text.
+- `ThreatPurgeFGI.addBasicDescription(com.fs.starfarer.api.ui.TooltipMakerAPI info, float width, float height, float opad)` :1794
+- `ThreatPurgeFGI.siegePhase(MarketAPI market)` :1815 - What the expedition is doing to this colony right now.
+- `ThreatPurgeFGI.addStatusSection(com.fs.starfarer.api.ui.TooltipMakerAPI info, float width, float height, float opad)` :1836 - Siege status:
+- `ThreatPurgeFGI.hasCustomRaidAction()` :1873
+- `ThreatPurgeFGI.createPayloadAction()` :1878
+- `ThreatPurgeFGI.SiegeRaidAction(FGRaidParams params, float raidDays)` :1899
+- `ThreatPurgeFGI.orbitHeld(MarketAPI market)` :1903
+- `ThreatPurgeFGI.performRaid(CampaignFleetAPI fleet, MarketAPI market)` :1921 - The orbital duel (the strike's AnnihilationAction, mirrored):
+- `ThreatPurgeFGI.autoresolve()` :1955 - Off-screen, the commander's break-off comes before vanilla's fight (ThreatPurgeFGI#breaksOffAbstract):
+- `ThreatPurgeFGI.passesSpent(MarketAPI market)` :1982 - Every pass the world has left, spent at once:
+- `ThreatPurgeFGI.passDeadWorlds()` :1994 - A world gone from the economy, or no longer the Threat's, is done with:
+- `ThreatPurgeFGI.computeSubstages()` :2013 - The worlds it razes come first (#razingFirst);
+- `ThreatPurgeFGI.dailyStages(ThreatPurgeFGI purge)` :2030 - Fleets spawned in the middle of a daily siege take it up where it is:
+- `ThreatPurgeFGI.razingFirst(ThreatPurgeFGI purge)` :2062 - The worlds it razes come first:
+- `ThreatPurgeFGI.canRaid(CampaignFleetAPI fleet, MarketAPI market)` :2081
+- `ThreatPurgeFGI.directFleets(float amount)` :2100 - The fight for the orbit, scoped to the orbit:
+- `ThreatPurgeFGI.doCustomRaidAction(CampaignFleetAPI fleet, MarketAPI market, float raidStr)` :2126
+- `ThreatPurgeFGI.abstractAllotment()` :2303 - The expedition's allotment in abstract FP less route damage:
+- `ThreatPurgeFGI.abstractFull()` :2308 - The expedition's allotment in abstract FP as it sailed, before route damage:
+- `ThreatPurgeFGI.abstractFlotilla()` :2319 - The part of the abstract flotilla not yet left over a landing as cover.
+- `ThreatPurgeFGI.siegePass(CampaignFleetAPI fleet, MarketAPI market)` :2334 - A live fleet over a hive:
+- `ThreatPurgeFGI.satBombFirst(MarketAPI market, float fp)` :2388 - THE SAT BOMB (the user, 2026-10-27):
+- `ThreatPurgeFGI.liveSlice(CampaignFleetAPI fleet, MarketAPI market)` :2419 - One live slice of the orbital siege by this fleet:
+- `ThreatPurgeFGI.orbitFP(MarketAPI market)` :2469 - The fleet points this expedition bombards the world with:
+- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market)` :2494 - Orbit has nothing more to give this expedition over the world (ThreatGroundFronts.orbitDone):
+- `ThreatPurgeFGI.orbitDoneHere(MarketAPI market, float troops)` :2499 - As above for troops aboard:
+- `ThreatPurgeFGI.fightingFP()` :2516 - What the expedition fights with now:
+- `ThreatPurgeFGI.liveFP()` :2521 - The fleet points the expedition's live fleets hold now, wherever they are - what vanilla weighs against its abort line.
+- `ThreatPurgeFGI.razeReason()` :2532 - The unrest a razing raises is put down to the razer's bombardment, as vanilla names it.
+- `ThreatPurgeFGI.shortOfALevel(MarketAPI market)` :2541 - Whether the razing fuel aboard would not finish even the world's top level (ThreatRazing#shortOfALevel):
+- `ThreatPurgeFGI.razePass(CampaignFleetAPI fleet, MarketAPI market)` :2567 - One pass of the RAZE TASK over a world the expedition razes (IncursionManager.razeWorlds):
+- `ThreatPurgeFGI.squadron(MarketAPI market, String ourId, float orbit)` :2648 - The bombing squadron over this hive, {fleet points sent in, fleet points left}:
+- `ThreatPurgeFGI.abstractRaze(MarketAPI market)` :2669 - An expedition that never spawned razes the world in one go (#razeAbstract), its allotment less route damage standing in for the fleets;
+- `ThreatPurgeFGI.recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed)` :2697 - The razing, for the sitrep:
+- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason)` :2726 - A razing that never spawned (vanilla autoresolve) runs in one go:
+- `ThreatPurgeFGI.razeAbstract(MarketAPI market, float start, float abortFraction, float fuel, String razerFactionId, String reason, float downGoal)` :2732 - As above to a saturation days-down goal (downGoal, ThreatGroundFronts.saturationDone;
+- `ThreatPurgeFGI.abstractSiege(MarketAPI market)` :2790 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go (ThreatGroundFronts#abstractSiege), its allotted strength less route damage standing in for the fleets 
+- `ThreatPurgeFGI.advanceDaily()` :2849 - Runs the siege days the payload segment owes.
+- `ThreatPurgeFGI.takeDaily(SiegeRaidAction action, RouteSegment seg)` :2877 - Takes the payload for the daily siege, counting from the whole day the segment is at - an expedition in flight when an older save loads never catches up the days already past - and widens the segment 
+- `ThreatPurgeFGI.dailyWorldId()` :2894 - The world this siege is fighting over off-screen today, its fleets unspawned;
+- `ThreatPurgeFGI.dailyWorlds(SiegeRaidAction action)` :2903 - The worlds the daily siege takes in turn:
+- `ThreatPurgeFGI.dailyWorld(SiegeRaidAction action)` :2923 - The world the daily siege is over:
+- `ThreatPurgeFGI.dailyDay(SiegeRaidAction action, RouteSegment seg)` :2958 - One siege day over the world the daily siege is at:
+- `ThreatPurgeFGI.landStaying(SiegeRaidAction action, MarketAPI w, String why)` :3134 - A staying grand fleet's landing:
+- `ThreatPurgeFGI.stayWindow(RouteSegment seg)` :3147 - A staying grand fleet's segment never closes under it:
+- `ThreatPurgeFGI.endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes)` :3159 - Ends the daily siege of a world.
+- `ThreatPurgeFGI.dailyDone(SiegeRaidAction action, RouteSegment seg)` :3185 - Every world done with:
+- `ThreatPurgeFGI.dailyAutoresolve(SiegeRaidAction action)` :3200 - Vanilla's autoresolve, for a siege the daily siege has taken - from any of its entries:
+- `ThreatPurgeFGI.dailySummary(String name, int days, String outcome)` :3215 - The one line a world's daily siege ends with.
+- `ThreatPurgeFGI.resetWorld()` :3220
+- `ThreatPurgeFGI.dailyKey(MarketAPI w)` :3228
+- `ThreatPurgeFGI.whereName(SiegeRaidAction action)` :3232
+- `ThreatPurgeFGI.livePoints(List<CampaignFleetAPI> fleets)` :3238 - Fleet points of the fleets in the list still alive.
+- `ThreatPurgeFGI.addRouteLoss(float share)` :3247 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
+- `ThreatPurgeFGI.abstractTroops(MarketAPI market)` :3256 - The ground strength an unspawned expedition would land:
+- `ThreatPurgeFGI.ourFactionId()` :3262
+- `ThreatPurgeFGI.waitsInOrbit(MarketAPI market)` :3272 - Whether a pass here should wait rather than spend itself:
+- `ThreatPurgeFGI.combinedRaidStr(MarketAPI market, float fallback)` :3286 - The expedition's total ground strength against a market:
+- `ThreatPurgeFGI.raidWeight(String commodityId)` :3328 - What one unit of hive-wide availability of each commodity is worth taking away.
+- `ThreatPurgeFGI.pickRaidTarget(MarketAPI market)` :3359 - The industry whose disruption takes the most from the hive, scored on this world right now - the same reasoning the mission board applies:
+- `ThreatPurgeFGI.raidValue(MarketAPI market, Industry ind)` :3379 - This industry's raid value on this world, 0 for anything not worth a landing.
+- `ThreatPurgeFGI.estimateMarineLosses(MarketAPI market, float raidStr, boolean success)` :3421 - Casualty ESTIMATE for the after-action report - NPC ground actions are abstract (no marines are actually simulated), so this mirrors the shape of the player-side loss math:
+- `ThreatPurgeFGI.notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action)` :3442 - The sitrep goes out the moment the siege operations finish - when the payload action completes and the fleets turn for home - not when they arrive weeks later.
+- `ThreatPurgeFGI.notifyEnding()` :3454
+- `ThreatPurgeFGI.postSiegeReport()` :3466 - Posts the after-action sitrep once, however the expedition ended.
 
 ## ThreatRaiders (372 lines)
 - `ThreatRaiders.homeName()` :60

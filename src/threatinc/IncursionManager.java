@@ -1849,7 +1849,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 		if (!razed.isEmpty()) n.line("To saturate %s from orbit.", worldNames(razed));
-		n.send();
+		n.fleetOp(purge != null ? purge.opActor() : faction).send();
 		ThreatIncConfig.log(faction.getId()
 				+ (preemptive ? " preemptive" : heavyAssault ? " heavy-assault" : "")
 				+ " purge expedition vs " + system.getName() + " (" + targets.size() + " of " + inSystem
@@ -3727,7 +3727,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		purge.setRazeWorlds(raze);
 		purge.setDownGoal(downGoal);
 		purge.setPlayId(playId);
-		Global.getSector().getIntelManager().addIntel(purge);
+		Global.getSector().getIntelManager().addIntel(purge, !purge.opActor().isPlayerFaction());
 		getPurgeList().add(purge);
 		// the draw changed what every other siege can pay for
 		TARGETS_MEMO.clear();
@@ -6717,7 +6717,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			purge.setFailedButNotDefeated(true);
 			purge.abort();
 			n++;
-			ThreatNotice.titled("Siege Recalled").icon(purge.getFaction())
+			ThreatNotice.titled("Siege Recalled").icon(purge.getFaction()).fleetOp(purge.opActor())
 					.line("%s siege of the %s turns home.", ThreatNotice.faction(purge.getFaction()),
 							system != null ? system.getNameWithLowercaseTypeShort() : "hive")
 					.line("%s", why).send();
@@ -6832,6 +6832,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			purge.setFailedButNotDefeated(true);
 			purge.abort();
 			ThreatNotice.titled("Purge Stands Down").icon(purge.getFaction())
+					.fleetOp(purge instanceof ThreatPurgeFGI ? ((ThreatPurgeFGI) purge).opActor() : purge.getFaction())
 					.line("%s purge expedition is standing down.", ThreatNotice.faction(purge.getFaction()))
 					.line("%s leaves it nothing to burn.", cause)
 					.send();

@@ -384,7 +384,7 @@ public class ThreatGrandFleets {
 			purge.setLedger(base.getId(), deposit / perPoint * IncursionManager.FP_PER_RESPONSE_DIFFICULTY);
 		}
 		purge.setGrandFleet(1);
-		Global.getSector().getIntelManager().addIntel(purge);
+		Global.getSector().getIntelManager().addIntel(purge, true);
 		IncursionManager.getPurgeList().add(purge);
 		g.purge = purge;
 		g.leg = 1;
@@ -393,7 +393,7 @@ public class ThreatGrandFleets {
 		g.dailySupplies = Math.max(0f, supplies - deposit) / cruise;
 		g.dailyFuel = ThreatGroundFronts.hiveRazePerDay(fp) * ThreatGroundFronts.fuelPerStratum();
 		g.why = "";
-		ThreatNotice.titled("Grand Fleet Sails").icon(faction)
+		ThreatNotice.titled("Grand Fleet Sails").icon(faction).fleetOp(faction)
 				.line("%s grand fleet of %s FP sails from %s for %s.", ThreatNotice.faction(faction),
 						ThreatNotice.hl(Misc.getWithDGS(Math.round(fp))), ThreatNotice.market(base),
 						ThreatNotice.hl(target.getNameWithLowercaseType()))
@@ -542,7 +542,7 @@ public class ThreatGrandFleets {
 		if (old.getRoute() != null) {
 			com.fs.starfarer.api.impl.campaign.fleets.RouteManager.getInstance().removeRoute(old.getRoute());
 		}
-		Global.getSector().getIntelManager().addIntel(nu);
+		Global.getSector().getIntelManager().addIntel(nu, true);
 		IncursionManager.getPurgeList().add(nu);
 		g.purge = nu;
 		g.leg++;
@@ -574,7 +574,7 @@ public class ThreatGrandFleets {
 		// destroyed outright, or vanilla's abort line crossed (its route damage; the notice is the only word of it)
 		boolean lost = keep < purge.getGroupAbortsMissionFPFraction();
 		int strength = Math.round(Math.max(0f, Math.min(1f, keep)) * 100f);
-		ThreatNotice n = ThreatNotice.titled(lost ? "Grand Fleet Lost" : "Grand Fleet Returns").icon(faction);
+		ThreatNotice n = ThreatNotice.titled(lost ? "Grand Fleet Lost" : "Grand Fleet Returns").icon(faction).fleetOp(faction);
 		if (lost) {
 			n.line("%s grand fleet was destroyed after %s legs.", ThreatNotice.faction(faction), ThreatNotice.hl(g.leg));
 		} else {

@@ -823,7 +823,7 @@ public class ThreatSoftening {
 	}
 
 	protected static void musterNotice(FactionAPI faction, StarSystemAPI system) {
-		ThreatNotice n = ThreatNotice.titled("Hunting Force Musters").icon(faction);
+		ThreatNotice n = ThreatNotice.titled("Hunting Force Musters").icon(faction).fleetOp(faction);
 		if (faction.isPlayerFaction()) {
 			n.line("Your hunting force musters against the Defense Swarms in the %s",
 					system.getNameWithLowercaseTypeShort());
@@ -1663,7 +1663,7 @@ public class ThreatSoftening {
 				+ (int) fp + " FP against " + reported(observer, best) + ", detour " + (int) got + " fuel"
 				+ (from.isEmpty() ? "" : ": " + Misc.getAndJoined(from)));
 		if (sys != at) {
-			ThreatNotice.titled("Hunting Force Turns").icon(faction)
+			ThreatNotice.titled("Hunting Force Turns").icon(faction).fleetOp(faction, best)
 					.line("%s turns its hunting force from the %s", ThreatNotice.faction(faction),
 							at.getNameWithLowercaseTypeShort())
 					.line("It strikes the Defense Swarms over %s", ThreatNotice.market(best)).send();

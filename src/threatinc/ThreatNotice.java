@@ -125,6 +125,26 @@ public class ThreatNotice extends BaseIntelPlugin {
 		return this;
 	}
 
+	/** Logged only, never shown ({@link #fleetOp}). */
+	protected boolean quiet;
+
+	/**
+	 * An AI fleet operation - a siege, relief, hunt, grand fleet or task
+	 * force sailing, turning or standing down: logged only (the user,
+	 * 2026-10-30, notice spam), unless the actor is the player's faction or
+	 * a world it concerns is the player's.
+	 */
+	public ThreatNotice fleetOp(FactionAPI actor, MarketAPI... concerns) {
+		boolean own = actor != null && actor.isPlayerFaction();
+		if (concerns != null) {
+			for (MarketAPI m : concerns) {
+				if (m != null && m.isPlayerOwned()) own = true;
+			}
+		}
+		quiet = !own;
+		return this;
+	}
+
 	/** The Threat faction's colour. */
 	public static Color threatColor() {
 		return Global.getSector().getFaction(Factions.THREAT).getBaseUIColor();
@@ -241,6 +261,10 @@ public class ThreatNotice extends BaseIntelPlugin {
 	}
 
 	public void send() {
+		if (quiet) {
+			ThreatIncConfig.log("Notice (quiet): " + plain());
+			return;
+		}
 		// clicked, it opens the board on its faction's tab (ThreatNoticeClickDialog).
 		// No click while the board is off the intel list (no hive found yet - the
 		// omens, the war's start): vanilla would open an empty Major events list

@@ -702,7 +702,7 @@ public class ThreatFleetOrders {
 			ThreatIncConfig.log("Relief moves: " + o.factionId + "'s " + (int) fp + " FP leaves quiet " + from + " for invaded "
 					+ best.getName() + ", where the swarm holds the orbit (" + (int) ThreatGroundFronts.pointsNear(best, Factions.THREAT, true)
 					+ " FP against " + (int) guardPointsFor(best.getId()) + " bound" + (playerAtTheWall(best) ? ", the player at the wall" : "") + ")");
-			ThreatNotice.titled("Relief Moves").icon(o.fleet.getFaction())
+			ThreatNotice.titled("Relief Moves").icon(o.fleet.getFaction()).fleetOp(o.fleet.getFaction(), here, best)
 					.line("%s moves %s FP from %s to %s", ThreatNotice.faction(o.fleet.getFaction()), Misc.getWithDGS((int) fp),
 							ThreatNotice.market(here), ThreatNotice.market(best)).send();
 		}
@@ -741,7 +741,7 @@ public class ThreatFleetOrders {
 		String system = here.getStarSystem() != null ? here.getStarSystem().getNameWithLowercaseType() : here.getName();
 		ThreatIncConfig.log("Relief home: " + o.factionId + "'s " + (int) o.fleet.getFleetPoints() + " FP leaves " + here.getName()
 				+ " - no Threat fleet in " + system + " for " + days + " d");
-		ThreatNotice.titled("Relief Returns").icon(o.fleet.getFaction())
+		ThreatNotice.titled("Relief Returns").icon(o.fleet.getFaction()).fleetOp(o.fleet.getFaction(), here)
 				.line("%s's %s FP leaves %s, no Threat fleet in %s for %s days", ThreatNotice.faction(o.fleet.getFaction()),
 						Misc.getWithDGS((int) o.fleet.getFleetPoints()), ThreatNotice.market(here), system, String.valueOf(days)).send();
 	}
@@ -3210,7 +3210,7 @@ public class ThreatFleetOrders {
 	 * crest. The caller adds any further lines and sends it.
 	 */
 	protected static ThreatNotice notice(FactionAPI faction, String title, String what, Object... args) {
-		ThreatNotice n = ThreatNotice.titled(title).icon(faction);
+		ThreatNotice n = ThreatNotice.titled(title).icon(faction).fleetOp(faction);
 		if (faction.isPlayerFaction()) return n.line("Your " + what, args);
 		Object[] withWho = new Object[args.length + 1];
 		withWho[0] = ThreatNotice.faction(faction);

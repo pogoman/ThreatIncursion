@@ -188,7 +188,7 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 					"attacking the Threat colony in the " + system.getNameWithLowercaseType());
 		}
 
-		ThreatColonyManager.announce(ThreatNotice.titled("Task Force Redirected").icon(faction())
+		ThreatColonyManager.announce(ThreatNotice.titled("Task Force Redirected").icon(faction()).fleetOp(faction())
 				.line("The %s task force's target is destroyed.", ThreatNotice.faction(faction()))
 				.line("It is redirecting against the Threat colony %s in the %s.",
 						ThreatNotice.market(next), system.getNameWithLowercaseType()));
