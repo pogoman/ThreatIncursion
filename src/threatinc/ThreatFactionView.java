@@ -673,17 +673,14 @@ public class ThreatFactionView {
 				MarketAPI hm = fr.market;
 				float up = (tableRows - (rows.size() + j)) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
 				ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(hm), levers);
-				ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, d.redeploy() ? "Redeploy" : "Deploy",
+				ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, "Deploy",
 						BUTTON_GUARD + factionId + ":" + hm.getId());
 				guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
 				ButtonAPI supply = intel.addGenericButton(main, TRANSFER_W, "Transfer",
 						BUTTON_SUPPLY + factionId + ":" + hm.getId());
 				supply.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f - DEPLOY_W - 4f);
 				disableWith(main, guard, mayOrder && d.ok(), blocked != null ? blocked : ThreatDeploy.offReason(d),
-						d.redeploy() ? "The fleet over " + hm.getName() + " is resized to "
-								+ Misc.getWithDGS((int) d.targetPts) + " fleet points (" + Misc.getWithDGS((int) d.livePts)
-								+ " now) and reloaded to " + ThreatDeploy.loadText(d.load) + "."
-						: "A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
+						"A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
 								+ (d.ok() ? d.source.getName() : "the nearest colony") + "'s hulls holds the orbit of "
 								+ hm.getName() + " with the front, carrying " + ThreatDeploy.loadText(d.load) + ".");
 				String supplyWhy = ThreatConvoys.supplyBlockReason(faction, hm, fl);
@@ -748,10 +745,11 @@ public class ThreatFactionView {
 				float up = (tableRows - i) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
 				if (own) {
 					// the user's labels (2026-10-29): the colony's own hulls become a fleet over it at
-					// the levers - "Deploy", "Redeploy" while one is up (ThreatDeploy); a convoy between
-					// colonies is "Transfer" ("Fleet" / "Supplies" from 2026-09-05 to then)
+					// the levers - "Deploy", a new fleet every press (ThreatDeploy; Redeploy resized the fleet up
+					// to 2026-10-30 22:00); a convoy between colonies is "Transfer" ("Fleet" / "Supplies" from
+					// 2026-09-05 to then)
 					ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(r.market), levers);
-					ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, d.redeploy() ? "Redeploy" : "Deploy",
+					ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, "Deploy",
 							BUTTON_GUARD + factionId + ":" + r.market.getId());
 					guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
 					ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
@@ -764,11 +762,9 @@ public class ThreatFactionView {
 					MarketAPI donor = ThreatConvoys.stageDonor(r.market, faction, levers);
 					float[] load = donor != null ? ThreatConvoys.stageLoad(donor, r.market, levers) : null;
 					boolean stageOk = mayOrder && donor != null;
-					String deployHelp = d.redeploy() ? "The fleet over this colony is resized to " + Misc.getWithDGS((int) d.targetPts)
-									+ " fleet points (" + Misc.getWithDGS((int) d.livePts) + " now) and reloaded to "
-									+ ThreatDeploy.loadText(d.load) + "; what comes off goes back as hulls and reserve."
-							: d.ok() ? "A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from this colony's "
-									+ "hulls holds its orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
+					String deployHelp = d.ok() ? "A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
+									+ (d.source == r.market ? "this colony's" : d.source.getName() + "'s")
+									+ " hulls holds its orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
 									+ ", carrying " + ThreatDeploy.loadText(d.load) + ". Attack sails it."
 							: "Nothing to deploy: " + ThreatDeploy.offReason(d);
 					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatDeploy.offReason(d), deployHelp);
@@ -2148,7 +2144,7 @@ public class ThreatFactionView {
 	// ALL_HULLS (an ally's Defend at every hull free, 2026-10-28) went on 2026-10-29 evening: Defend sits
 	// on the ally's front row at the Fleet lever's outcome (ThreatWarBoard.addFrontButtons)
 
-	/** The Deploy / Redeploy button's width ("Redeploy" fits). */
+	/** The Deploy button's width. */
 	protected static final float DEPLOY_W = SMALL_BUTTON_W + 10f;
 
 	/** The Transfer button's width. */
@@ -2289,7 +2285,7 @@ public class ThreatFactionView {
 			return;
 		}
 		if (BUTTON_GUARD.equals(parts[0])) {
-			// DEPLOY / REDEPLOY (ThreatDeploy, 2026-10-29): a colony, or the player's outpost
+			// DEPLOY (ThreatDeploy, 2026-10-29): a colony, the player's outpost or a hive its landing attacks - a new fleet every press
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			addDeployPrompt(prompt, ThreatDeploy.plan(target, levers));
 		} else if (BUTTON_STAGE.equals(parts[0])) {
@@ -2628,7 +2624,7 @@ public class ThreatFactionView {
 		}
 	}
 
-	/** The Deploy / Redeploy order's confirmation: the fleet's size and load at the levers, one line a fact (ThreatDeploy.Plan). */
+	/** The Deploy order's confirmation: the new fleet's size and load at the levers, one line a fact (ThreatDeploy.Plan). */
 	protected static void addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d) {
 		Color h = Misc.getHighlightColor();
 		if (d == null || d.target == null || !d.ok()) {
@@ -2636,24 +2632,17 @@ public class ThreatFactionView {
 			return;
 		}
 		boolean self = d.target.market != null && d.target.market == d.source;
-		if (d.redeploy()) {
-			prompt.addPara("Redeploy the fleet over " + d.target.name() + "?", 0f);
-			prompt.addPara("Fleet: %s fleet points, %s now.", 10f, h, Misc.getWithDGS((int) d.targetPts),
-					Misc.getWithDGS((int) d.livePts));
-		} else {
-			prompt.addPara("Deploy a fleet " + (self ? "over " : "from " + d.source.getName() + " to ")
-					+ d.target.name() + "?", 0f);
-			prompt.addPara("Fleet: %s fleet points of " + d.source.getName() + "'s %s free.", 10f, h,
-					Misc.getWithDGS((int) d.targetPts), Misc.getWithDGS((int) d.ownFree));
-		}
+		prompt.addPara("Deploy a fleet " + (self ? "over " : "from " + d.source.getName() + " to ")
+				+ d.target.name() + "?", 0f);
+		prompt.addPara("Fleet: %s fleet points of " + d.source.getName() + "'s %s free.", 10f, h,
+				Misc.getWithDGS((int) d.targetPts), Misc.getWithDGS((int) d.ownFree));
 		if (d.capped) prompt.addPara("Capped at %s at this lever.", 3f, h, Misc.getWithDGS((int) d.targetPts));
 		String[] goods = { "Marines", "Arms", "Fuel", "Supplies" };
 		for (int i = 0; i < 4; i++) {
-			String aboard = d.redeploy() ? ", " + Misc.getWithDGS((int) d.aboard[i]) + " aboard now" : "";
-			prompt.addPara(goods[i] + ": %s" + aboard + (i < 2 ? ", as many as the fleet carries." : "."), 3f, h,
+			prompt.addPara(goods[i] + ": %s" + (i < 2 ? ", as many as the fleet carries." : "."), 3f, h,
 					Misc.getWithDGS((int) d.load[i]));
 		}
-		prompt.addPara("What comes off a resized fleet goes back as hulls and into the reserve. Attack sails what is deployed; Recall dissolves it.", 3f);
+		prompt.addPara("Attack sails what is deployed; Recall dissolves it.", 3f);
 	}
 
 	/** The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8): one line per fact, figures as "N to what it buys". */
@@ -2750,7 +2739,7 @@ public class ThreatFactionView {
 		}
 		if (!ThreatFleetOrders.canPlayerOrder(faction)) return null;
 		if (BUTTON_GUARD.equals(parts[0])) {
-			// DEPLOY / REDEPLOY (ThreatDeploy, 2026-10-29): a colony, or the player's outpost
+			// DEPLOY (ThreatDeploy, 2026-10-29): a colony, the player's outpost or a hive its landing attacks - a new fleet every press
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			return ThreatDeploy.execute(ThreatDeploy.plan(target, levers), faction);
 		}

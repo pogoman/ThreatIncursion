@@ -5251,7 +5251,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/**
 	 * The player's Deploy over a hive its landing attacks (the Domain table's attacked-world row,
 	 * 2026-10-30 evening): a guard order whose target is a Threat world. It besieges like a Support
-	 * sortie - and stays a guard so the Domain row's Fleet cell and Redeploy read it (ThreatFleetOrders.stagedAt).
+	 * sortie - and stays a guard so the Domain row's Fleet cell reads it (ThreatFleetOrders.stagedAt).
 	 */
 	protected static boolean guardOverHive(ThreatFleetOrders.Order o) {
 		if (o == null || !ThreatFleetOrders.KIND_GUARD.equals(o.kind) || o.targetId == null) return false;

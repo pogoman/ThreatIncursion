@@ -1831,7 +1831,7 @@ public class ThreatFleetOrders {
 		Order o = record(fleet, faction, KIND_GUARD, base, target.id(), target.name(), days);
 		o.aid = aid;
 		// a recipient is the ally whose world the guard holds; a hive the player attacks (the Domain row's
-		// Deploy, 2026-10-30 evening) has none, so stagedAt counts the fleet and Redeploy resizes it
+		// Deploy, 2026-10-30 evening) has none, so stagedAt counts the fleet for the Fleet cell
 		if (!faction.getId().equals(target.factionId())
 				&& !com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT.equals(target.factionId())) {
 			o.recipientFactionId = target.factionId();

@@ -150,11 +150,11 @@ move the push/hold button to actions column right most side ... remove the syste
 The colonies table is headed **Domain** and holds, after the colonies: the hive worlds the player's
 landings attack (`ThreatFactionView.attackedRows`; Military "Front", Def the hive's strata figure,
 Marines / Arms the landing's, Status the line's state word, Fleet the points deployed over the hive,
-the row tooltip the front's arithmetic; **Deploy** / **Redeploy** = `ThreatDeploy.plan` with the hive
+the row tooltip the front's arithmetic; **Deploy** = `ThreatDeploy.plan` with the hive
 as its target - built at the nearest colony at the Hulls lever, loaded at the others, a guard order
 over the hive that `ThreatGroundFronts.guardOverHive` makes besiege like a Support sortie
 (`tickSupport`) and that `ThreatFleetOrders.guardOrder` records with no recipient, so `stagedAt`
-counts it for the Fleet cell and Redeploy; **Transfer** = the front's supply run, `BUTTON_SUPPLY` at
+counts it for the Fleet cell; **Transfer** = the front's supply run, `BUTTON_SUPPLY` at
 the Marines / Arms levers), then the purged worlds in reach (Military "Purged", Status the outpost's
 price, an **Outpost** button - the "Purged worlds in reach" table under the board is gone), then the
 outposts, then Total; `tableRows` counts them all for the floating buttons' offsets. The fronts table
@@ -176,20 +176,20 @@ it; a Front row's lifts the front (`ThreatConvoys.pullOutFront`) and recalls the
 **Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
 fleet sized based on hulls modifier ... then the attack button is available assuming the staged
 fleet has enough supplies and fuel"; `ThreatDeploy`). A colony row of the player's holds **Deploy**
-(was Fleet) and **Transfer** (was Supplies). Deploy builds a fleet over the colony from its own free
-hulls at the Hulls lever (None / half / all of its free points plus what is deployed; greyed at None
-with nothing deployed) and loads it at the other four levers - marines to its berths and arms to
-its holds, fuel and supplies as figures aboard (`ThreatReturns.MEM_FUEL_ABOARD`, the supplies
-hold) - drawn from the colony's reserve. The button reads **Redeploy** while a fleet is deployed
-and resizes it to the levers as they stand: ships come off as hulls (`reabsorb`, smallest first,
-the ledger's commitment and health baseline scaled with them), goods the fleet no longer holds or
-the lever no longer sends go back to the reserve (`load`); at Hulls None the fleet keeps its
-ships and only the goods are reloaded - Redeploy never recalls (the user, 2026-10-30; the fleets
-table's Recall dissolves it, `ThreatFleetOrders.fold`). A colony whose own free hulls at the Hulls lever
-make less than the smallest fleet borrows the nearest colony's that do (`ThreatDeploy.nearestSource`; the
-user, 2026-10-30: "cant deploy to arkoman despite having 5k+ hulls at haven" - Arkoman had no hulls,
-Haven 5,449), the fleet built and loaded there and sailed over; a Redeploy keeps the colony that holds the
-fleet's commitment as its source. An outpost's Deploy builds at the nearest colony and sails there. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
+(was Fleet) and **Transfer** (was Supplies). Every press of Deploy raises a NEW fleet over the row
+from a colony's free hulls at the Hulls lever (None / half / all of its free points, at most the
+lever's share of one fleet, `fleetMaxFP`; greyed at None) and loads it at the other four levers -
+marines to its berths and arms to its holds, fuel and supplies as figures aboard
+(`ThreatReturns.MEM_FUEL_ABOARD`, the supplies hold) - drawn from that colony's reserve (`load`).
+Fleets deployed there already are left alone: the Staging group's Recall folds them home
+(`ThreatFleetOrders.fold`). The **Redeploy** that resized and reloaded the deployed fleet (`reabsorb`,
+2026-10-29 to 2026-10-30) is gone - the user, 2026-10-30 22:00: "it should never redeploy/reprovision,
+just let the player deploy new instances. if they want to amend one already deployed they can recall
+etc. so the redeploy logic was an overcomplicaiton". The source is the row's colony while its own free
+hulls at the lever make the smallest fleet, else the nearest colony's that do (`ThreatDeploy.nearestSource`;
+the user, 2026-10-30: "cant deploy to arkoman despite having 5k+ hulls at haven" - Arkoman had no hulls,
+Haven 5,449), the fleet built and loaded there and sailed over; an outpost's or a hive's row always
+the nearest. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
 aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` deployed: the goods come
 off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
 nothing), greyed with the figures while nothing is deployed, the fuel aboard is under the passage
