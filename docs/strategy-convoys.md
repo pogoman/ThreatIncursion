@@ -263,9 +263,11 @@ jump-point, waits while `orbitContested` (up to `frontRunWaitDays`, then home), 
 in, lands cargo via `resupply`, and goes home on the tracked return leg. An NPC
 front that is dry AND below grind strength sets `withdrawRequested`; the next
 planner pass sends an EVACUATION run that lifts the front off (`withdraw`) and
-carries it home into the base reserve. Board: **Supply**, **Pull out** and **Escort**
-on the faction view's hive rows (own front only) and on the war board's Fronts table
-rows; the hive card carries no second copy.
+carries it home into the base reserve. The player's lift is the Domain row's **Recall**
+(`pullOutFront`, 2026-10-30): the evacuation convoy sails at once from the nearest base and waits
+at the door while the orbit is contested (`frontRunWaitDays` at most) - the player's fronts have
+no planner pass (`planLogistics` skips the player), so nothing is deferred. (Board Supply / Pull out /
+Escort buttons went 2026-10-30 evening; `war-board.md` "Recall".)
 
 
 ## Feeding convoys (2026-10-18)

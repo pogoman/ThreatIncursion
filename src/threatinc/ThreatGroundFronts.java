@@ -634,7 +634,10 @@ public class ThreatGroundFronts {
 		}
 		front.armaments += armaments;
 		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
-		front.withdrawRequested = false;
+		// an NPC front marked for withdrawal because it ran dry fights on once resupplied; the player's
+		// Recall stands until the evacuation convoy lifts it (2026-10-30: a supply run landing first
+		// would have cancelled the order)
+		if (!front.isPlayerOwned()) front.withdrawRequested = false;
 		if (front.armaments > 0f) {
 			front.dryTimestamp = 0;
 			front.finalPush = false;

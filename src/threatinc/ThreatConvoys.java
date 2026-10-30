@@ -1963,29 +1963,57 @@ public class ThreatConvoys {
 		return null;
 	}
 
-	/** Why the board's Pull out order would send nothing now, or null if a run would sail. */
+	/** Why the Recall's lift of a front would send nothing (the Domain row's Recall is greyed with it), or null when the evacuation convoy would sail. */
 	public static String pullOutBlockReason(FactionAPI faction, MarketAPI hive) {
 		ThreatGroundFronts.GroundFront front = hive != null
 				? ThreatGroundFronts.getFront(hive.getId()) : null;
 		if (front == null || faction == null) return "No front there.";
 		if (!ThreatIncConfig.frontRunsEnabled()) return "Front runs are disabled in the mod settings.";
-		if (convoyBoundForFront(hive.getId())) return "A run is already on its way there.";
-		String refused = canRunTo(faction, hive);
-		if (refused != null) return refused;
+		if (pickupBoundFor(hive.getId())) return "An evacuation convoy is already on its way there.";
 		if (pickFrontBase(faction, hive, true, new float[] {0f, 0f}) == null) return "No base in reach.";
 		return null;
 	}
 
-	/** The board's Pull out order: a pickup run for this front now. Refused on a contested orbit. */
+	/**
+	 * What the Recall's lift does, for its tooltip and confirm: "An evacuation convoy from Haven
+	 * lifts the 288 marines and 101 heavy armaments off Ogre." - and, while the orbit is contested,
+	 * that it waits at the door (frontRunWaitDays at most, then home).
+	 */
+	public static String pullOutText(FactionAPI faction, MarketAPI hive) {
+		String why = pullOutBlockReason(faction, hive);
+		if (why != null) return why;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+		ThreatBases.Base base = pickFrontBase(faction, hive, true, new float[] {0f, 0f});
+		String text = "An evacuation convoy from " + base.name() + " lifts the "
+				+ Misc.getWithDGS((int) front.marines) + " marines and " + Misc.getWithDGS((int) front.armaments)
+				+ " heavy armaments off " + hive.getName() + ".";
+		if (canRunTo(faction, hive) != null) {
+			text += " It waits at the door while the orbit is contested, "
+					+ (int) ThreatIncConfig.frontRunWaitDays() + " days at most.";
+		}
+		return text;
+	}
+
+	/**
+	 * The Recall's lift of a front (the board's Pull out order until 2026-10-30 evening): the front
+	 * is marked for withdrawal and the evacuation convoy sails NOW from the nearest base - the
+	 * user, 2026-10-30: "recall should send convoy here to retrieve marines and arms". It waits at
+	 * the door while the orbit is contested (poll, frontRunWaitDays at most) and lifts the front
+	 * whole when it lands; a supply run already bound there lands first or finds no front and
+	 * goes home. Until then a contested orbit or a run at sea refused the order outright, and the
+	 * player's fronts have no planner pass to retry it (planLogistics skips the player, 2026-10-30
+	 * evening). Returns the convoy, or null when none sailed.
+	 */
 	public static Convoy pullOutFront(MarketAPI hive, FactionAPI faction, Random random) {
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
 		if (front == null || faction == null || !ThreatIncConfig.frontRunsEnabled()) return null;
-		if (convoyBoundForFront(hive.getId())) return null;
-		if (canRunTo(faction, hive) != null) return null;
+		if (pickupBoundFor(hive.getId())) return null;
 		ThreatBases.Base base = pickFrontBase(faction, hive, true, new float[] {0f, 0f});
 		if (base == null) return null;
 		front.withdrawRequested = true;
-		return dispatchFrontRun(base, hive, front, faction, new float[] {0f, 0f}, true, random);
+		Convoy c = dispatchFrontRun(base, hive, front, faction, new float[] {0f, 0f}, true, random);
+		if (c == null) front.withdrawRequested = false;
+		return c;
 	}
 
 	/**

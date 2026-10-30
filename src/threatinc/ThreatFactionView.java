@@ -3213,9 +3213,11 @@ public class ThreatFactionView {
 		if (n[0] > 0) parts.add(n[0] + (n[0] == 1 ? " fleet" : " fleets"));
 		if (n[1] > 0) parts.add(n[1] + (n[1] == 1 ? " convoy" : " convoys"));
 		if (hive) {
-			String lift = n[2] > 0 ? "Lifts the front off " + world.getName() + " and brings it home" : "";
-			if (parts.isEmpty()) return lift.isEmpty() ? "Nothing to recall." : lift + ".";
-			return (lift.isEmpty() ? "Recalls " : lift + "; recalls ") + Misc.getAndJoined(parts) + " over it.";
+			// the lift's sentence names the base, the men and the door (ThreatConvoys.pullOutText)
+			String lift = n[2] > 0 ? ThreatConvoys.pullOutText(faction, world) : "";
+			String recalls = parts.isEmpty() ? "" : "Recalls " + Misc.getAndJoined(parts) + " over it.";
+			if (lift.isEmpty() && recalls.isEmpty()) return "Nothing to recall.";
+			return (lift + " " + recalls).trim();
 		}
 		if (parts.isEmpty()) return "Nothing sent from " + world.getName() + " is out.";
 		return "Recalls " + Misc.getAndJoined(parts) + " sent from " + world.getName() + ".";
@@ -3235,8 +3237,17 @@ public class ThreatFactionView {
 			}
 		}
 		if (hive) {
-			if (ThreatConvoys.pullOutBlockReason(faction, world) == null
-					&& ThreatConvoys.pullOutFront(world, faction, random) != null) n++;
+			// the evacuation convoy sails now and waits at a contested door (the user, 2026-10-30: "recall
+			// should send convoy here to retrieve marines and arms")
+			if (ThreatConvoys.pullOutBlockReason(faction, world) == null) {
+				if (ThreatConvoys.pullOutFront(world, faction, random) != null) {
+					n++;
+				} else {
+					ThreatNotice.titled("Evacuation Refused").bad().icon(faction)
+							.line("For %s", ThreatNotice.market(world))
+							.line("No convoy could be raised at the nearest base").send();
+				}
+			}
 		} else {
 			for (ThreatConvoys.Convoy c : new ArrayList<ThreatConvoys.Convoy>(ThreatConvoys.all())) {
 				if (faction.getId().equals(c.factionId) && world.getId().equals(c.fromMarketId)

@@ -504,7 +504,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAcademyFleetGuard.createRouteParams(MiscFleetRouteManager manager, java.util.Random random)` :36
 - `ThreatAcademyFleetGuard.install()` :47 - Replaces vanilla's academy creator with Academy in the route manager's static list.
 
-## ThreatAid (1158 lines)
+## ThreatAid (1160 lines)
 - `ThreatAid.ok()` :80 - What a force sized for an outcome is sized against, one line for its prompt ("Against N fleet points of Defense Swarms seen");
 ### who may receive
 - `ThreatAid.canAid(FactionAPI faction)` :90 - Why the player cannot aid this faction, or null if they can.
@@ -560,20 +560,23 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### arrivals: reputation and contracts
 - `ThreatAid.valueAt(MarketAPI market, String commodityId, float quantity)` :918 - One unit's price to the receiving market, times the quantity.
 - `ThreatAid.rep(String factionId, float points, TextPanelAPI text)` :938 - Standing with the faction:
-- `ThreatAid.rewardEstimate(MarketAPI market, float[] load, int hullUnits)` :955 - Standing points a delivery of the load (AID_COMMODITIES order;
-- `ThreatAid.rewardEstimate(MarketAPI market, String good, float amount)` :971 - As above for an amount of one good.
-- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights)` :987 - Goods landed at another faction's colony, by convoy or by hand.
-- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :1024 - The player's guard reached the colony it defends:
-- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :1036
-- `ThreatAid.target(ThreatFleetOrders.Order o)` :1049 - The order's target for a line:
-- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :1055 - A task force at a hive's door:
-- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :1087 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
+- `ThreatAid.standingFor(MarketAPI market, String good, float amount)` :956 - STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31:
+- `ThreatAid.standingFor(MarketAPI market, float[] load, int hullUnits)` :964 - As above for a load in AID_COMMODITIES order, hull units in the fifth slot or hullUnits:
+- `ThreatAid.capped(float points)` :976 - aidRepMaxPerDelivery above 0 caps a delivery's points;
+- `ThreatAid.rewardEstimate(MarketAPI market, float[] load, int hullUnits)` :982 - The NPC tabs' Standing column:
+- `ThreatAid.rewardEstimate(MarketAPI market, String good, float amount)` :987 - As above for an amount of one good.
+- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights)` :998 - Goods landed at another faction's colony, by convoy or by hand.
+- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :1026 - The player's guard reached the colony it defends:
+- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :1038
+- `ThreatAid.target(ThreatFleetOrders.Order o)` :1051 - The order's target for a line:
+- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :1057 - A task force at a hive's door:
+- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :1089 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
 ### presence, for the defence contract
-- `ThreatAid.playerAssetIn(MarketAPI market)` :1115 - The player's fleet, or a player guard on station, in the colony's system.
+- `ThreatAid.playerAssetIn(MarketAPI market)` :1117 - The player's fleet, or a player guard on station, in the colony's system.
 ### the board's lists
-- `ThreatAid.aidOrdersFor(String recipientFactionId)` :1135 - Player aid task forces bound for this faction's colonies (or, with null, the front).
-- `ThreatAid.aidConvoysFor(String recipientFactionId)` :1145
-- `ThreatAid.keep(Commodities c)` :1156 - Unused-import guard.
+- `ThreatAid.aidOrdersFor(String recipientFactionId)` :1137 - Player aid task forces bound for this faction's colonies (or, with null, the front).
+- `ThreatAid.aidConvoysFor(String recipientFactionId)` :1147
+- `ThreatAid.keep(Commodities c)` :1158 - Unused-import guard.
 
 ## ThreatAidAnswersIntel (191 lines)
 - `ThreatAidAnswersIntel.ThreatAidAnswersIntel(MarketAPI market, String asked)` :58
@@ -682,7 +685,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidMissionIntel.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :490
 - `ThreatAidMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :535
 
-## ThreatAidRequests (1264 lines)
+## ThreatAidRequests (1261 lines)
 - `ThreatAidRequests.open()` :88
 - `ThreatAidRequests.atSea()` :89
 - `ThreatAidRequests.isFleets()` :90
@@ -725,59 +728,57 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidRequests.nextCheckIn(Call c, FactionAPI helper)` :451 - Days until the faction looks at the call again;
 - `ThreatAidRequests.check(Call c, ThreatBases.Base target, Random random)` :464 - Each candidate faction whose day has come looks at the call:
 - `ThreatAidRequests.quote(FactionAPI helper, Call c, ThreatBases.Base target)` :532 - One faction's quote on a call:
-- `ThreatAidRequests.quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target)` :589 - A faction's quote on a call for a DEFENCE FLEET (the user, 2026-10-31:
-- `ThreatAidRequests.fill(Offer o, Quote q)` :620
-- `ThreatAidRequests.priceMarket(ThreatBases.Base target)` :629 - The market whose prices value the goods:
-- `ThreatAidRequests.accept(Offer o, Random random)` :653 - The player accepts the offer:
-- `ThreatAidRequests.reject(Offer o)` :735 - The player rejects the offer:
-- `ThreatAidRequests.cancel(Offer o)` :745 - The player cancels an accepted offer at sea:
-- `ThreatAidRequests.eta(MarketAPI from, MarketAPI to)` :768 - As below, between two colonies.
-- `ThreatAidRequests.eta(ThreatBases.Base from, ThreatBases.Base to)` :773 - Days a convoy from one base to another is estimated at:
-- `ThreatAidRequests.etaLeft(Offer o)` :780 - Days until an accepted offer is due, 0 once overdue.
-- `ThreatAidRequests.goodLabel(String good)` :786 - "defence fleet" for the fleets call, else the good's label (never "fleet points" - the user, 2026-10-31).
-- `ThreatAidRequests.amountText(Offer o)` :791 - "320 marines" / "a defence fleet of 900 FP" - the offer's amount.
-- `ThreatAidRequests.offerText(Offer o)` :798 - "Hegemony:
+- `ThreatAidRequests.quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target)` :595 - A faction's quote on a call for a DEFENCE FLEET (the user, 2026-10-31:
+- `ThreatAidRequests.fill(Offer o, Quote q)` :624
+- `ThreatAidRequests.priceMarket(ThreatBases.Base target)` :633 - The market whose prices value the goods:
+- `ThreatAidRequests.accept(Offer o, Random random)` :657 - The player accepts the offer:
+- `ThreatAidRequests.reject(Offer o)` :739 - The player rejects the offer:
+- `ThreatAidRequests.cancel(Offer o)` :749 - The player cancels an accepted offer at sea:
+- `ThreatAidRequests.eta(MarketAPI from, MarketAPI to)` :772 - As below, between two colonies.
+- `ThreatAidRequests.eta(ThreatBases.Base from, ThreatBases.Base to)` :777 - Days a convoy from one base to another is estimated at:
+- `ThreatAidRequests.etaLeft(Offer o)` :784 - Days until an accepted offer is due, 0 once overdue.
+- `ThreatAidRequests.goodLabel(String good)` :790 - "defence fleet" for the fleets call, else the good's label (never "fleet points" - the user, 2026-10-31).
+- `ThreatAidRequests.amountText(Offer o)` :795 - "320 marines" / "a defence fleet of 900 FP" - the offer's amount.
+- `ThreatAidRequests.offerText(Offer o)` :802 - "Hegemony:
 ### receipt, loss, the price
-- `ThreatAidRequests.onConvoyLanded(ThreatConvoys.Convoy c, ThreatBases.Base base)` :808 - An answering faction's convoy landed at the player's base (a colony, an outpost, or a front's hive world):
-- `ThreatAidRequests.onGuardArrived(ThreatFleetOrders.Order o)` :817 - An answering faction's guard reached the player's colony (an older save's task force):
-- `ThreatAidRequests.goodOf(ThreatConvoys.Convoy c)` :825 - The good a convoy carries:
-- `ThreatAidRequests.offerAtSea(String requestId, String factionId, String good)` :835 - The offer at sea a convoy or order answers:
-- `ThreatAidRequests.deliver(Offer o, ThreatBases.Base base)` :847 - The offer landed:
-- `ThreatAidRequests.charge(FactionAPI helper, int price)` :870 - Standing charged for an offer received:
-- `ThreatAidRequests.settleLost(Offer o)` :882 - An accepted offer whose convoy or fleet is no longer at sea and never landed:
-- `ThreatAidRequests.convoyFor(Offer o)` :896
-- `ThreatAidRequests.orderFor(Offer o)` :903
-- `ThreatAidRequests.priceOf(float amount, float per)` :911 - The whole-number standing price of an amount at a rate a unit:
-- `ThreatAidRequests.migrateOld()` :921 - An older save's requests (2026-10-23 to 2026-10-30) become calls and offers:
+- `ThreatAidRequests.onConvoyLanded(ThreatConvoys.Convoy c, ThreatBases.Base base)` :812 - An answering faction's convoy landed at the player's base (a colony, an outpost, or a front's hive world):
+- `ThreatAidRequests.onGuardArrived(ThreatFleetOrders.Order o)` :821 - An answering faction's guard reached the player's colony (an older save's task force):
+- `ThreatAidRequests.goodOf(ThreatConvoys.Convoy c)` :829 - The good a convoy carries:
+- `ThreatAidRequests.offerAtSea(String requestId, String factionId, String good)` :839 - The offer at sea a convoy or order answers:
+- `ThreatAidRequests.deliver(Offer o, ThreatBases.Base base)` :851 - The offer landed:
+- `ThreatAidRequests.charge(FactionAPI helper, int price)` :874 - Standing charged for an offer received:
+- `ThreatAidRequests.settleLost(Offer o)` :886 - An accepted offer whose convoy or fleet is no longer at sea and never landed:
+- `ThreatAidRequests.convoyFor(Offer o)` :900
+- `ThreatAidRequests.orderFor(Offer o)` :907
+- `ThreatAidRequests.priceFor(ThreatBases.Base target, String good, float amount)` :920 - The whole-number standing an amount of a good costs the player when a faction sends it to the target:
+- `ThreatAidRequests.migrateOld()` :930 - An older save's requests (2026-10-23 to 2026-10-30) become calls and offers:
 ### candidates, prices, standing
-- `ThreatAidRequests.askPrice(int tier)` :965 - The price multiplier of a tier:
-- `ThreatAidRequests.pricePerUnit(MarketAPI market, String good, int tier)` :971 - Standing points one unit of the good costs when a faction sends it to the player's market at the tier.
-- `ThreatAidRequests.budget(FactionAPI helper)` :977 - Standing points the player can spend with the faction before dropping below Favourable.
-- `ThreatAidRequests.candidates()` :983 - War factions at Favourable or better with the player, not hostile, best standing first.
-- `ThreatAidRequests.compare(FactionAPI a, FactionAPI b)` :995
-- `ThreatAidRequests.besetCount(FactionAPI helper)` :1003 - {beset, all}:
-- `ThreatAidRequests.besetness(FactionAPI helper)` :1014 - The share of the faction's worlds the Threat besets, 0..1 (#besetCount).
-- `ThreatAidRequests.standing(FactionAPI helper)` :1020 - The player's standing with the faction from Favourable's floor (0) to Cooperative's (1).
-- `ThreatAidRequests.willingness(FactionAPI helper)` :1033 - Whether a faction answers at all (the user, 2026-10-29:
-- `ThreatAidRequests.standLine(FactionAPI helper)` :1040 - "Hegemony:
-- `ThreatAidRequests.minSpare(String good)` :1049 - The least a colony must spare of a good to answer a request with it:
-- `ThreatAidRequests.donors(FactionAPI helper, Vector2f at, String good)` :1061 - The helper's colonies in reach of the target holding a SURPLUS of the good (the user, 2026-10-31:
-- `ThreatAidRequests.compare(MarketAPI a, MarketAPI b)` :1072
-- `ThreatAidRequests.holdsSurplus(MarketAPI donor, String good)` :1080 - Whether the colony's reserve of the good reads as a surplus - the white state of the reserve key (no deficit, no cover, not exhausted);
-- `ThreatAidRequests.offerSpare(MarketAPI donor, String good)` :1096 - What a colony can OFFER of a good:
-- `ThreatAidRequests.migrate(Request r)` :1108 - An older save's request read as parts:
-- `ThreatAidRequests.reason(ThreatNotice.Reason why, FactionAPI helper, String what)` :1139
-- `ThreatAidRequests.shortageStanding(MarketAPI market, String commodityId)` :1148 - Short of peacetime demand with the depot unable to cover it:
-- `ThreatAidRequests.requestItems(MarketAPI market, String commodityId)` :1160 - What a depot need asks for:
-- `ThreatAidRequests.underArmy(MarketAPI market)` :1167 - Whether a Threat army stands on the colony:
-- `ThreatAidRequests.needItems(MarketAPI market, String commodityId)` :1172 - The deficit in items:
-- `ThreatAidRequests.worstShortage(MarketAPI market)` :1179 - The commodity the colony is shortest of, in items - the largest deficit.
+- `ThreatAidRequests.budget(FactionAPI helper)` :974 - Standing points the player can spend with the faction before dropping below Favourable.
+- `ThreatAidRequests.candidates()` :980 - War factions at Favourable or better with the player, not hostile, best standing first.
+- `ThreatAidRequests.compare(FactionAPI a, FactionAPI b)` :992
+- `ThreatAidRequests.besetCount(FactionAPI helper)` :1000 - {beset, all}:
+- `ThreatAidRequests.besetness(FactionAPI helper)` :1011 - The share of the faction's worlds the Threat besets, 0..1 (#besetCount).
+- `ThreatAidRequests.standing(FactionAPI helper)` :1017 - The player's standing with the faction from Favourable's floor (0) to Cooperative's (1).
+- `ThreatAidRequests.willingness(FactionAPI helper)` :1030 - Whether a faction answers at all (the user, 2026-10-29:
+- `ThreatAidRequests.standLine(FactionAPI helper)` :1037 - "Hegemony:
+- `ThreatAidRequests.minSpare(String good)` :1046 - The least a colony must spare of a good to answer a request with it:
+- `ThreatAidRequests.donors(FactionAPI helper, Vector2f at, String good)` :1058 - The helper's colonies in reach of the target holding a SURPLUS of the good (the user, 2026-10-31:
+- `ThreatAidRequests.compare(MarketAPI a, MarketAPI b)` :1069
+- `ThreatAidRequests.holdsSurplus(MarketAPI donor, String good)` :1077 - Whether the colony's reserve of the good reads as a surplus - the white state of the reserve key (no deficit, no cover, not exhausted);
+- `ThreatAidRequests.offerSpare(MarketAPI donor, String good)` :1093 - What a colony can OFFER of a good:
+- `ThreatAidRequests.migrate(Request r)` :1105 - An older save's request read as parts:
+- `ThreatAidRequests.reason(ThreatNotice.Reason why, FactionAPI helper, String what)` :1136
+- `ThreatAidRequests.shortageStanding(MarketAPI market, String commodityId)` :1145 - Short of peacetime demand with the depot unable to cover it:
+- `ThreatAidRequests.requestItems(MarketAPI market, String commodityId)` :1157 - What a depot need asks for:
+- `ThreatAidRequests.underArmy(MarketAPI market)` :1164 - Whether a Threat army stands on the colony:
+- `ThreatAidRequests.needItems(MarketAPI market, String commodityId)` :1169 - The deficit in items:
+- `ThreatAidRequests.worstShortage(MarketAPI market)` :1176 - The commodity the colony is shortest of, in items - the largest deficit.
 ### defence needs
-- `ThreatAidRequests.strikesAgainst(MarketAPI market)` :1198 - Live Threat strikes with this colony among their targets.
-- `ThreatAidRequests.strikeAtTarget(GenericRaidFGI fgi, MarketAPI market)` :1213 - Whether the strike is in the colony's system:
-- `ThreatAidRequests.strikeStrength(GenericRaidFGI fgi)` :1227 - Fleet points of the strike:
-- `ThreatAidRequests.defenderStrength(MarketAPI market)` :1243 - The faction's strength in the colony's system plus its station.
-- `ThreatAidRequests.needsDefence(MarketAPI market)` :1255 - A strike is coming and the defenders are outmatched (defendRequestRatio).
+- `ThreatAidRequests.strikesAgainst(MarketAPI market)` :1195 - Live Threat strikes with this colony among their targets.
+- `ThreatAidRequests.strikeAtTarget(GenericRaidFGI fgi, MarketAPI market)` :1210 - Whether the strike is in the colony's system:
+- `ThreatAidRequests.strikeStrength(GenericRaidFGI fgi)` :1224 - Fleet points of the strike:
+- `ThreatAidRequests.defenderStrength(MarketAPI market)` :1240 - The faction's strength in the colony's system plus its station.
+- `ThreatAidRequests.needsDefence(MarketAPI market)` :1252 - A strike is coming and the defenders are outmatched (defendRequestRatio).
 
 ## ThreatAlarm (104 lines)
 - `ThreatAlarm.enabled()` :39
@@ -1350,7 +1351,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatComms.callAnswered(MarketAPI world, int total, String good, int senders)` :326 - The player's request is covered:
 - `ThreatComms.dockThanks(FactionAPI faction, MarketAPI world, int n, String good, boolean overMax)` :338 - The dock's thanks after a hand-over (the text panel, not a notice).
 
-## ThreatConvoys (3575 lines)
+## ThreatConvoys (3603 lines)
 - `ThreatConvoys.isFrontRun()` :105 - The player's request for aid this convoy answers (ThreatAidRequests.Request.id, 2026-10-29):
 - `ThreatConvoys.isFounding()` :109
 - `ThreatConvoys.fromName()` :114 - The sender:
@@ -1457,68 +1458,69 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.supplyFront(MarketAPI hive, FactionAPI faction, int[] levers, Random random)` :1917 - The board's Supply order:
 - `ThreatConvoys.aidFrontRun(ThreatBases.Base base, MarketAPI hive, FactionAPI helper, float[] load, Random random)` :1938 - AN ALLY'S SUPPLY RUN TO THE PLAYER'S FRONT (ThreatAidRequests.accept, 2026-10-31):
 - `ThreatConvoys.supplyBlockReason(FactionAPI faction, MarketAPI hive, int[] levers)` :1948 - Why the board's Supply order at this load tier would send nothing now, or null if a run would sail.
-- `ThreatConvoys.pullOutBlockReason(FactionAPI faction, MarketAPI hive)` :1967 - Why the board's Pull out order would send nothing now, or null if a run would sail.
-- `ThreatConvoys.pullOutFront(MarketAPI hive, FactionAPI faction, Random random)` :1980 - The board's Pull out order:
-- `ThreatConvoys.dispatchFrontRun(ThreatBases.Base base, MarketAPI hive, ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup, Random random)` :2006 - Builds the run at the base:
-- `ThreatConvoys.sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction, boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random)` :2050 - One front run of the sailing:
-- `ThreatConvoys.pollFrontRun(Convoy c)` :2113 - A front run inside the hive system:
-- `ThreatConvoys.stageTo(MarketAPI target, FactionAPI faction, int[] levers, Random random)` :2209 - A player-ordered staging run (the board's Supplies button):
-- `ThreatConvoys.stageTo(ThreatBases.Base target, FactionAPI faction, int[] levers, Random random)` :2214 - As above to either kind of base - a colony, or the player's outpost (its station is the depot).
-- `ThreatConvoys.stageLoad(MarketAPI donor, MarketAPI target, int[] levers)` :2232 - What a hand-ordered convoy from this donor carries to this target at the colonies table's levers (the user, 2026-10-28):
-- `ThreatConvoys.stageLoad(MarketAPI donor, ThreatBases.Base target, int[] levers)` :2237 - As above to either kind of base.
-- `ThreatConvoys.stageOffReason(ThreatBases.Base target, int[] levers, String whose)` :2248 - Why no Supplies convoy can sail to this target - the button's disabled tooltip and the Confirm:
-- `ThreatConvoys.stageDonor(MarketAPI target, FactionAPI faction, int[] levers)` :2266 - The colony a Stage order to this target would load at:
-- `ThreatConvoys.stageDonor(ThreatBases.Base target, FactionAPI faction, int[] levers)` :2271 - As above to either kind of base.
+- `ThreatConvoys.pullOutBlockReason(FactionAPI faction, MarketAPI hive)` :1967 - Why the Recall's lift of a front would send nothing (the Domain row's Recall is greyed with it), or null when the evacuation convoy would sail.
+- `ThreatConvoys.pullOutText(FactionAPI faction, MarketAPI hive)` :1982 - What the Recall's lift does, for its tooltip and confirm:
+- `ThreatConvoys.pullOutFront(MarketAPI hive, FactionAPI faction, Random random)` :2007 - The Recall's lift of a front (the board's Pull out order until 2026-10-30 evening):
+- `ThreatConvoys.dispatchFrontRun(ThreatBases.Base base, MarketAPI hive, ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup, Random random)` :2034 - Builds the run at the base:
+- `ThreatConvoys.sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction, boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random)` :2078 - One front run of the sailing:
+- `ThreatConvoys.pollFrontRun(Convoy c)` :2141 - A front run inside the hive system:
+- `ThreatConvoys.stageTo(MarketAPI target, FactionAPI faction, int[] levers, Random random)` :2237 - A player-ordered staging run (the board's Supplies button):
+- `ThreatConvoys.stageTo(ThreatBases.Base target, FactionAPI faction, int[] levers, Random random)` :2242 - As above to either kind of base - a colony, or the player's outpost (its station is the depot).
+- `ThreatConvoys.stageLoad(MarketAPI donor, MarketAPI target, int[] levers)` :2260 - What a hand-ordered convoy from this donor carries to this target at the colonies table's levers (the user, 2026-10-28):
+- `ThreatConvoys.stageLoad(MarketAPI donor, ThreatBases.Base target, int[] levers)` :2265 - As above to either kind of base.
+- `ThreatConvoys.stageOffReason(ThreatBases.Base target, int[] levers, String whose)` :2276 - Why no Supplies convoy can sail to this target - the button's disabled tooltip and the Confirm:
+- `ThreatConvoys.stageDonor(MarketAPI target, FactionAPI faction, int[] levers)` :2294 - The colony a Stage order to this target would load at:
+- `ThreatConvoys.stageDonor(ThreatBases.Base target, FactionAPI faction, int[] levers)` :2299 - As above to either kind of base.
 ### REINFORCE (user, 2026-10-17): the board's order for a colony under a
-- `ThreatConvoys.reinforceLoad(MarketAPI donor, MarketAPI besieged, int[] levers)` :2316 - What a Reinforce convoy from this donor carries at the fronts table's levers ({marines, arms};
-- `ThreatConvoys.reinforceDonor(MarketAPI besieged, FactionAPI faction, int[] levers)` :2330 - The same-faction colony a Reinforce order would load at:
-- `ThreatConvoys.reinforceTo(MarketAPI besieged, FactionAPI faction, int[] levers, Random random)` :2356 - The board's Reinforce order to the player's own colony:
-- `ThreatConvoys.reinforceOffReason(MarketAPI besieged, int[] levers, String whose)` :2364 - Why no Reinforce convoy can sail to this colony at the fronts table's levers - the button's disabled tooltip and the Confirm.
-- `ThreatConvoys.reliefSpare(MarketAPI donor, String commodityId)` :2393 - Stock a colony gives an invaded own world (HOME UNDER ATTACK, the user 2026-10-20):
-- `ThreatConvoys.frontWorldSpare(MarketAPI donor, String commodityId)` :2411 - What a colony with an army on its own surface can still spare:
-- `ThreatConvoys.spare(MarketAPI donor, String commodityId)` :2426 - Stock a colony can spare:
-- `ThreatConvoys.sendable(MarketAPI donor, MarketAPI base, String commodityId)` :2467 - What a donor may send a base of one commodity:
-- `ThreatConvoys.minLoad(MarketAPI donor, String commodityId)` :2479 - The least worth a sailing from this donor (a floor, not a cap):
-- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId)` :2487 - The planner's donor:
-- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId, java.util.Set<MarketAPI> skip)` :2492 - As above, passing over the donors in skip (those already drawn on this pass).
-- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random)` :2519 - Builds the convoy fleet at the donor, loads the cargo aboard (clamped to what the hulls can actually carry), draws exactly that from the donor's reserve, and sends it to the base.
-- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2529 - As above, bound for another faction's colony:
-- `ThreatConvoys.dispatch(ThreatBases.Base donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2535
-- `ThreatConvoys.dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2553 - The convoy itself, from either kind of base:
-- `ThreatConvoys.sailed(Hulls h, Convoy c, float[] remaining, float[] sailed)` :2609 - Books what one fleet of a sailing loaded:
-- `ThreatConvoys.sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random)` :2627 - One convoy of the sailing:
-- `ThreatConvoys.trimToHulls(Convoy c)` :2714 - After an off-screen fight vanilla removes hulls but not their cargo:
-- `ThreatConvoys.fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines, float cargoUnits, float fuel, Random random)` :2757 - Adds the faction's own personnel, freighter and tanker hulls until the load fits (2026-09-24).
+- `ThreatConvoys.reinforceLoad(MarketAPI donor, MarketAPI besieged, int[] levers)` :2344 - What a Reinforce convoy from this donor carries at the fronts table's levers ({marines, arms};
+- `ThreatConvoys.reinforceDonor(MarketAPI besieged, FactionAPI faction, int[] levers)` :2358 - The same-faction colony a Reinforce order would load at:
+- `ThreatConvoys.reinforceTo(MarketAPI besieged, FactionAPI faction, int[] levers, Random random)` :2384 - The board's Reinforce order to the player's own colony:
+- `ThreatConvoys.reinforceOffReason(MarketAPI besieged, int[] levers, String whose)` :2392 - Why no Reinforce convoy can sail to this colony at the fronts table's levers - the button's disabled tooltip and the Confirm.
+- `ThreatConvoys.reliefSpare(MarketAPI donor, String commodityId)` :2421 - Stock a colony gives an invaded own world (HOME UNDER ATTACK, the user 2026-10-20):
+- `ThreatConvoys.frontWorldSpare(MarketAPI donor, String commodityId)` :2439 - What a colony with an army on its own surface can still spare:
+- `ThreatConvoys.spare(MarketAPI donor, String commodityId)` :2454 - Stock a colony can spare:
+- `ThreatConvoys.sendable(MarketAPI donor, MarketAPI base, String commodityId)` :2495 - What a donor may send a base of one commodity:
+- `ThreatConvoys.minLoad(MarketAPI donor, String commodityId)` :2507 - The least worth a sailing from this donor (a floor, not a cap):
+- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId)` :2515 - The planner's donor:
+- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId, java.util.Set<MarketAPI> skip)` :2520 - As above, passing over the donors in skip (those already drawn on this pass).
+- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random)` :2547 - Builds the convoy fleet at the donor, loads the cargo aboard (clamped to what the hulls can actually carry), draws exactly that from the donor's reserve, and sends it to the base.
+- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2557 - As above, bound for another faction's colony:
+- `ThreatConvoys.dispatch(ThreatBases.Base donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2563
+- `ThreatConvoys.dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2581 - The convoy itself, from either kind of base:
+- `ThreatConvoys.sailed(Hulls h, Convoy c, float[] remaining, float[] sailed)` :2637 - Books what one fleet of a sailing loaded:
+- `ThreatConvoys.sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random)` :2655 - One convoy of the sailing:
+- `ThreatConvoys.trimToHulls(Convoy c)` :2742 - After an off-screen fight vanilla removes hulls but not their cargo:
+- `ThreatConvoys.fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines, float cargoUnits, float fuel, Random random)` :2785 - Adds the faction's own personnel, freighter and tanker hulls until the load fits (2026-09-24).
 ### splitting a load across fleets (2026-09-29: vanilla's ship limit)
-- `ThreatConvoys.fleetShipLimit()` :2791 - The most ships an AI fleet may have:
-- `ThreatConvoys.burn(Hulls h, float[] burnt)` :2807 - Takes what the escort burnt off the fleet's ask:
-- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random)` :2828 - Builds one convoy fleet at from for ask:
-- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, float minEscort, Random random)` :2834 - As above, with an escort of at least minEscort points asked for (a founding convoy's guard, dispatchFounding).
-- `ThreatConvoys.escortForValue(float[] ask)` :2873 - The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with.
-- `ThreatConvoys.builtEscort(Hulls h)` :2882 - The escort points the donor pays for:
-- `ThreatConvoys.holds(CampaignFleetAPI fleet, float[] ask)` :2888 - The smallest share of its ask the fleet's berths, hold or tanks take;
-- `ThreatConvoys.nextHulls(Split split, float[] remaining, ThreatBases.Base from, FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random)` :2934 - The next fleet of a sailing:
-- `ThreatConvoys.addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing, float largeAt, float mediumAt, String large, String medium, String small, Random random)` :2978 - One hull of the size the shortfall calls for, falling back to smaller ones;
-- `ThreatConvoys.loadCommodity(CargoAPI cargo, String donorId, String commodityId, float wanted)` :2995
+- `ThreatConvoys.fleetShipLimit()` :2819 - The most ships an AI fleet may have:
+- `ThreatConvoys.burn(Hulls h, float[] burnt)` :2835 - Takes what the escort burnt off the fleet's ask:
+- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random)` :2856 - Builds one convoy fleet at from for ask:
+- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, float minEscort, Random random)` :2862 - As above, with an escort of at least minEscort points asked for (a founding convoy's guard, dispatchFounding).
+- `ThreatConvoys.escortForValue(float[] ask)` :2901 - The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with.
+- `ThreatConvoys.builtEscort(Hulls h)` :2910 - The escort points the donor pays for:
+- `ThreatConvoys.holds(CampaignFleetAPI fleet, float[] ask)` :2916 - The smallest share of its ask the fleet's berths, hold or tanks take;
+- `ThreatConvoys.nextHulls(Split split, float[] remaining, ThreatBases.Base from, FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random)` :2962 - The next fleet of a sailing:
+- `ThreatConvoys.addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing, float largeAt, float mediumAt, String large, String medium, String small, Random random)` :3006 - One hull of the size the shortfall calls for, falling back to smaller ones;
+- `ThreatConvoys.loadCommodity(CargoAPI cargo, String donorId, String commodityId, float wanted)` :3023
 ### founding convoys (the user, 2026-10-11: "make humans need physical convoys to found a FB like
-- `ThreatConvoys.foundingBoundFor(String factionId, String hiveSystemId)` :3014 - Whether a founding convoy of the faction is at sea toward this hive system (ThreatFrontlines.planFor counts it as reaching the hive).
-- `ThreatConvoys.foundingBoundTo(String siteId)` :3023 - Whether any founding convoy is at sea to this planet (ThreatFrontlines.pickSite passes it over).
-- `ThreatConvoys.withPassage(float[] kit, float ly)` :3036 - A founding's cost with its convoy's passage beside it ({supplies, fuel}):
-- `ThreatConvoys.destinationSystem(Convoy c)` :3043 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
-- `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :3062 - A FOUNDING CONVOY:
-- `ThreatConvoys.pollFounding(Convoy c)` :3197 - A founding convoy at sea:
+- `ThreatConvoys.foundingBoundFor(String factionId, String hiveSystemId)` :3042 - Whether a founding convoy of the faction is at sea toward this hive system (ThreatFrontlines.planFor counts it as reaching the hive).
+- `ThreatConvoys.foundingBoundTo(String siteId)` :3051 - Whether any founding convoy is at sea to this planet (ThreatFrontlines.pickSite passes it over).
+- `ThreatConvoys.withPassage(float[] kit, float ly)` :3064 - A founding's cost with its convoy's passage beside it ({supplies, fuel}):
+- `ThreatConvoys.destinationSystem(Convoy c)` :3071 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
+- `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :3090 - A FOUNDING CONVOY:
+- `ThreatConvoys.pollFounding(Convoy c)` :3225 - A founding convoy at sea:
 ### resolution (fast poll)
-- `ThreatConvoys.poll()` :3260 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
-- `ThreatConvoys.holdsOff(Convoy c, ThreatBases.Base base)` :3321 - THE BLOCKADE DOOR (user, 2026-10-17:
-- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :3367
-- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :3460 - Whether the convoy's destination still belongs to whom it was sent to.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :3473 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId, float need)` :3482 - As above for a known need:
-- `ThreatConvoys.stripLandedMods()` :3505 - Strips the landing trade modifiers older builds left on markets (rule 5).
-- `ThreatConvoys.lost(Convoy c)` :3517
-- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :3538 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
-- `ThreatConvoys.homeBase(Convoy c)` :3549 - Where a convoy settles:
-- `ThreatConvoys.returnHome(Convoy c)` :3563 - Recalled, timed out, or its destination is gone:
+- `ThreatConvoys.poll()` :3288 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
+- `ThreatConvoys.holdsOff(Convoy c, ThreatBases.Base base)` :3349 - THE BLOCKADE DOOR (user, 2026-10-17:
+- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :3395
+- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :3488 - Whether the convoy's destination still belongs to whom it was sent to.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :3501 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId, float need)` :3510 - As above for a known need:
+- `ThreatConvoys.stripLandedMods()` :3533 - Strips the landing trade modifiers older builds left on markets (rule 5).
+- `ThreatConvoys.lost(Convoy c)` :3545
+- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :3566 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
+- `ThreatConvoys.homeBase(Convoy c)` :3577 - Where a convoy settles:
+- `ThreatConvoys.returnHome(Convoy c)` :3591 - Recalled, timed out, or its destination is gone:
 
 ## ThreatCoreBuild (670 lines)
 - `ThreatCoreBuild.enabled()` :62 - HOME FIRST:
@@ -1687,7 +1689,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.aided(String f, String c)` :559 - Notes that allies sailed the faction a convoy of the stock.
 - `ThreatFactionStock.describe(String f)` :564 - One line of the faction's plan for the log:
 
-## ThreatFactionView (3356 lines)
+## ThreatFactionView (3367 lines)
 ### selector row (both views)
 - `ThreatFactionView.selectorIds()` :136 - The factions the selector offers:
 - `ThreatFactionView.reserveSelectorRow(TooltipMakerAPI main)` :161 - Reserves the selector row's space in the flow, right after the strip.
@@ -1815,9 +1817,9 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :3129 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
 - `ThreatFactionView.recallAllCount(FactionAPI faction, MarketAPI world)` :3175 - What the Staging group's Recall would call home (2026-10-30 21:00):
 - `ThreatFactionView.recallAllText(FactionAPI faction, MarketAPI world)` :3209 - The Recall's tooltip and confirm:
-- `ThreatFactionView.recallAll(FactionAPI faction, MarketAPI world, java.util.Random random)` :3225 - The Recall carried out (recallAllCount says what);
-- `ThreatFactionView.recall(String factionId, String key)` :3277
-- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :3354 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
+- `ThreatFactionView.recallAll(FactionAPI faction, MarketAPI world, java.util.Random random)` :3227 - The Recall carried out (recallAllCount says what);
+- `ThreatFactionView.recall(String factionId, String key)` :3288
+- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :3365 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
 
 ## ThreatFeeding (397 lines)
 - `ThreatFeeding.enabled()` :61 - Fleet memory:
@@ -2267,7 +2269,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundDefenses.isAvailableToBuild()` :68
 - `ThreatGroundDefenses.showWhenUnavailable()` :73
 
-## ThreatGroundFronts (5737 lines)
+## ThreatGroundFronts (5740 lines)
 - `ThreatGroundFronts.isPlayerOwned()` :211 - CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7):
 - `ThreatGroundFronts.getFront(String marketId)` :226
 - `ThreatGroundFronts.hasFront(MarketAPI market)` :231
@@ -2331,328 +2333,328 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundFronts.deploy(MarketAPI market, String factionId, int marines, float armaments, float landingLevel)` :573 - As above with the landing's veterancy stated explicitly.
 - `ThreatGroundFronts.resupply(GroundFront front, int marines, float armaments)` :607
 - `ThreatGroundFronts.resupply(GroundFront front, int marines, float armaments, float arrivingLevel)` :618 - As above with the reinforcement's veterancy stated explicitly - the player's path must use this form, for the reason given on #deploy.
-- `ThreatGroundFronts.autoPush(GroundFront front, MarketAPI market)` :655 - Troops that land push (user, 2026-09-07):
-- `ThreatGroundFronts.pushDaysRemaining(GroundFront front, MarketAPI market)` :676 - Days the current assault still needs at the front's own pace, or -1 when it cannot push at all.
-- `ThreatGroundFronts.daysToLastStratum(GroundFront front, MarketAPI market)` :694 - Days until this front takes the world's last stratum on its own, at its current pace with the checkpoint between strata, or -1 when it cannot:
-- `ThreatGroundFronts.landedStrength(GroundFront front)` :707 - Peak strength, falling back to the current figure for fronts from older saves.
-- `ThreatGroundFronts.withdraw(String marketId)` :713 - Removes the front;
-- `ThreatGroundFronts.destroy(String marketId)` :721 - Total loss - a front shelled to nothing by its own side's danger close.
-- `ThreatGroundFronts.reapply(String marketId)` :727 - Strata effects live in industry apply();
-- `ThreatGroundFronts.orderPush(GroundFront front)` :735 - Orders the assault on the next stratum (also answers a checkpoint).
-- `ThreatGroundFronts.orderEntrench(GroundFront front)` :745 - Breaks off the assault (or answers a checkpoint) and digs in.
+- `ThreatGroundFronts.autoPush(GroundFront front, MarketAPI market)` :658 - Troops that land push (user, 2026-09-07):
+- `ThreatGroundFronts.pushDaysRemaining(GroundFront front, MarketAPI market)` :679 - Days the current assault still needs at the front's own pace, or -1 when it cannot push at all.
+- `ThreatGroundFronts.daysToLastStratum(GroundFront front, MarketAPI market)` :697 - Days until this front takes the world's last stratum on its own, at its current pace with the checkpoint between strata, or -1 when it cannot:
+- `ThreatGroundFronts.landedStrength(GroundFront front)` :710 - Peak strength, falling back to the current figure for fronts from older saves.
+- `ThreatGroundFronts.withdraw(String marketId)` :716 - Removes the front;
+- `ThreatGroundFronts.destroy(String marketId)` :724 - Total loss - a front shelled to nothing by its own side's danger close.
+- `ThreatGroundFronts.reapply(String marketId)` :730 - Strata effects live in industry apply();
+- `ThreatGroundFronts.orderPush(GroundFront front)` :738 - Orders the assault on the next stratum (also answers a checkpoint).
+- `ThreatGroundFronts.orderEntrench(GroundFront front)` :748 - Breaks off the assault (or answers a checkpoint) and digs in.
 ### landings - the one doctrine both expeditions run (docs/ground-war.md).
-- `ThreatGroundFronts.needsSoftening(MarketAPI market, float fp)` :758 - Whether orbit still has work to do here for a fleet of fp:
-- `ThreatGroundFronts.landingBlocked(String ownerFactionId, MarketAPI market, boolean liveFleets)` :770 - Why nothing can land on this world for this owner right now, or null:
-- `ThreatGroundFronts.landOrReinforce(MarketAPI market, String ownerFactionId, int troops, float armaments)` :795 - Puts troops on the ground for an owner:
+- `ThreatGroundFronts.needsSoftening(MarketAPI market, float fp)` :761 - Whether orbit still has work to do here for a fleet of fp:
+- `ThreatGroundFronts.landingBlocked(String ownerFactionId, MarketAPI market, boolean liveFleets)` :773 - Why nothing can land on this world for this owner right now, or null:
+- `ThreatGroundFronts.landOrReinforce(MarketAPI market, String ownerFactionId, int troops, float armaments)` :798 - Puts troops on the ground for an owner:
 ### derived figures (shared by the tick, the dialog and the board)
-- `ThreatGroundFronts.needsArms(GroundFront front)` :854 - WHETHER ARMAMENTS ARE THIS FRONT'S PROBLEM AT ALL (2026-09-08, the user:
-- `ThreatGroundFronts.isDry(GroundFront front)` :865 - Whether the front is fighting without heavy armaments - the one test the dry penalties, the final-push clock and the readouts all go through, so a front that does not need them is never "dry" anywhere
-- `ThreatGroundFronts.effectiveStrength(GroundFront front)` :875 - Marines x the entrenchment ramp x the supply factor.
-- `ThreatGroundFronts.dailyUpkeep(float marines)` :894 - Heavy armaments a body of this many marines burns per day.
-- `ThreatGroundFronts.dailyUpkeep(GroundFront front)` :900 - Heavy armaments the front burns per day at its current strength.
-- `ThreatGroundFronts.landingSupply(float marines, float days)` :909 - The armaments a landing of this many marines carries to keep itself in the field for the given days - the one figure every landing draws by, so a front's loadout and its burn are the same rule read tw
-- `ThreatGroundFronts.supplyDaysLeft(GroundFront front)` :914 - Days the armaments stock lasts at the current burn rate (999+ = ample).
-- `ThreatGroundFronts.defenderStrength(MarketAPI market)` :929 - What the world fights a landing WITH - the one figure every requirement, push pace and counter-attack in the engine is measured against.
-- `ThreatGroundFronts.colonyGarrison(MarketAPI market)` :948 - The colony's garrison proper:
-- `ThreatGroundFronts.mannedGarrison(float garrison, float armed)` :964 - MANNED DEFENCES (the user, 2026-10-28:
-- `ThreatGroundFronts.mannedGarrison(MarketAPI market)` :971 - The colony's garrison as its armed marines man it now (#mannedGarrison(float, float)).
-- `ThreatGroundFronts.manningCrew(float garrison, float armed)` :984 - CREW FIRST (the user, 2026-10-29:
-- `ThreatGroundFronts.spareMarines(float garrison, float armed)` :991 - The armed marines left to fight once the defences are crewed (#manningCrew(float, float)).
-- `ThreatGroundFronts.manningCrew(MarketAPI market)` :996 - #manningCrew(float, float) for the colony's garrison and armed marines now.
-- `ThreatGroundFronts.manningNeed(MarketAPI market)` :1002 - Marines that man the colony's whole garrison - the standing stock an NPC colony keeps (ThreatReserves.floor);
-- `ThreatGroundFronts.colonyMarineDefense(MarketAPI market, float weight)` :1017 - What the colony's stockpiled marines add to its defence:
-- `ThreatGroundFronts.defendersDry(MarketAPI market)` :1034 - Whether a colony's armed marines are fighting an army on its surface with no heavy armaments in its stockpile (knob defenderArmsEnabled;
-- `ThreatGroundFronts.defenderDailyUpkeep(MarketAPI market, GroundFront front)` :1050 - Heavy armaments a colony's defenders burn per day against a front:
-- `ThreatGroundFronts.defenderArmsDaysLeft(MarketAPI market, GroundFront front)` :1060 - Days the colony's heavy armaments last its defenders at the current burn (999+ = ample, or none burnt).
-- `ThreatGroundFronts.burnDefenderArms(MarketAPI market, GroundFront front, float elapsedDays)` :1067 - One tick of the defenders' burn, out of the colony's stockpile (a player colony's resource stockpile).
-- `ThreatGroundFronts.counterAttackStrength(MarketAPI market)` :1093 - What the world can put into a counter-attack.
+- `ThreatGroundFronts.needsArms(GroundFront front)` :857 - WHETHER ARMAMENTS ARE THIS FRONT'S PROBLEM AT ALL (2026-09-08, the user:
+- `ThreatGroundFronts.isDry(GroundFront front)` :868 - Whether the front is fighting without heavy armaments - the one test the dry penalties, the final-push clock and the readouts all go through, so a front that does not need them is never "dry" anywhere
+- `ThreatGroundFronts.effectiveStrength(GroundFront front)` :878 - Marines x the entrenchment ramp x the supply factor.
+- `ThreatGroundFronts.dailyUpkeep(float marines)` :897 - Heavy armaments a body of this many marines burns per day.
+- `ThreatGroundFronts.dailyUpkeep(GroundFront front)` :903 - Heavy armaments the front burns per day at its current strength.
+- `ThreatGroundFronts.landingSupply(float marines, float days)` :912 - The armaments a landing of this many marines carries to keep itself in the field for the given days - the one figure every landing draws by, so a front's loadout and its burn are the same rule read tw
+- `ThreatGroundFronts.supplyDaysLeft(GroundFront front)` :917 - Days the armaments stock lasts at the current burn rate (999+ = ample).
+- `ThreatGroundFronts.defenderStrength(MarketAPI market)` :932 - What the world fights a landing WITH - the one figure every requirement, push pace and counter-attack in the engine is measured against.
+- `ThreatGroundFronts.colonyGarrison(MarketAPI market)` :951 - The colony's garrison proper:
+- `ThreatGroundFronts.mannedGarrison(float garrison, float armed)` :967 - MANNED DEFENCES (the user, 2026-10-28:
+- `ThreatGroundFronts.mannedGarrison(MarketAPI market)` :974 - The colony's garrison as its armed marines man it now (#mannedGarrison(float, float)).
+- `ThreatGroundFronts.manningCrew(float garrison, float armed)` :987 - CREW FIRST (the user, 2026-10-29:
+- `ThreatGroundFronts.spareMarines(float garrison, float armed)` :994 - The armed marines left to fight once the defences are crewed (#manningCrew(float, float)).
+- `ThreatGroundFronts.manningCrew(MarketAPI market)` :999 - #manningCrew(float, float) for the colony's garrison and armed marines now.
+- `ThreatGroundFronts.manningNeed(MarketAPI market)` :1005 - Marines that man the colony's whole garrison - the standing stock an NPC colony keeps (ThreatReserves.floor);
+- `ThreatGroundFronts.colonyMarineDefense(MarketAPI market, float weight)` :1020 - What the colony's stockpiled marines add to its defence:
+- `ThreatGroundFronts.defendersDry(MarketAPI market)` :1037 - Whether a colony's armed marines are fighting an army on its surface with no heavy armaments in its stockpile (knob defenderArmsEnabled;
+- `ThreatGroundFronts.defenderDailyUpkeep(MarketAPI market, GroundFront front)` :1053 - Heavy armaments a colony's defenders burn per day against a front:
+- `ThreatGroundFronts.defenderArmsDaysLeft(MarketAPI market, GroundFront front)` :1063 - Days the colony's heavy armaments last its defenders at the current burn (999+ = ample, or none burnt).
+- `ThreatGroundFronts.burnDefenderArms(MarketAPI market, GroundFront front, float elapsedDays)` :1070 - One tick of the defenders' burn, out of the colony's stockpile (a player colony's resource stockpile).
+- `ThreatGroundFronts.counterAttackStrength(MarketAPI market)` :1096 - What the world can put into a counter-attack.
 ### THE LINE (the user, 2026-10-23, docs/front-line-proposal.md 7: "do away
-- `ThreatGroundFronts.defendersPush(GroundFront front, MarketAPI market)` :1111 - Whether the world's defenders push the line:
-- `ThreatGroundFronts.defenderPressure(GroundFront front, MarketAPI market)` :1125 - What the world pushes the line with:
-- `ThreatGroundFronts.standing(float rate)` :1133 - A line rate as a doctrine weighs it:
-- `ThreatGroundFronts.defenderDigInRate(GroundFront front, MarketAPI market)` :1142 - The line as a colony's marines dug in would see it against the swarm's best reply (#doctrineDefendersPush):
-- `ThreatGroundFronts.coverIfDugIn(GroundFront front)` :1150 - The front's cover as it would stand dug in, whatever its stance now - coverMult without the stance test.
-- `ThreatGroundFronts.lineRate(GroundFront front, MarketAPI market)` :1156 - The rate the line moves at as both sides stand now:
-- `ThreatGroundFronts.lineRate(GroundFront front, MarketAPI market, boolean landingPushes, boolean worldPushes)` :1176 - The rate the line moves at, -1..1, positive toward the landing:
-- `ThreatGroundFronts.lineRateOf(float a, float coverA, float d, float coverD, float pressure, boolean landingPushes, boolean worldPushes)` :1212 - The line's arithmetic on bare figures (#lineRate(GroundFront, MarketAPI, boolean, boolean)):
-- `ThreatGroundFronts.coverStep(float days, boolean pushing, float enemyPressure, float elapsedDays)` :1235 - PRESSURE BREAKS COVER (the user, Arkoman 2026-10-28:
-- `ThreatGroundFronts.coverPressure(float enemyPush, float ownForce)` :1243 - The rate an enemy push strips cover at:
-- `ThreatGroundFronts.pushPaysOff(float rate, float progress, float troops, float lossPerDay)` :1256 - THE BLEED-OUT TEST (the user, 2026-10-28;
-- `ThreatGroundFronts.defenderPushRate(GroundFront front, MarketAPI market)` :1265 - The line as the world's marines would push it (an order's quote):
-- `ThreatGroundFronts.defenderPushQuote(GroundFront front, MarketAPI market)` :1271 - One line for the defenders' Push button and prompt:
-- `ThreatGroundFronts.lineState(GroundFront front, MarketAPI market, boolean fromLanding)` :1296 - The State word from one side (fromLanding:
-- `ThreatGroundFronts.lineState(float rate, boolean bothPush, boolean fromLanding)` :1303 - The State word for a rate read from one side (fromLanding:
-- `ThreatGroundFronts.stateWord(GroundFront front, MarketAPI market, boolean fromLanding)` :1320 - THE STATE WORD (the user, 2026-10-28 evening:
-- `ThreatGroundFronts.stateWordOf(float r, boolean pushes, float cover)` :1339 - The word for a side whose line moves at r its way (positive = it gains), pushing or not, at cover of frontEntrenchDays.
-- `ThreatGroundFronts.lineSuppressionState(float rate)` :1368 - The suppression key the tick writes to front.state from the rate:
-- `ThreatGroundFronts.doctrinePushes(GroundFront front, MarketAPI market)` :1388 - NPC and swarm doctrine (the user, 2026-10-24:
-- `ThreatGroundFronts.lineMoves(float rate)` :1414 - Whether a line rate moves the line at all:
-- `ThreatGroundFronts.daysToLineChange(GroundFront front, MarketAPI market)` :1419 - Days until the next district changes hands at the current rate, or -1 while the line stands still.
-- `ThreatGroundFronts.lineChangeDays(GroundFront front, float r)` :1424 - As #daysToLineChange at a given rate (an order's quote).
-- `ThreatGroundFronts.victoryDays(GroundFront front, MarketAPI market, boolean fromLanding)` :1438 - Days until the side given wins the world at the line's current rate - the landing takes the last layer, or the world pushes the landing off (every layer it holds back, then the beachhead) - or -1 whil
-- `ThreatGroundFronts.lineRateWith(GroundFront front, MarketAPI market, boolean forLanding, float count, boolean landingPushes, boolean worldPushes)` :1455 - The line's rate (positive toward the landing) with one side's count changed:
-- `ThreatGroundFronts.troopsFor(GroundFront front, MarketAPI market, boolean forLanding, float target, boolean landingPushes, boolean worldPushes)` :1494 - The fewest troops (the landing) or armed marines / hive troops (the world) that side needs for the line to reach target its way - the landing a rate at least target, the world one at most target - at 
-- `ThreatGroundFronts.reaches(GroundFront front, MarketAPI market, boolean forLanding, float count, float target, boolean landingPushes, boolean worldPushes)` :1510
-- `ThreatGroundFronts.coverWord(float entrenchDays)` :1522 - The one word for how dug in a side is, by its entrenchment days over frontEntrenchDays:
-- `ThreatGroundFronts.holdRequirement(MarketAPI market)` :1534 - Effective strength a landing needs to gain ground here, pushing against the world as it stands:
-- `ThreatGroundFronts.grindRequirement(MarketAPI market)` :1539 - Effective strength a landing needs to keep what it holds fully dug in against the world's push:
-- `ThreatGroundFronts.pushDaysEstimate(GroundFront front, MarketAPI market)` :1551 - Push pace:
-- `ThreatGroundFronts.ratioPow(float ratio)` :1566 - Every strength RATIO the ground war uses goes through groundStrengthExponent first (docs/design-theory.md 8.4):
-- `ThreatGroundFronts.paceRatio(float defender, float eff)` :1574 - Defense-over-strength, exponent applied, clamped 0.5x-3x:
-- `ThreatGroundFronts.pushCasualtyEstimate(GroundFront front, MarketAPI market)` :1582 - Estimated marines a push on the next stratum costs at current strength.
-- `ThreatGroundFronts.hiveCounterAttackPace(MarketAPI market)` :1597 - What paces a hive world's counter-attacks, 0..1, before the tempo:
-- `ThreatGroundFronts.hasMilitaryCommand(MarketAPI market)` :1608 - A staff that can plan a counter-attack:
-- `ThreatGroundFronts.defenseStrength(GroundFront front)` :1618 - What the front defends with:
+- `ThreatGroundFronts.defendersPush(GroundFront front, MarketAPI market)` :1114 - Whether the world's defenders push the line:
+- `ThreatGroundFronts.defenderPressure(GroundFront front, MarketAPI market)` :1128 - What the world pushes the line with:
+- `ThreatGroundFronts.standing(float rate)` :1136 - A line rate as a doctrine weighs it:
+- `ThreatGroundFronts.defenderDigInRate(GroundFront front, MarketAPI market)` :1145 - The line as a colony's marines dug in would see it against the swarm's best reply (#doctrineDefendersPush):
+- `ThreatGroundFronts.coverIfDugIn(GroundFront front)` :1153 - The front's cover as it would stand dug in, whatever its stance now - coverMult without the stance test.
+- `ThreatGroundFronts.lineRate(GroundFront front, MarketAPI market)` :1159 - The rate the line moves at as both sides stand now:
+- `ThreatGroundFronts.lineRate(GroundFront front, MarketAPI market, boolean landingPushes, boolean worldPushes)` :1179 - The rate the line moves at, -1..1, positive toward the landing:
+- `ThreatGroundFronts.lineRateOf(float a, float coverA, float d, float coverD, float pressure, boolean landingPushes, boolean worldPushes)` :1215 - The line's arithmetic on bare figures (#lineRate(GroundFront, MarketAPI, boolean, boolean)):
+- `ThreatGroundFronts.coverStep(float days, boolean pushing, float enemyPressure, float elapsedDays)` :1238 - PRESSURE BREAKS COVER (the user, Arkoman 2026-10-28:
+- `ThreatGroundFronts.coverPressure(float enemyPush, float ownForce)` :1246 - The rate an enemy push strips cover at:
+- `ThreatGroundFronts.pushPaysOff(float rate, float progress, float troops, float lossPerDay)` :1259 - THE BLEED-OUT TEST (the user, 2026-10-28;
+- `ThreatGroundFronts.defenderPushRate(GroundFront front, MarketAPI market)` :1268 - The line as the world's marines would push it (an order's quote):
+- `ThreatGroundFronts.defenderPushQuote(GroundFront front, MarketAPI market)` :1274 - One line for the defenders' Push button and prompt:
+- `ThreatGroundFronts.lineState(GroundFront front, MarketAPI market, boolean fromLanding)` :1299 - The State word from one side (fromLanding:
+- `ThreatGroundFronts.lineState(float rate, boolean bothPush, boolean fromLanding)` :1306 - The State word for a rate read from one side (fromLanding:
+- `ThreatGroundFronts.stateWord(GroundFront front, MarketAPI market, boolean fromLanding)` :1323 - THE STATE WORD (the user, 2026-10-28 evening:
+- `ThreatGroundFronts.stateWordOf(float r, boolean pushes, float cover)` :1342 - The word for a side whose line moves at r its way (positive = it gains), pushing or not, at cover of frontEntrenchDays.
+- `ThreatGroundFronts.lineSuppressionState(float rate)` :1371 - The suppression key the tick writes to front.state from the rate:
+- `ThreatGroundFronts.doctrinePushes(GroundFront front, MarketAPI market)` :1391 - NPC and swarm doctrine (the user, 2026-10-24:
+- `ThreatGroundFronts.lineMoves(float rate)` :1417 - Whether a line rate moves the line at all:
+- `ThreatGroundFronts.daysToLineChange(GroundFront front, MarketAPI market)` :1422 - Days until the next district changes hands at the current rate, or -1 while the line stands still.
+- `ThreatGroundFronts.lineChangeDays(GroundFront front, float r)` :1427 - As #daysToLineChange at a given rate (an order's quote).
+- `ThreatGroundFronts.victoryDays(GroundFront front, MarketAPI market, boolean fromLanding)` :1441 - Days until the side given wins the world at the line's current rate - the landing takes the last layer, or the world pushes the landing off (every layer it holds back, then the beachhead) - or -1 whil
+- `ThreatGroundFronts.lineRateWith(GroundFront front, MarketAPI market, boolean forLanding, float count, boolean landingPushes, boolean worldPushes)` :1458 - The line's rate (positive toward the landing) with one side's count changed:
+- `ThreatGroundFronts.troopsFor(GroundFront front, MarketAPI market, boolean forLanding, float target, boolean landingPushes, boolean worldPushes)` :1497 - The fewest troops (the landing) or armed marines / hive troops (the world) that side needs for the line to reach target its way - the landing a rate at least target, the world one at most target - at 
+- `ThreatGroundFronts.reaches(GroundFront front, MarketAPI market, boolean forLanding, float count, float target, boolean landingPushes, boolean worldPushes)` :1513
+- `ThreatGroundFronts.coverWord(float entrenchDays)` :1525 - The one word for how dug in a side is, by its entrenchment days over frontEntrenchDays:
+- `ThreatGroundFronts.holdRequirement(MarketAPI market)` :1537 - Effective strength a landing needs to gain ground here, pushing against the world as it stands:
+- `ThreatGroundFronts.grindRequirement(MarketAPI market)` :1542 - Effective strength a landing needs to keep what it holds fully dug in against the world's push:
+- `ThreatGroundFronts.pushDaysEstimate(GroundFront front, MarketAPI market)` :1554 - Push pace:
+- `ThreatGroundFronts.ratioPow(float ratio)` :1569 - Every strength RATIO the ground war uses goes through groundStrengthExponent first (docs/design-theory.md 8.4):
+- `ThreatGroundFronts.paceRatio(float defender, float eff)` :1577 - Defense-over-strength, exponent applied, clamped 0.5x-3x:
+- `ThreatGroundFronts.pushCasualtyEstimate(GroundFront front, MarketAPI market)` :1585 - Estimated marines a push on the next stratum costs at current strength.
+- `ThreatGroundFronts.hiveCounterAttackPace(MarketAPI market)` :1600 - What paces a hive world's counter-attacks, 0..1, before the tempo:
+- `ThreatGroundFronts.hasMilitaryCommand(MarketAPI market)` :1611 - A staff that can plan a counter-attack:
+- `ThreatGroundFronts.defenseStrength(GroundFront front)` :1621 - What the front defends with:
 ### readouts for the board (docs/ground-war.md "Reading a front"): every
-- `ThreatGroundFronts.stanceLabel(GroundFront front)` :1630 - "push" / "regrouping" / "hold" - the stance as the board names it (Dig in -> Hold, the user 2026-10-28:
-- `ThreatGroundFronts.daysSinceLanding(GroundFront front)` :1638 - Days since the landing, by the tick's own clock (the front's age, like its entrenchment).
-- `ThreatGroundFronts.entrenchFraction(GroundFront front)` :1647 - How dug in the front is:
-- `ThreatGroundFronts.overExtension(GroundFront front)` :1658 - How over-extended the front is:
-- `ThreatGroundFronts.overExtendMult(float overExtension)` :1665 - What over-extension costs:
-- `ThreatGroundFronts.entrenchMult(GroundFront front)` :1675 - The entrenchment multiplier on strength right now:
-- `ThreatGroundFronts.coverMult(GroundFront front)` :1683 - The cover multiplier on the landing:
+- `ThreatGroundFronts.stanceLabel(GroundFront front)` :1633 - "push" / "regrouping" / "hold" - the stance as the board names it (Dig in -> Hold, the user 2026-10-28:
+- `ThreatGroundFronts.daysSinceLanding(GroundFront front)` :1641 - Days since the landing, by the tick's own clock (the front's age, like its entrenchment).
+- `ThreatGroundFronts.entrenchFraction(GroundFront front)` :1650 - How dug in the front is:
+- `ThreatGroundFronts.overExtension(GroundFront front)` :1661 - How over-extended the front is:
+- `ThreatGroundFronts.overExtendMult(float overExtension)` :1668 - What over-extension costs:
+- `ThreatGroundFronts.entrenchMult(GroundFront front)` :1678 - The entrenchment multiplier on strength right now:
+- `ThreatGroundFronts.coverMult(GroundFront front)` :1686 - The cover multiplier on the landing:
 ### the defenders' stance (2026-10-17, docs/ground-war-defenders.md "The
-- `ThreatGroundFronts.defenderStance(GroundFront front)` :1701 - The defenders' stance:
-- `ThreatGroundFronts.defendersHoldFire(GroundFront front, MarketAPI market)` :1706 - Whether the colony's defenders are dug in and holding fire:
-- `ThreatGroundFronts.defenderEntrenchFraction(GroundFront front)` :1712 - How dug in the defenders are:
-- `ThreatGroundFronts.defenderOverExtension(GroundFront front)` :1719 - How over-extended the defenders are:
-- `ThreatGroundFronts.defenderOverExtendMult(GroundFront front)` :1726 - The colony's whole ground figure x this while its marines are over-extended (#overExtendMult);
-- `ThreatGroundFronts.clampEntrench(float days)` :1731 - Entrenchment days bounded to -frontEntrenchDays..+frontEntrenchDays.
-- `ThreatGroundFronts.defenderCoverMult(GroundFront front)` :1737 - The cover multiplier on the colony's defence figure:
-- `ThreatGroundFronts.defenderCoverIfDugIn(GroundFront front)` :1743 - The defenders' cover as it would stand dug in, whatever their stance now - defenderCoverMult without the stance test (the cover dug so far is kept while they push).
-- `ThreatGroundFronts.doctrineDefendersPush(GroundFront front, MarketAPI market)` :1758 - NPC defenders' doctrine under THE LINE (the user, Sindria 2026-10-24:
-- `ThreatGroundFronts.defenderStanceLabel(GroundFront front)` :1783 - "push" / "hold" - the marines' stance against a Threat landing, as the board names it (push = they move the line, hold = they defend from cover).
-- `ThreatGroundFronts.marineStanceLabel(GroundFront front, MarketAPI market)` :1792 - The stance of the marines on this world, whichever side landed (the board's Marines / Swarm framing, 2026-10-17):
-- `ThreatGroundFronts.swarmStanceLabel(GroundFront front, MarketAPI market)` :1798 - The swarm's stance on this world:
-- `ThreatGroundFronts.marineLossPer30Days(GroundFront front, MarketAPI market)` :1804 - Marines lost per 30 days on this world:
-- `ThreatGroundFronts.swarmLossPer30Days(GroundFront front, MarketAPI market)` :1810 - Swarm troops lost per 30 days on this world:
-- `ThreatGroundFronts.orderDefenderPush(GroundFront front)` :1816 - The defenders go over to pushing the line.
-- `ThreatGroundFronts.orderDefenderEntrench(GroundFront front)` :1822 - The defenders hold fire and dig in;
-- `ThreatGroundFronts.defenderPushBlockReason(GroundFront front, MarketAPI market)` :1828 - Why the defenders cannot be ordered to push, or null.
-- `ThreatGroundFronts.defenderEntrenchBlockReason(GroundFront front, MarketAPI market)` :1836 - Why the defenders cannot be ordered to hold, or null.
-- `ThreatGroundFronts.tickDefenderStance(GroundFront front, MarketAPI market, float elapsedDays)` :1852 - NPC colonies' defender stance AI, one tick (#doctrineDefendersPush, 2026-10-24):
-- `ThreatGroundFronts.attritionPerDay(float troops, float enemyForce, float ownForce, float ownCover, float veteran)` :1895 - THE ATTRITION RULE (the user, 2026-10-24, replacing the per-30-day rates by stance, the dry / assault / outmatched multipliers, the defenders' pressure cap and the engaged cap):
-- `ThreatGroundFronts.groundDown(GroundFront front)` :1908 - Whether a front has been ground down:
-- `ThreatGroundFronts.landingLossPerDay(GroundFront front, MarketAPI market, boolean pushing)` :1914 - The landing's ground losses a day at the given stance (#attritionPerDay);
-- `ThreatGroundFronts.worldLossPerDay(MarketAPI market, GroundFront front, float troops)` :1926 - The world's losses a day on troops of its own (a colony's armed marines, a hive's landed troops) against the front as it stands (#attritionPerDay);
-- `ThreatGroundFronts.attritionPer30Days(GroundFront front, MarketAPI market, boolean pushing)` :1940 - Marines the front loses per 30 days at the given stance - the tick's own rate (#landingLossPerDay x 30), so the table's Losses column and the Push / Dig in prompts quote what will actually happen - pl
-- `ThreatGroundFronts.perDay(float per30)` :1951 - A per-30-days rate as the player watches it tick:
-- `ThreatGroundFronts.attritionPer30Days(GroundFront front, MarketAPI market)` :1959 - The same at the front's current stance.
-- `ThreatGroundFronts.defensesTrend(GroundFront front, MarketAPI market)` :1984 - Which way the defenders' figure is heading, from the front's side.
-- `ThreatGroundFronts.defensesLabel(GroundFront front, MarketAPI market)` :1996 - One word for the board:
-- `ThreatGroundFronts.recoveringStructures(MarketAPI market)` :2004 - "Heavy Batteries back in 41 d" for every disrupted structure the theatre cares about.
-- `ThreatGroundFronts.anyDisrupted(List<Industry> list)` :2020
-- `ThreatGroundFronts.pushBlockReason(GroundFront front, MarketAPI market)` :2028 - Why the board's Push order would do nothing now, or null if the front can be ordered to push.
-- `ThreatGroundFronts.pushRefusal(GroundFront front, MarketAPI market)` :2033 - As above, one fact per line for the refusal notice.
-- `ThreatGroundFronts.entrenchBlockReason(GroundFront front)` :2043 - Why the board's Hold order would do nothing now, or null.
-- `ThreatGroundFronts.entrenchRefusal(GroundFront front)` :2048 - As above, one fact per line for the refusal notice.
-- `ThreatGroundFronts.orbitContested(String marketId)` :2059 - Live Defense Swarms at the colony = the orbit is contested.
-- `ThreatGroundFronts.orbitContested(String observer, MarketAPI market)` :2068 - As above from what the observer last saw over the world (ThreatIntel, the fog of war, 2026-10-01):
-- `ThreatGroundFronts.orbitContestedFor(GroundFront front, MarketAPI market)` :2083 - Is the space over this world held against the front's owner? Symmetric with #orbitContested, which asks the question only one way round.
-- `ThreatGroundFronts.orbitContestedFor(String ownerFactionId, MarketAPI market)` :2088
-- `ThreatGroundFronts.orbitHeld(String ownerFactionId, MarketAPI market, float hostileFP)` :2103 - WHO HOLDS AN ORBIT (2026-09-07):
-- `ThreatGroundFronts.friendlyPointsNear(String factionId, MarketAPI market)` :2110 - Points of the faction's own warships within ORBIT_HOLD_RANGE of the world - the player's own fleet counts for the player's faction.
-- `ThreatGroundFronts.hostilePointsNear(String factionId, MarketAPI market)` :2115 - Points of armed fleets hostile to the faction within ORBIT_HOLD_RANGE of the world:
-- `ThreatGroundFronts.hostileFleetsNear(String factionId, MarketAPI market)` :2124 - The fleets #hostilePointsNear weighs, as a list:
-- `ThreatGroundFronts.pointsNear(MarketAPI market, String factionId, boolean friendly)` :2135
-- `ThreatGroundFronts.countsNear(CampaignFleetAPI fleet, MarketAPI market, String factionId, boolean friendly)` :2148 - Whether a fleet counts at the world for #pointsNear and #hostileFleetsNear:
-- `ThreatGroundFronts.fleeing(CampaignFleetAPI fleet)` :2162 - Whether the fleet is running from another:
-- `ThreatGroundFronts.nearWorld(CampaignFleetAPI fleet, MarketAPI market)` :2169
-- `ThreatGroundFronts.spaceHolder(MarketAPI market)` :2184 - WHO HOLDS THE SPACE over a world - the board's Space column.
+- `ThreatGroundFronts.defenderStance(GroundFront front)` :1704 - The defenders' stance:
+- `ThreatGroundFronts.defendersHoldFire(GroundFront front, MarketAPI market)` :1709 - Whether the colony's defenders are dug in and holding fire:
+- `ThreatGroundFronts.defenderEntrenchFraction(GroundFront front)` :1715 - How dug in the defenders are:
+- `ThreatGroundFronts.defenderOverExtension(GroundFront front)` :1722 - How over-extended the defenders are:
+- `ThreatGroundFronts.defenderOverExtendMult(GroundFront front)` :1729 - The colony's whole ground figure x this while its marines are over-extended (#overExtendMult);
+- `ThreatGroundFronts.clampEntrench(float days)` :1734 - Entrenchment days bounded to -frontEntrenchDays..+frontEntrenchDays.
+- `ThreatGroundFronts.defenderCoverMult(GroundFront front)` :1740 - The cover multiplier on the colony's defence figure:
+- `ThreatGroundFronts.defenderCoverIfDugIn(GroundFront front)` :1746 - The defenders' cover as it would stand dug in, whatever their stance now - defenderCoverMult without the stance test (the cover dug so far is kept while they push).
+- `ThreatGroundFronts.doctrineDefendersPush(GroundFront front, MarketAPI market)` :1761 - NPC defenders' doctrine under THE LINE (the user, Sindria 2026-10-24:
+- `ThreatGroundFronts.defenderStanceLabel(GroundFront front)` :1786 - "push" / "hold" - the marines' stance against a Threat landing, as the board names it (push = they move the line, hold = they defend from cover).
+- `ThreatGroundFronts.marineStanceLabel(GroundFront front, MarketAPI market)` :1795 - The stance of the marines on this world, whichever side landed (the board's Marines / Swarm framing, 2026-10-17):
+- `ThreatGroundFronts.swarmStanceLabel(GroundFront front, MarketAPI market)` :1801 - The swarm's stance on this world:
+- `ThreatGroundFronts.marineLossPer30Days(GroundFront front, MarketAPI market)` :1807 - Marines lost per 30 days on this world:
+- `ThreatGroundFronts.swarmLossPer30Days(GroundFront front, MarketAPI market)` :1813 - Swarm troops lost per 30 days on this world:
+- `ThreatGroundFronts.orderDefenderPush(GroundFront front)` :1819 - The defenders go over to pushing the line.
+- `ThreatGroundFronts.orderDefenderEntrench(GroundFront front)` :1825 - The defenders hold fire and dig in;
+- `ThreatGroundFronts.defenderPushBlockReason(GroundFront front, MarketAPI market)` :1831 - Why the defenders cannot be ordered to push, or null.
+- `ThreatGroundFronts.defenderEntrenchBlockReason(GroundFront front, MarketAPI market)` :1839 - Why the defenders cannot be ordered to hold, or null.
+- `ThreatGroundFronts.tickDefenderStance(GroundFront front, MarketAPI market, float elapsedDays)` :1855 - NPC colonies' defender stance AI, one tick (#doctrineDefendersPush, 2026-10-24):
+- `ThreatGroundFronts.attritionPerDay(float troops, float enemyForce, float ownForce, float ownCover, float veteran)` :1898 - THE ATTRITION RULE (the user, 2026-10-24, replacing the per-30-day rates by stance, the dry / assault / outmatched multipliers, the defenders' pressure cap and the engaged cap):
+- `ThreatGroundFronts.groundDown(GroundFront front)` :1911 - Whether a front has been ground down:
+- `ThreatGroundFronts.landingLossPerDay(GroundFront front, MarketAPI market, boolean pushing)` :1917 - The landing's ground losses a day at the given stance (#attritionPerDay);
+- `ThreatGroundFronts.worldLossPerDay(MarketAPI market, GroundFront front, float troops)` :1929 - The world's losses a day on troops of its own (a colony's armed marines, a hive's landed troops) against the front as it stands (#attritionPerDay);
+- `ThreatGroundFronts.attritionPer30Days(GroundFront front, MarketAPI market, boolean pushing)` :1943 - Marines the front loses per 30 days at the given stance - the tick's own rate (#landingLossPerDay x 30), so the table's Losses column and the Push / Dig in prompts quote what will actually happen - pl
+- `ThreatGroundFronts.perDay(float per30)` :1954 - A per-30-days rate as the player watches it tick:
+- `ThreatGroundFronts.attritionPer30Days(GroundFront front, MarketAPI market)` :1962 - The same at the front's current stance.
+- `ThreatGroundFronts.defensesTrend(GroundFront front, MarketAPI market)` :1987 - Which way the defenders' figure is heading, from the front's side.
+- `ThreatGroundFronts.defensesLabel(GroundFront front, MarketAPI market)` :1999 - One word for the board:
+- `ThreatGroundFronts.recoveringStructures(MarketAPI market)` :2007 - "Heavy Batteries back in 41 d" for every disrupted structure the theatre cares about.
+- `ThreatGroundFronts.anyDisrupted(List<Industry> list)` :2023
+- `ThreatGroundFronts.pushBlockReason(GroundFront front, MarketAPI market)` :2031 - Why the board's Push order would do nothing now, or null if the front can be ordered to push.
+- `ThreatGroundFronts.pushRefusal(GroundFront front, MarketAPI market)` :2036 - As above, one fact per line for the refusal notice.
+- `ThreatGroundFronts.entrenchBlockReason(GroundFront front)` :2046 - Why the board's Hold order would do nothing now, or null.
+- `ThreatGroundFronts.entrenchRefusal(GroundFront front)` :2051 - As above, one fact per line for the refusal notice.
+- `ThreatGroundFronts.orbitContested(String marketId)` :2062 - Live Defense Swarms at the colony = the orbit is contested.
+- `ThreatGroundFronts.orbitContested(String observer, MarketAPI market)` :2071 - As above from what the observer last saw over the world (ThreatIntel, the fog of war, 2026-10-01):
+- `ThreatGroundFronts.orbitContestedFor(GroundFront front, MarketAPI market)` :2086 - Is the space over this world held against the front's owner? Symmetric with #orbitContested, which asks the question only one way round.
+- `ThreatGroundFronts.orbitContestedFor(String ownerFactionId, MarketAPI market)` :2091
+- `ThreatGroundFronts.orbitHeld(String ownerFactionId, MarketAPI market, float hostileFP)` :2106 - WHO HOLDS AN ORBIT (2026-09-07):
+- `ThreatGroundFronts.friendlyPointsNear(String factionId, MarketAPI market)` :2113 - Points of the faction's own warships within ORBIT_HOLD_RANGE of the world - the player's own fleet counts for the player's faction.
+- `ThreatGroundFronts.hostilePointsNear(String factionId, MarketAPI market)` :2118 - Points of armed fleets hostile to the faction within ORBIT_HOLD_RANGE of the world:
+- `ThreatGroundFronts.hostileFleetsNear(String factionId, MarketAPI market)` :2127 - The fleets #hostilePointsNear weighs, as a list:
+- `ThreatGroundFronts.pointsNear(MarketAPI market, String factionId, boolean friendly)` :2138
+- `ThreatGroundFronts.countsNear(CampaignFleetAPI fleet, MarketAPI market, String factionId, boolean friendly)` :2151 - Whether a fleet counts at the world for #pointsNear and #hostileFleetsNear:
+- `ThreatGroundFronts.fleeing(CampaignFleetAPI fleet)` :2165 - Whether the fleet is running from another:
+- `ThreatGroundFronts.nearWorld(CampaignFleetAPI fleet, MarketAPI market)` :2172
+- `ThreatGroundFronts.spaceHolder(MarketAPI market)` :2187 - WHO HOLDS THE SPACE over a world - the board's Space column.
 ### the tick
-- `ThreatGroundFronts.poll(float elapsedDays)` :2216 - Driven from IncursionManager's colony poll (~half a day).
-- `ThreatGroundFronts.sweepSieges()` :2253 - Every human colony with a suppressed defence structure carries the siege state (ThreatSiegeMalus), front or no front, and is reapplied each poll so a structure's condition tracks its clock rather than
-- `ThreatGroundFronts.tickFront(GroundFront front, MarketAPI market, float elapsedDays)` :2263
-- `ThreatGroundFronts.lastStratumProtected(GroundFront front, MarketAPI market)` :2474 - A Threat front one stratum short of a story-critical world it may not destroy:
-- `ThreatGroundFronts.announceLayer(GroundFront front, MarketAPI market, boolean taken)` :2528 - A layer has changed hands (the user, 2026-10-24:
-- `ThreatGroundFronts.loseStratum(GroundFront front, MarketAPI market)` :2566 - The world's push has moved the line a district back (THE LINE, 2026-10-23):
-- `ThreatGroundFronts.groundVictory(GroundFront front, MarketAPI market)` :2616 - The final stratum is taken and the Fabrication Core destroyed:
-- `ThreatGroundFronts.hiveGroundVictory(GroundFront front, MarketAPI market)` :2621 - A hive's last stratum has fallen:
-- `ThreatGroundFronts.colonyGroundVictory(GroundFront front, MarketAPI market)` :2678 - The swarm has taken the last stratum of an inhabited world:
-- `ThreatGroundFronts.colonyRazed(MarketAPI market, String razerFactionId)` :2724 - Saturation razed a human colony's last level:
-- `ThreatGroundFronts.tickHiveBreakUp(GroundFront front, MarketAPI market)` :2751 - v3 (the user, 2026-10-27):
+- `ThreatGroundFronts.poll(float elapsedDays)` :2219 - Driven from IncursionManager's colony poll (~half a day).
+- `ThreatGroundFronts.sweepSieges()` :2256 - Every human colony with a suppressed defence structure carries the siege state (ThreatSiegeMalus), front or no front, and is reapplied each poll so a structure's condition tracks its clock rather than
+- `ThreatGroundFronts.tickFront(GroundFront front, MarketAPI market, float elapsedDays)` :2266
+- `ThreatGroundFronts.lastStratumProtected(GroundFront front, MarketAPI market)` :2477 - A Threat front one stratum short of a story-critical world it may not destroy:
+- `ThreatGroundFronts.announceLayer(GroundFront front, MarketAPI market, boolean taken)` :2531 - A layer has changed hands (the user, 2026-10-24:
+- `ThreatGroundFronts.loseStratum(GroundFront front, MarketAPI market)` :2569 - The world's push has moved the line a district back (THE LINE, 2026-10-23):
+- `ThreatGroundFronts.groundVictory(GroundFront front, MarketAPI market)` :2619 - The final stratum is taken and the Fabrication Core destroyed:
+- `ThreatGroundFronts.hiveGroundVictory(GroundFront front, MarketAPI market)` :2624 - A hive's last stratum has fallen:
+- `ThreatGroundFronts.colonyGroundVictory(GroundFront front, MarketAPI market)` :2681 - The swarm has taken the last stratum of an inhabited world:
+- `ThreatGroundFronts.colonyRazed(MarketAPI market, String razerFactionId)` :2727 - Saturation razed a human colony's last level:
+- `ThreatGroundFronts.tickHiveBreakUp(GroundFront front, MarketAPI market)` :2754 - v3 (the user, 2026-10-27):
 ### relief over an invaded world (2026-10-03, the user): breaking hulls up
-- `ThreatGroundFronts.tickRelief()` :2773 - Keeps each relief with no term on its orbit (a battle can empty its queue) and fighting the swarm there:
-- `ThreatGroundFronts.reliefDone(CampaignFleetAPI fleet, String marketId)` :2790 - Whether a relief with no term goes home (ThreatFleetOrders.poll):
-- `ThreatGroundFronts.threatOverWorld(MarketAPI market)` :2802 - Whether any Threat fleet is over the world:
-- `ThreatGroundFronts.threatInSystem(MarketAPI market)` :2807 - Whether any live Threat fleet is anywhere in the world's system:
-- `ThreatGroundFronts.defendersLosing(GroundFront front, MarketAPI market)` :2824 - Whether the defenders are not winning against a Threat army:
-- `ThreatGroundFronts.reliefFuelHome(CampaignFleetAPI fleet, MarketAPI market)` :2835 - The fuel a relief keeps of what it carries:
-- `ThreatGroundFronts.reliefBombarding(GroundFront front, MarketAPI market, float days)` :2851 - The relief forces that bombard this Threat army now:
-- `ThreatGroundFronts.reliefBombardPer30Days(GroundFront front, MarketAPI market)` :2872 - Troops the relief over the world bombards off this Threat army per 30 days - the tick's own arithmetic (#tickReliefBombard);
-- `ThreatGroundFronts.reliefBombardPer30Days(GroundFront front, float fp)` :2879 - The swarm's old bombardment formula (swarmBombardPer30Days, gone with v3) for fp of relief:
-- `ThreatGroundFronts.tickReliefBombard(GroundFront front, MarketAPI market, float elapsedDays)` :2887 - A poll of the relief over a Threat army (#reliefBombarding):
-- `ThreatGroundFronts.swarmHoldsOrbit(MarketAPI market)` :2926 - Swarm space superiority over a hive world:
-- `ThreatGroundFronts.swarmOrbitStrength(MarketAPI market)` :2935 - Total Threat fleet strength (fleet points) within the swarm orbit radius of a hive world - garrison Defense Swarms in orbit and any Threat combat fleet alike (they are the same kind of fleet, faction 
-- `ThreatGroundFronts.swarmPresent(MarketAPI market)` :2957 - Enough Threat strength in orbit to mount a saturation bombardment:
-- `ThreatGroundFronts.swarmOrbitContested(MarketAPI market)` :2974 - Armed fleets hostile to the Threat within the swarm orbit radius of the hive world weigh at least orbitContestFraction of the swarm's there - the swarm's orbital dominance is being contested.
-- `ThreatGroundFronts.coverOver(MarketAPI market)` :3004 - The FP an autoresolved flotilla left holding the orbit over its army on this hive world (coverFP):
-- `ThreatGroundFronts.coverHolds(MarketAPI market, String factionId)` :3011 - Whether this faction's front on the world holds its orbit with an autoresolved flotilla's cover (coverFP) that still outweighs the swarm there.
-- `ThreatGroundFronts.defenderLossPer30Days(MarketAPI market, GroundFront front)` :3027 - Marines the colony loses per 30 days to a siege standing on its surface:
-- `ThreatGroundFronts.bleedDefenders(MarketAPI market, GroundFront front, float elapsedDays)` :3037 - Applies one tick of that;
-- `ThreatGroundFronts.keyStructures(MarketAPI market)` :3046 - What a holding front suppresses - the theatre's list.
-- `ThreatGroundFronts.colonyKeyStructures(MarketAPI market)` :3060 - What a holding front suppresses on a human colony, derived the way the rest of the mod derives it:
-- `ThreatGroundFronts.pin(Industry ind, float days)` :3080 - Pins a seized industry's disruption clock at days at least:
-- `ThreatGroundFronts.seizedIndustries(MarketAPI market)` :3093 - What a front holding districts of a human colony has seized besides the key structures:
-- `ThreatGroundFronts.compare(Industry a, Industry b)` :3110
+- `ThreatGroundFronts.tickRelief()` :2776 - Keeps each relief with no term on its orbit (a battle can empty its queue) and fighting the swarm there:
+- `ThreatGroundFronts.reliefDone(CampaignFleetAPI fleet, String marketId)` :2793 - Whether a relief with no term goes home (ThreatFleetOrders.poll):
+- `ThreatGroundFronts.threatOverWorld(MarketAPI market)` :2805 - Whether any Threat fleet is over the world:
+- `ThreatGroundFronts.threatInSystem(MarketAPI market)` :2810 - Whether any live Threat fleet is anywhere in the world's system:
+- `ThreatGroundFronts.defendersLosing(GroundFront front, MarketAPI market)` :2827 - Whether the defenders are not winning against a Threat army:
+- `ThreatGroundFronts.reliefFuelHome(CampaignFleetAPI fleet, MarketAPI market)` :2838 - The fuel a relief keeps of what it carries:
+- `ThreatGroundFronts.reliefBombarding(GroundFront front, MarketAPI market, float days)` :2854 - The relief forces that bombard this Threat army now:
+- `ThreatGroundFronts.reliefBombardPer30Days(GroundFront front, MarketAPI market)` :2875 - Troops the relief over the world bombards off this Threat army per 30 days - the tick's own arithmetic (#tickReliefBombard);
+- `ThreatGroundFronts.reliefBombardPer30Days(GroundFront front, float fp)` :2882 - The swarm's old bombardment formula (swarmBombardPer30Days, gone with v3) for fp of relief:
+- `ThreatGroundFronts.tickReliefBombard(GroundFront front, MarketAPI market, float elapsedDays)` :2890 - A poll of the relief over a Threat army (#reliefBombarding):
+- `ThreatGroundFronts.swarmHoldsOrbit(MarketAPI market)` :2929 - Swarm space superiority over a hive world:
+- `ThreatGroundFronts.swarmOrbitStrength(MarketAPI market)` :2938 - Total Threat fleet strength (fleet points) within the swarm orbit radius of a hive world - garrison Defense Swarms in orbit and any Threat combat fleet alike (they are the same kind of fleet, faction 
+- `ThreatGroundFronts.swarmPresent(MarketAPI market)` :2960 - Enough Threat strength in orbit to mount a saturation bombardment:
+- `ThreatGroundFronts.swarmOrbitContested(MarketAPI market)` :2977 - Armed fleets hostile to the Threat within the swarm orbit radius of the hive world weigh at least orbitContestFraction of the swarm's there - the swarm's orbital dominance is being contested.
+- `ThreatGroundFronts.coverOver(MarketAPI market)` :3007 - The FP an autoresolved flotilla left holding the orbit over its army on this hive world (coverFP):
+- `ThreatGroundFronts.coverHolds(MarketAPI market, String factionId)` :3014 - Whether this faction's front on the world holds its orbit with an autoresolved flotilla's cover (coverFP) that still outweighs the swarm there.
+- `ThreatGroundFronts.defenderLossPer30Days(MarketAPI market, GroundFront front)` :3030 - Marines the colony loses per 30 days to a siege standing on its surface:
+- `ThreatGroundFronts.bleedDefenders(MarketAPI market, GroundFront front, float elapsedDays)` :3040 - Applies one tick of that;
+- `ThreatGroundFronts.keyStructures(MarketAPI market)` :3049 - What a holding front suppresses - the theatre's list.
+- `ThreatGroundFronts.colonyKeyStructures(MarketAPI market)` :3063 - What a holding front suppresses on a human colony, derived the way the rest of the mod derives it:
+- `ThreatGroundFronts.pin(Industry ind, float days)` :3083 - Pins a seized industry's disruption clock at days at least:
+- `ThreatGroundFronts.seizedIndustries(MarketAPI market)` :3096 - What a front holding districts of a human colony has seized besides the key structures:
+- `ThreatGroundFronts.compare(Industry a, Industry b)` :3113
 ### the orbital siege of a human colony (docs/ground-war.md "Sieges against
-- `ThreatGroundFronts.besieged(MarketAPI market)` :3134 - Whether the world has been besieged from orbit recently enough for the fortification rule to apply.
-- `ThreatGroundFronts.siegeWornDays(MarketAPI market)` :3149 - Disruption days at which this world's fortifications have worn to nothing - as far as a siege can push them.
-- `ThreatGroundFronts.siegeDisruptDays(Industry ind)` :3164 - The disruption days the siege should read - 0 unless the structure is ACTUALLY disrupted.
-- `ThreatGroundFronts.siegeClock(MarketAPI market)` :3169 - The siege clock as the board reads it:
-- `ThreatGroundFronts.siegeClockLine(MarketAPI market)` :3179 - One line of what is true now:
-- `ThreatGroundFronts.fortificationCondition(MarketAPI market)` :3186 - What still stands of the world's fortifications:
-- `ThreatGroundFronts.hiveFortificationBonus(Industry ind)` :3197 - A hive fortification's defence bonus at full condition:
-- `ThreatGroundFronts.fortificationBonus(MarketAPI market, Industry ind)` :3202 - A fortification's defence bonus at full condition on either theatre, after its input deficits.
+- `ThreatGroundFronts.besieged(MarketAPI market)` :3137 - Whether the world has been besieged from orbit recently enough for the fortification rule to apply.
+- `ThreatGroundFronts.siegeWornDays(MarketAPI market)` :3152 - Disruption days at which this world's fortifications have worn to nothing - as far as a siege can push them.
+- `ThreatGroundFronts.siegeDisruptDays(Industry ind)` :3167 - The disruption days the siege should read - 0 unless the structure is ACTUALLY disrupted.
+- `ThreatGroundFronts.siegeClock(MarketAPI market)` :3172 - The siege clock as the board reads it:
+- `ThreatGroundFronts.siegeClockLine(MarketAPI market)` :3182 - One line of what is true now:
+- `ThreatGroundFronts.fortificationCondition(MarketAPI market)` :3189 - What still stands of the world's fortifications:
+- `ThreatGroundFronts.hiveFortificationBonus(Industry ind)` :3200 - A hive fortification's defence bonus at full condition:
+- `ThreatGroundFronts.fortificationBonus(MarketAPI market, Industry ind)` :3205 - A fortification's defence bonus at full condition on either theatre, after its input deficits.
 ### THE BOMBARDMENT DAY (docs/suppression-balance.md "v2", 2026-09-28).
-- `ThreatGroundFronts.bombardLocked()` :3225 - Whether the player's fleet bombarded too recently to organize another.
-- `ThreatGroundFronts.lockBombard()` :3230 - Starts the player's lock after a bombardment:
-- `ThreatGroundFronts.bombardable(MarketAPI market)` :3236 - Whether orbit has anything to bombard here:
-- `ThreatGroundFronts.gunDefence(MarketAPI market, float defence)` :3242 - The defence the guns add:
-- `ThreatGroundFronts.returnFireConstant(MarketAPI market)` :3248 - The guns' constant on this world:
-- `ThreatGroundFronts.bombardWorth(MarketAPI market)` :3254 - A faction commander's worth on this world:
-- `ThreatGroundFronts.returnFirePerDay(MarketAPI market, float defence)` :3259 - Fleet points the guns take per day from whatever bombards the world - set by the guns, not the fleet (the theatre's constant, returnFireConstant).
+- `ThreatGroundFronts.bombardLocked()` :3228 - Whether the player's fleet bombarded too recently to organize another.
+- `ThreatGroundFronts.lockBombard()` :3233 - Starts the player's lock after a bombardment:
+- `ThreatGroundFronts.bombardable(MarketAPI market)` :3239 - Whether orbit has anything to bombard here:
+- `ThreatGroundFronts.gunDefence(MarketAPI market, float defence)` :3245 - The defence the guns add:
+- `ThreatGroundFronts.returnFireConstant(MarketAPI market)` :3251 - The guns' constant on this world:
+- `ThreatGroundFronts.bombardWorth(MarketAPI market)` :3257 - A faction commander's worth on this world:
+- `ThreatGroundFronts.returnFirePerDay(MarketAPI market, float defence)` :3262 - Fleet points the guns take per day from whatever bombards the world - set by the guns, not the fleet (the theatre's constant, returnFireConstant).
 ### THE DROP UNDER THE GUNS (2026-10-18, the user: "marines lost to heavy
-- `ThreatGroundFronts.dropLossConstant(MarketAPI market)` :3278 - The drop's constant on this world:
-- `ThreatGroundFronts.dropLoss(MarketAPI market, float troops)` :3284 - Marines the guns take from a landing of troops on this world now, its batteries as worn as they are.
-- `ThreatGroundFronts.afterDrop(MarketAPI market, float troops)` :3291 - The troops that reach the ground out of a landing of troops here now.
-- `ThreatGroundFronts.landingFor(MarketAPI market, float need)` :3296 - The landing that puts need troops on the ground through this world's drop toll now.
-- `ThreatGroundFronts.landingFor(MarketAPI market, float need, float gunDefence)` :3302 - As above at a gun defence already in hand - a planner's, worn as its bombardment will wear it.
-- `ThreatGroundFronts.dropped(MarketAPI market, int troops, String factionId)` :3315 - The drop itself:
-- `ThreatGroundFronts.bombardFuelPerDay(float fp)` :3332 - Fuel a day of tactical bombardment burns for a fleet of fp.
-- `ThreatGroundFronts.bombardDaysFor(float fuel, float fp)` :3337 - Days of tactical bombardment this much fuel buys a fleet of fp;
+- `ThreatGroundFronts.dropLossConstant(MarketAPI market)` :3281 - The drop's constant on this world:
+- `ThreatGroundFronts.dropLoss(MarketAPI market, float troops)` :3287 - Marines the guns take from a landing of troops on this world now, its batteries as worn as they are.
+- `ThreatGroundFronts.afterDrop(MarketAPI market, float troops)` :3294 - The troops that reach the ground out of a landing of troops here now.
+- `ThreatGroundFronts.landingFor(MarketAPI market, float need)` :3299 - The landing that puts need troops on the ground through this world's drop toll now.
+- `ThreatGroundFronts.landingFor(MarketAPI market, float need, float gunDefence)` :3305 - As above at a gun defence already in hand - a planner's, worn as its bombardment will wear it.
+- `ThreatGroundFronts.dropped(MarketAPI market, int troops, String factionId)` :3318 - The drop itself:
+- `ThreatGroundFronts.bombardFuelPerDay(float fp)` :3335 - Fuel a day of tactical bombardment burns for a fleet of fp.
+- `ThreatGroundFronts.bombardDaysFor(float fuel, float fp)` :3340 - Days of tactical bombardment this much fuel buys a fleet of fp;
 ### THE STRATA EXCHANGE (phase D, docs/strata-are-the-threat.md 6): a hive has no structure to
-- `ThreatGroundFronts.strataTarget(MarketAPI market)` :3351 - Whether the world is bombarded as strata:
-- `ThreatGroundFronts.hiveRazePerDay(float fp)` :3356 - Strata a day of bombardment by fp razes off a hive.
-- `ThreatGroundFronts.fuelPerStratum()` :3361 - Fuel a stratum razed burns.
-- `ThreatGroundFronts.bombardFuelPerDay(MarketAPI market, float fp)` :3366 - Fuel a day of bombardment burns here:
-- `ThreatGroundFronts.bombardDaysFor(MarketAPI market, float fuel, float fp)` :3372 - Days of bombardment this much fuel buys a fleet of fp here (#bombardFuelPerDay(MarketAPI, float));
-- `ThreatGroundFronts.hiveRaze(MarketAPI market, float fp, float days, float fuel, String razerFactionId)` :3381 - days of bombardment by fp over a hive with up to fuel to burn (Float.MAX_VALUE:
-- `ThreatGroundFronts.hivePlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead)` :3412 - #bombardPlan's run over a hive:
-- `ThreatGroundFronts.suppressionRate(MarketAPI market, float fp, float defence)` :3437 - Disruption days a day of bombardment adds to a structure still whole:
-- `ThreatGroundFronts.conditionAfterDay(MarketAPI market, Industry ind, float rate, float through)` :3444 - A structure's condition after one more day at this rate (the clock gains rate x condition x cover).
-- `ThreatGroundFronts.dailyGain(MarketAPI market, float fp)` :3454 - The most a day of bombardment by fp still adds anywhere on the world:
-- `ThreatGroundFronts.orbitSpent(MarketAPI market, float fp)` :3478 - Whether orbit has done what it usefully can here for a fleet of fp:
-- `ThreatGroundFronts.orbitSpent(MarketAPI market, float fp, float troops, boolean beachhead)` :3488 - As above for a fleet carrying troops to land:
-- `ThreatGroundFronts.orbitSpent(MarketAPI market, float fp, float troops, boolean beachhead, float worth)` :3493 - As above, a day needing worth defence off the world per fleet point lost (#swarmWorth).
-- `ThreatGroundFronts.hullWorth(float mult)` :3509 - What a hull is worth in defence to a side that can break it up into troops over its own front (#fabricateTroops):
-- `ThreatGroundFronts.swarmWorth()` :3521 - The swarm's stop (2026-09-28):
-- `ThreatGroundFronts.swarmWorth(MarketAPI market)` :3537 - As above over the world about to be landed on (2026-10-18, the user:
-- `ThreatGroundFronts.orbitDone(MarketAPI market, float fp, float fuel)` :3545 - Orbit has nothing more to give a fleet of fp carrying this much fuel:
-- `ThreatGroundFronts.orbitDone(MarketAPI market, float fp, float fuel, float troops, boolean beachhead)` :3550 - As above for a fleet carrying troops to land (#orbitSpent(MarketAPI, float, float, boolean)).
-- `ThreatGroundFronts.troopsToLand(MarketAPI market, float d, float d0, boolean beachhead)` :3561 - Troops a landing needs to be ready against the defence figure d:
-- `ThreatGroundFronts.stabilityMult(float stability)` :3575 - Vanilla's stability factor on the ground defence:
-- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp)` :3589 - What a fleet of fp would make of the world by bombarding for as long as its commander would, no longer than siegeOrbitDays:
-- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget)` :3606 - As #bombardPlan(MarketAPI, float), for at most budget days.
-- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead)` :3617 - As above for a fleet carrying troops to land (0:
-- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead, float worth)` :3623 - As above, a day needing worth defence off per fleet point lost.
-- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead, float worth, float floorFraction)` :3636 - As above, stopping before the fleet falls below floorFraction of what it started with - a raid's line is a third lost (raidLossFraction, ThreatAttackPlanner), an expedition's vanilla's abort line.
-- `ThreatGroundFronts.razePlan(MarketAPI market, float fp, float fuel)` :3722 - What a fleet of fp carrying fuel would make of the world by saturating it until it is razed as far as saturation goes, the fuel is poured, the guns would take the fleet below vanilla's abort line, or 
-- `ThreatGroundFronts.razePlan(MarketAPI market, float fp, float fuel, float floorFP)` :3727 - As above, stopping before the fleet falls below floorFP:
-- `ThreatGroundFronts.razePlan(MarketAPI market, float fp, float fuel, float floorFP, float downGoal)` :3738 - As above over a hive, finished once the least-worn structure saturation falls on is down downGoal days (0:
-- `ThreatGroundFronts.leastDown(MarketAPI market)` :3823 - Days the least-worn structure saturation falls on is down for now (#razePlan's figure, wear x (1 - condition));
-- `ThreatGroundFronts.saturationDone(MarketAPI market, float fp, float downGoal)` :3836 - Whether saturation by fp is done over a hive at a days-down goal (0:
-- `ThreatGroundFronts.squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId)` :3869 - BOMBING SQUADRON (2026-10-01, user's call):
-- `ThreatGroundFronts.squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId, float downGoal)` :3874 - As above at a days-down goal (#razePlan's downGoal;
-- `ThreatGroundFronts.withSquadron(float[] plan, float squadron)` :3910
-- `ThreatGroundFronts.squadronLadder(MarketAPI market, float upTo, float downGoal)` :3927 - The squadrons a commander weighs over this hive (#squadronPlan):
-- `ThreatGroundFronts.squadronRung(MarketAPI market, float fp, float downGoal)` :3950
-- `ThreatGroundFronts.leastSquadron(MarketAPI market, float downGoal)` :3962 - The fewest fleet points that saturate this hive to the commander's stop on their own (razePlan:
-- `ThreatGroundFronts.reachesStop(MarketAPI market, float fp, float downGoal)` :3985 - Whether fp alone reaches the stop, or the days-down goal (0:
-- `ThreatGroundFronts.saturationSpent(MarketAPI market, float fp)` :3995 - Whether saturation by fp has done what it usefully can over a hive (no bar, ThreatRazing.razes):
-- `ThreatGroundFronts.gunShare(float[] cond, float[] bonus, boolean[] gun)` :4049 - The guns' share of the figure at these conditions, D x (1 - 1 / their multiplier) as the theatre's batteryShare reads it.
-- `ThreatGroundFronts.isBattery(MarketAPI market, Industry ind)` :4058 - Whether a fortification is one of the guns - Ground Defenses or Heavy Batteries, either theatre's - whose share sets the return fire.
-- `ThreatGroundFronts.gunsWouldBreak(MarketAPI market, float groupFP, float spawnedFP, float abortFraction)` :4073 - Whether a day of the guns' answer here would take a group now at groupFP below abortFraction of the spawnedFP it set out with - the day an expedition would turn for home.
-- `ThreatGroundFronts.raiseUnrest(MarketAPI market, int target, String reason)` :4087 - Raises the world's unrest to target, never stacking on what is there already:
-- `ThreatGroundFronts.markBesieged(MarketAPI market)` :4105 - A world the siege rule describes counts as besieged for as long as its clock can run.
-- `ThreatGroundFronts.siegeSlice(float fp, MarketAPI market, float days)` :4128 - days of tactical bombardment by fp fleet points unopposed over a world (docs/suppression-balance.md v2):
-- `ThreatGroundFronts.siegeSlice(float fp, MarketAPI market, float days, boolean elapsed, boolean reapply)` :4132
-- `ThreatGroundFronts.siegeSlice(float fp, MarketAPI market, float days, boolean elapsed, boolean reapply, float defenceOverride, String reason)` :4142 - As above, with the defence figure supplied (negative:
-- `ThreatGroundFronts.siegeSlice(float fp, float orbitFP, MarketAPI market, float days, boolean elapsed, boolean reapply, float defenceOverride, String reason)` :4154 - As above for one of the fleets bombarding the world together, orbitFP the points of them all (#orbitPoints):
-- `ThreatGroundFronts.siegeSlice(float fp, float orbitFP, MarketAPI market, float days, boolean elapsed, boolean reapply, float defenceOverride, String reason, String razerFactionId)` :4160 - As above naming the faction whose bombardment it is (razerFactionId:
-- `ThreatGroundFronts.saturationTargets(MarketAPI market)` :4174 - What saturation falls on:
-- `ThreatGroundFronts.saturationSlice(float fp, MarketAPI market, float days, float fuel, boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason)` :4199 - days of saturation bombardment by fp with up to fuel to pour (docs/suppression-balance.md v2 section 4):
-- `ThreatGroundFronts.saturationSlice(float fp, float orbitFP, MarketAPI market, float days, float fuel, boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason)` :4206 - As above for one of the fleets saturating the world together (#siegeSlice(float, float, MarketAPI, float, boolean, boolean, float, String)):
-- `ThreatGroundFronts.bombardDay(float fp, MarketAPI market, boolean saturation)` :4250 - The day a fleet of fp would fly here now, tactical or saturation (#siegeSlice, #saturationSlice).
-- `ThreatGroundFronts.siegeSliceDays(CampaignFleetAPI fleet)` :4290 - Days since this fleet's last slice, clamped;
-- `ThreatGroundFronts.hiveTroopNeed(GroundFront front, MarketAPI market)` :4305 - The troops that would let the hive's counter-attack beat the enemy front, with fabricateHoldMargin of daylight;
-- `ThreatGroundFronts.breakUpForHive(GroundFront front, MarketAPI market, CampaignFleetAPI fleet)` :4323 - SHIPS INTO SOLDIERS OVER A HIVE (the user, 2026-10-13, after hw165-hw171, where five of 21 games fell to the bombardment draining the fuel stock to 0:
+- `ThreatGroundFronts.strataTarget(MarketAPI market)` :3354 - Whether the world is bombarded as strata:
+- `ThreatGroundFronts.hiveRazePerDay(float fp)` :3359 - Strata a day of bombardment by fp razes off a hive.
+- `ThreatGroundFronts.fuelPerStratum()` :3364 - Fuel a stratum razed burns.
+- `ThreatGroundFronts.bombardFuelPerDay(MarketAPI market, float fp)` :3369 - Fuel a day of bombardment burns here:
+- `ThreatGroundFronts.bombardDaysFor(MarketAPI market, float fuel, float fp)` :3375 - Days of bombardment this much fuel buys a fleet of fp here (#bombardFuelPerDay(MarketAPI, float));
+- `ThreatGroundFronts.hiveRaze(MarketAPI market, float fp, float days, float fuel, String razerFactionId)` :3384 - days of bombardment by fp over a hive with up to fuel to burn (Float.MAX_VALUE:
+- `ThreatGroundFronts.hivePlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead)` :3415 - #bombardPlan's run over a hive:
+- `ThreatGroundFronts.suppressionRate(MarketAPI market, float fp, float defence)` :3440 - Disruption days a day of bombardment adds to a structure still whole:
+- `ThreatGroundFronts.conditionAfterDay(MarketAPI market, Industry ind, float rate, float through)` :3447 - A structure's condition after one more day at this rate (the clock gains rate x condition x cover).
+- `ThreatGroundFronts.dailyGain(MarketAPI market, float fp)` :3457 - The most a day of bombardment by fp still adds anywhere on the world:
+- `ThreatGroundFronts.orbitSpent(MarketAPI market, float fp)` :3481 - Whether orbit has done what it usefully can here for a fleet of fp:
+- `ThreatGroundFronts.orbitSpent(MarketAPI market, float fp, float troops, boolean beachhead)` :3491 - As above for a fleet carrying troops to land:
+- `ThreatGroundFronts.orbitSpent(MarketAPI market, float fp, float troops, boolean beachhead, float worth)` :3496 - As above, a day needing worth defence off the world per fleet point lost (#swarmWorth).
+- `ThreatGroundFronts.hullWorth(float mult)` :3512 - What a hull is worth in defence to a side that can break it up into troops over its own front (#fabricateTroops):
+- `ThreatGroundFronts.swarmWorth()` :3524 - The swarm's stop (2026-09-28):
+- `ThreatGroundFronts.swarmWorth(MarketAPI market)` :3540 - As above over the world about to be landed on (2026-10-18, the user:
+- `ThreatGroundFronts.orbitDone(MarketAPI market, float fp, float fuel)` :3548 - Orbit has nothing more to give a fleet of fp carrying this much fuel:
+- `ThreatGroundFronts.orbitDone(MarketAPI market, float fp, float fuel, float troops, boolean beachhead)` :3553 - As above for a fleet carrying troops to land (#orbitSpent(MarketAPI, float, float, boolean)).
+- `ThreatGroundFronts.troopsToLand(MarketAPI market, float d, float d0, boolean beachhead)` :3564 - Troops a landing needs to be ready against the defence figure d:
+- `ThreatGroundFronts.stabilityMult(float stability)` :3578 - Vanilla's stability factor on the ground defence:
+- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp)` :3592 - What a fleet of fp would make of the world by bombarding for as long as its commander would, no longer than siegeOrbitDays:
+- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget)` :3609 - As #bombardPlan(MarketAPI, float), for at most budget days.
+- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead)` :3620 - As above for a fleet carrying troops to land (0:
+- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead, float worth)` :3626 - As above, a day needing worth defence off per fleet point lost.
+- `ThreatGroundFronts.bombardPlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead, float worth, float floorFraction)` :3639 - As above, stopping before the fleet falls below floorFraction of what it started with - a raid's line is a third lost (raidLossFraction, ThreatAttackPlanner), an expedition's vanilla's abort line.
+- `ThreatGroundFronts.razePlan(MarketAPI market, float fp, float fuel)` :3725 - What a fleet of fp carrying fuel would make of the world by saturating it until it is razed as far as saturation goes, the fuel is poured, the guns would take the fleet below vanilla's abort line, or 
+- `ThreatGroundFronts.razePlan(MarketAPI market, float fp, float fuel, float floorFP)` :3730 - As above, stopping before the fleet falls below floorFP:
+- `ThreatGroundFronts.razePlan(MarketAPI market, float fp, float fuel, float floorFP, float downGoal)` :3741 - As above over a hive, finished once the least-worn structure saturation falls on is down downGoal days (0:
+- `ThreatGroundFronts.leastDown(MarketAPI market)` :3826 - Days the least-worn structure saturation falls on is down for now (#razePlan's figure, wear x (1 - condition));
+- `ThreatGroundFronts.saturationDone(MarketAPI market, float fp, float downGoal)` :3839 - Whether saturation by fp is done over a hive at a days-down goal (0:
+- `ThreatGroundFronts.squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId)` :3872 - BOMBING SQUADRON (2026-10-01, user's call):
+- `ThreatGroundFronts.squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId, float downGoal)` :3877 - As above at a days-down goal (#razePlan's downGoal;
+- `ThreatGroundFronts.withSquadron(float[] plan, float squadron)` :3913
+- `ThreatGroundFronts.squadronLadder(MarketAPI market, float upTo, float downGoal)` :3930 - The squadrons a commander weighs over this hive (#squadronPlan):
+- `ThreatGroundFronts.squadronRung(MarketAPI market, float fp, float downGoal)` :3953
+- `ThreatGroundFronts.leastSquadron(MarketAPI market, float downGoal)` :3965 - The fewest fleet points that saturate this hive to the commander's stop on their own (razePlan:
+- `ThreatGroundFronts.reachesStop(MarketAPI market, float fp, float downGoal)` :3988 - Whether fp alone reaches the stop, or the days-down goal (0:
+- `ThreatGroundFronts.saturationSpent(MarketAPI market, float fp)` :3998 - Whether saturation by fp has done what it usefully can over a hive (no bar, ThreatRazing.razes):
+- `ThreatGroundFronts.gunShare(float[] cond, float[] bonus, boolean[] gun)` :4052 - The guns' share of the figure at these conditions, D x (1 - 1 / their multiplier) as the theatre's batteryShare reads it.
+- `ThreatGroundFronts.isBattery(MarketAPI market, Industry ind)` :4061 - Whether a fortification is one of the guns - Ground Defenses or Heavy Batteries, either theatre's - whose share sets the return fire.
+- `ThreatGroundFronts.gunsWouldBreak(MarketAPI market, float groupFP, float spawnedFP, float abortFraction)` :4076 - Whether a day of the guns' answer here would take a group now at groupFP below abortFraction of the spawnedFP it set out with - the day an expedition would turn for home.
+- `ThreatGroundFronts.raiseUnrest(MarketAPI market, int target, String reason)` :4090 - Raises the world's unrest to target, never stacking on what is there already:
+- `ThreatGroundFronts.markBesieged(MarketAPI market)` :4108 - A world the siege rule describes counts as besieged for as long as its clock can run.
+- `ThreatGroundFronts.siegeSlice(float fp, MarketAPI market, float days)` :4131 - days of tactical bombardment by fp fleet points unopposed over a world (docs/suppression-balance.md v2):
+- `ThreatGroundFronts.siegeSlice(float fp, MarketAPI market, float days, boolean elapsed, boolean reapply)` :4135
+- `ThreatGroundFronts.siegeSlice(float fp, MarketAPI market, float days, boolean elapsed, boolean reapply, float defenceOverride, String reason)` :4145 - As above, with the defence figure supplied (negative:
+- `ThreatGroundFronts.siegeSlice(float fp, float orbitFP, MarketAPI market, float days, boolean elapsed, boolean reapply, float defenceOverride, String reason)` :4157 - As above for one of the fleets bombarding the world together, orbitFP the points of them all (#orbitPoints):
+- `ThreatGroundFronts.siegeSlice(float fp, float orbitFP, MarketAPI market, float days, boolean elapsed, boolean reapply, float defenceOverride, String reason, String razerFactionId)` :4163 - As above naming the faction whose bombardment it is (razerFactionId:
+- `ThreatGroundFronts.saturationTargets(MarketAPI market)` :4177 - What saturation falls on:
+- `ThreatGroundFronts.saturationSlice(float fp, MarketAPI market, float days, float fuel, boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason)` :4202 - days of saturation bombardment by fp with up to fuel to pour (docs/suppression-balance.md v2 section 4):
+- `ThreatGroundFronts.saturationSlice(float fp, float orbitFP, MarketAPI market, float days, float fuel, boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason)` :4209 - As above for one of the fleets saturating the world together (#siegeSlice(float, float, MarketAPI, float, boolean, boolean, float, String)):
+- `ThreatGroundFronts.bombardDay(float fp, MarketAPI market, boolean saturation)` :4253 - The day a fleet of fp would fly here now, tactical or saturation (#siegeSlice, #saturationSlice).
+- `ThreatGroundFronts.siegeSliceDays(CampaignFleetAPI fleet)` :4293 - Days since this fleet's last slice, clamped;
+- `ThreatGroundFronts.hiveTroopNeed(GroundFront front, MarketAPI market)` :4308 - The troops that would let the hive's counter-attack beat the enemy front, with fabricateHoldMargin of daylight;
+- `ThreatGroundFronts.breakUpForHive(GroundFront front, MarketAPI market, CampaignFleetAPI fleet)` :4326 - SHIPS INTO SOLDIERS OVER A HIVE (the user, 2026-10-13, after hw165-hw171, where five of 21 games fell to the bombardment draining the fuel stock to 0:
 ### CONSUMING A HUMAN WORLD (phase E, docs/strata-are-the-threat.md 13): the swarm's landed
-- `ThreatGroundFronts.infestShare(MarketAPI market, GroundFront front)` :4368 - The seized share of a human world under the swarm's front:
-- `ThreatGroundFronts.infestGrowthPerDay(MarketAPI market, GroundFront front)` :4378 - Strata a day the swarm's front grows on what it eats of the world:
-- `ThreatGroundFronts.bleedHiveStrata(MarketAPI market, GroundFront front, float elapsedDays)` :4395 - THE STRATA ARE THE TROOPS (the user, 2026-10-24:
-- `ThreatGroundFronts.swarmFleetsNear(MarketAPI market)` :4407 - The Threat fleets within the swarm orbit radius of a hive world - the fleets swarmOrbitStrength weighs.
-- `ThreatGroundFronts.payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel)` :4429 - What a fleet's bombardment costs in fuel, paid.
-- `ThreatGroundFronts.payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel, float keep)` :4434 - As #payOrdnance(CampaignFleetAPI, String, float), never touching the last keep of what the fleet carries (a relief's passage home, #reliefFuelHome).
-- `ThreatGroundFronts.ordnanceAvailable(CampaignFleetAPI fleet, String factionId)` :4456 - The fuel a fleet could put into its bombardment now, without paying it (#payOrdnance);
-- `ThreatGroundFronts.ordnanceAvailable(CampaignFleetAPI fleet, String factionId, float keep)` :4461 - As #ordnanceAvailable(CampaignFleetAPI, String), less the last keep of what the fleet carries (#payOrdnance(CampaignFleetAPI, String, float, float)).
-- `ThreatGroundFronts.ordnanceSources(CampaignFleetAPI fleet, String factionId)` :4483 - The markets a fleet's bombardment draws on past its own provisions - its supply line.
-- `ThreatGroundFronts.abstractSiege(MarketAPI market, float start, float troops, float abortFraction)` :4510 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go:
-- `ThreatGroundFronts.abstractSiege(MarketAPI market, float start, float troops, float abortFraction, String factionId)` :4516 - As above for the faction whose siege it is (#readyToLand(MarketAPI, float, String, boolean)).
-- `ThreatGroundFronts.abstractSiege(MarketAPI market, float start, float troops, float abortFraction, String factionId, float fuel)` :4527 - As above, paying each day's ordnance out of fuel:
-- `ThreatGroundFronts.abstractSiegeStep(MarketAPI market, float fp, float troops, float abortFP, String factionId, float fuel, float step, boolean elapsed)` :4574 - One step of an off-screen siege by fp abstract fleet points:
-- `ThreatGroundFronts.applyFleetLosses(CampaignFleetAPI fleet, float fp)` :4604 - Takes fp fleet points off a live fleet as ships lost to the batteries, smallest first, banking the remainder in the fleet's memory until it buys a hull.
-- `ThreatGroundFronts.applyFleetLosses(CampaignFleetAPI fleet, float fp, List<FleetMemberAPI> lost)` :4608
-- `ThreatGroundFronts.applyFleetLosses(CampaignFleetAPI fleet, float fp, List<FleetMemberAPI> lost, String bankKey)` :4618 - As above, against a named bank.
-- `ThreatGroundFronts.smallestFirst(CampaignFleetAPI fleet)` :4640 - The fleet's ships in the order the guns take them:
-- `ThreatGroundFronts.compare(FleetMemberAPI a, FleetMemberAPI b)` :4643
-- `ThreatGroundFronts.previewFleetLosses(CampaignFleetAPI fleet, float fp)` :4659
-- `ThreatGroundFronts.shipName(FleetMemberAPI member)` :4681 - A ship as the dialogs name it:
-- `ThreatGroundFronts.lossLines(CampaignFleetAPI fleet, float fp)` :4690 - The day's return fire as the prompts quote it, one fact a line:
+- `ThreatGroundFronts.infestShare(MarketAPI market, GroundFront front)` :4371 - The seized share of a human world under the swarm's front:
+- `ThreatGroundFronts.infestGrowthPerDay(MarketAPI market, GroundFront front)` :4381 - Strata a day the swarm's front grows on what it eats of the world:
+- `ThreatGroundFronts.bleedHiveStrata(MarketAPI market, GroundFront front, float elapsedDays)` :4398 - THE STRATA ARE THE TROOPS (the user, 2026-10-24:
+- `ThreatGroundFronts.swarmFleetsNear(MarketAPI market)` :4410 - The Threat fleets within the swarm orbit radius of a hive world - the fleets swarmOrbitStrength weighs.
+- `ThreatGroundFronts.payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel)` :4432 - What a fleet's bombardment costs in fuel, paid.
+- `ThreatGroundFronts.payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel, float keep)` :4437 - As #payOrdnance(CampaignFleetAPI, String, float), never touching the last keep of what the fleet carries (a relief's passage home, #reliefFuelHome).
+- `ThreatGroundFronts.ordnanceAvailable(CampaignFleetAPI fleet, String factionId)` :4459 - The fuel a fleet could put into its bombardment now, without paying it (#payOrdnance);
+- `ThreatGroundFronts.ordnanceAvailable(CampaignFleetAPI fleet, String factionId, float keep)` :4464 - As #ordnanceAvailable(CampaignFleetAPI, String), less the last keep of what the fleet carries (#payOrdnance(CampaignFleetAPI, String, float, float)).
+- `ThreatGroundFronts.ordnanceSources(CampaignFleetAPI fleet, String factionId)` :4486 - The markets a fleet's bombardment draws on past its own provisions - its supply line.
+- `ThreatGroundFronts.abstractSiege(MarketAPI market, float start, float troops, float abortFraction)` :4513 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go:
+- `ThreatGroundFronts.abstractSiege(MarketAPI market, float start, float troops, float abortFraction, String factionId)` :4519 - As above for the faction whose siege it is (#readyToLand(MarketAPI, float, String, boolean)).
+- `ThreatGroundFronts.abstractSiege(MarketAPI market, float start, float troops, float abortFraction, String factionId, float fuel)` :4530 - As above, paying each day's ordnance out of fuel:
+- `ThreatGroundFronts.abstractSiegeStep(MarketAPI market, float fp, float troops, float abortFP, String factionId, float fuel, float step, boolean elapsed)` :4577 - One step of an off-screen siege by fp abstract fleet points:
+- `ThreatGroundFronts.applyFleetLosses(CampaignFleetAPI fleet, float fp)` :4607 - Takes fp fleet points off a live fleet as ships lost to the batteries, smallest first, banking the remainder in the fleet's memory until it buys a hull.
+- `ThreatGroundFronts.applyFleetLosses(CampaignFleetAPI fleet, float fp, List<FleetMemberAPI> lost)` :4611
+- `ThreatGroundFronts.applyFleetLosses(CampaignFleetAPI fleet, float fp, List<FleetMemberAPI> lost, String bankKey)` :4621 - As above, against a named bank.
+- `ThreatGroundFronts.smallestFirst(CampaignFleetAPI fleet)` :4643 - The fleet's ships in the order the guns take them:
+- `ThreatGroundFronts.compare(FleetMemberAPI a, FleetMemberAPI b)` :4646
+- `ThreatGroundFronts.previewFleetLosses(CampaignFleetAPI fleet, float fp)` :4662
+- `ThreatGroundFronts.shipName(FleetMemberAPI member)` :4684 - A ship as the dialogs name it:
+- `ThreatGroundFronts.lossLines(CampaignFleetAPI fleet, float fp)` :4693 - The day's return fire as the prompts quote it, one fact a line:
 ### FABRICATING TROOPS FROM THE FLEET (2026-09-08, the user): a Defend
-- `ThreatGroundFronts.fabricateCost(float fp, MarketAPI market, float days)` :4737 - WHAT THE DROP COSTS, on top of the hulls that become troops:
-- `ThreatGroundFronts.defendFabricates(String factionId, MarketAPI market, CampaignFleetAPI fleet)` :4751 - Whether a DEFEND fleet of the faction fabricates troops now - the exact complement of #defendBombards:
-- `ThreatGroundFronts.defendWorth(String factionId, MarketAPI market)` :4769 - What a DEFEND fleet's day must take off per fleet point lost.
-- `ThreatGroundFronts.orbitDoneFor(MarketAPI market, CampaignFleetAPI fleet, String factionId)` :4778 - Orbit has nothing more to give this fleet here:
-- `ThreatGroundFronts.fabricateNeed(GroundFront front, MarketAPI market)` :4805 - The troops that would put this front back over the hold line, with fabricateHoldMargin of daylight so it does not sit on the boundary and oscillate.
-- `ThreatGroundFronts.fabricateArms(GroundFront front, int troops)` :4819 - The armaments a drop lands with:
-- `ThreatGroundFronts.fabricateTroops(CampaignFleetAPI fleet, MarketAPI market, String factionId, float days, String label)` :4846 - One poll of a Defend station feeding its front.
-- `ThreatGroundFronts.fabricationVisual(MarketAPI market, String factionId, int troops)` :4904 - The drop, seen from the map (2026-09-08, the bonus ask):
-- `ThreatGroundFronts.defendCommitted(CampaignFleetAPI fleet, String factionId, String marketId)` :4921 - Whether a Defend fleet over this world is committed to the ground and must NOT stand down on strength (the user, 2026-09-08:
-- `ThreatGroundFronts.navyHoldsOver(CampaignFleetAPI fleet, String factionId, MarketAPI market)` :4943 - A navy's Defend fleet over its own standing front stays however worn (2026-09-28, the user:
-- `ThreatGroundFronts.holdGap(GroundFront front, MarketAPI market)` :4958 - The troops that would put this front back over the hold line with fabricateHoldMargin of daylight, measured at the footing the front fights at:
-- `ThreatGroundFronts.counterGap(GroundFront front, MarketAPI market)` :4975 - The troops that would let a swarm front repel the world's counter-attack out of cover, with fabricateHoldMargin of daylight - the line the Defend fleets feed it to past the hold line (2026-10-09, hw93
-- `ThreatGroundFronts.readyToLand(MarketAPI market, float troops, boolean orbitDone)` :4992 - Whether an expedition should land on the world now rather than keep bombarding it:
-- `ThreatGroundFronts.readyToLand(MarketAPI market, float troops, String factionId, boolean orbitDone)` :5010 - As #readyToLand(MarketAPI, float, boolean) for a siege expedition's FIRST landing:
-- `ThreatGroundFronts.beachheadTroops(MarketAPI market)` :5026 - The smallest landing #beachheadSurvives:
-- `ThreatGroundFronts.beachheadSurvives(MarketAPI market, float troops)` :5034
-- `ThreatGroundFronts.overrunNeed(MarketAPI market)` :5053 - THE LANDING IS SIZED TO OVERRUN (the user, 2026-10-25:
-- `ThreatGroundFronts.overrunTroops(MarketAPI market)` :5063 - The landing that puts #overrunNeed ashore through the guns' toll (#landingFor).
-- `ThreatGroundFronts.landingOverruns(MarketAPI market, float troops)` :5070 - Whether a landing of troops here now overruns the world:
-- `ThreatGroundFronts.landingPhase(MarketAPI market, float troops, String besieging, boolean orbitDone)` :5083 - The expedition's status line over a world it has not landed on, saying WHY it is landing when it is (the user, 2026-09-06:
-- `ThreatGroundFronts.landingPhase(MarketAPI market, float troops, String besieging, String factionId, boolean orbitDone)` :5088 - As above, for the faction whose landing it is (#readyToLand(MarketAPI, float, String, boolean)).
-- `ThreatGroundFronts.frontCanHold(GroundFront front, MarketAPI market)` :5097 - Whether the front can hold as it stands:
-- `ThreatGroundFronts.fightsForOrbit(String factionId, MarketAPI market)` :5126 - WHETHER A FLEET ON STATION FIGHTS FOR THE ORBIT IT IS SITTING IN (2026-09-08).
-- `ThreatGroundFronts.stationFlies(String factionId, MarketAPI market)` :5147 - An enemy station over the world, back from its repairs.
-- `ThreatGroundFronts.defendRazes(String factionId, MarketAPI market, CampaignFleetAPI fleet)` :5169 - FINISH BY SATURATION (2026-09-28):
-- `ThreatGroundFronts.defendRazeSlice(CampaignFleetAPI fleet, MarketAPI market, String factionId, float days, String label)` :5188 - A day of #defendRazes:
-- `ThreatGroundFronts.defendBombards(String factionId, MarketAPI market, CampaignFleetAPI fleet)` :5208
-- `ThreatGroundFronts.guardOverHive(ThreatFleetOrders.Order o)` :5256 - The player's Deploy over a hive its landing attacks (the Domain table's attacked-world row, 2026-10-30 evening):
-- `ThreatGroundFronts.tickSupport(float elapsedDays)` :5261
-- `ThreatGroundFronts.idleReason(String factionId, MarketAPI market)` :5300 - Why a Defend fleet at its world is not bombarding now (see #defendBombards).
-- `ThreatGroundFronts.supportSlice(CampaignFleetAPI fleet, MarketAPI market, String factionId, float days, String label)` :5319 - One supporting fleet's slice for the poll:
-- `ThreatGroundFronts.orbitPoints(String factionId, MarketAPI market, float fp)` :5373 - The points a faction bombards the world with, this fleet's among them:
-- `ThreatGroundFronts.wantsExpedition(MarketAPI market)` :5395 - A Threat front signalling for the next expedition (IncursionManager weights the world up as a strike target by strikeReinforceWeight).
-- `ThreatGroundFronts.stationOverFront(GroundFront front, MarketAPI market)` :5418 - A hostile station flying over a world the swarm's army stands on - back from its repairs, or never beaten - is what the next expedition answers first (the user, 2026-10-28 evening, Haven's battlestati
-- `ThreatGroundFronts.losingGround(GroundFront front, MarketAPI market)` :5430 - The world's push is moving the line back on the front (THE LINE, 2026-10-23):
-- `ThreatGroundFronts.reliefNeed(MarketAPI market)` :5442 - Marines an own colony under a Threat army still wants banked to push the line back at frontPushBackRate (#reliefNeed(MarketAPI, float)):
-- `ThreatGroundFronts.reliefNeed(MarketAPI market, float rate)` :5457 - Marines a colony under a Threat army still wants banked for the line to move toward its defenders at rate (THE LINE, 2026-10-23:
-- `ThreatGroundFronts.deployWant(MarketAPI market)` :5471 - Marines a colony under a Threat army wants deployed in all for the line to move its way at frontPushBackRate (#deployWant(MarketAPI, float)) - the ground victory's price.
-- `ThreatGroundFronts.deployWant(MarketAPI market, float rate)` :5476 - The marines #reliefNeed(MarketAPI, float) sizes its ask to, in all:
-- `ThreatGroundFronts.reliefRate(float a, float coverA, float coverD, float garrison, float perMarine, float counter, float staff, float armed, boolean landingPushes, boolean worldPushes)` :5520 - The line's rate with armed marines banked on the world (#reliefNeed(MarketAPI, float)).
-- `ThreatGroundFronts.invadedWorlds(String factionId)` :5534 - HOME UNDER ATTACK (the user, 2026-10-20, after hw240c:
-- `ThreatGroundFronts.homeUnderAttack(String factionId)` :5550 - Whether the faction has an own world under a Threat army (knob homeUnderAttack):
-- `ThreatGroundFronts.homeFightIn(String factionId, String systemId)` :5559 - Whether the faction's home fight is in this system:
-- `ThreatGroundFronts.defenderArmsNeed(MarketAPI market)` :5574 - Heavy armaments an own colony under a Threat army wants banked beside its marines (2026-10-17):
-- `ThreatGroundFronts.defenderArmsWant(MarketAPI market)` :5579 - The heavy armaments an own colony under a Threat army wants banked:
-- `ThreatGroundFronts.daysToFinalPush(GroundFront front)` :5590 - Days until a dry Threat front's final push, or -1 when it is not waiting.
-- `ThreatGroundFronts.layerName(MarketAPI market)` :5598 - "stratum" on a hive, "district" on a colony.
-- `ThreatGroundFronts.layerPlural(MarketAPI market)` :5604 - "strata" on a hive, "districts" on a colony.
-- `ThreatGroundFronts.announceCollapse(GroundFront front, MarketAPI market)` :5609 - A player's or faction's front is gone:
-- `ThreatGroundFronts.evacuate(GroundFront front, MarketAPI market)` :5630 - The colony died under the front.
-- `ThreatGroundFronts.evacuate(GroundFront front, ThreatOutposts.Outpost outpost, Vector2f hyperLoc)` :5634
-- `ThreatGroundFronts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :5729 - SAVE COMPATIBILITY ONLY (2026-10-27):
-- `ThreatGroundFronts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :5733
+- `ThreatGroundFronts.fabricateCost(float fp, MarketAPI market, float days)` :4740 - WHAT THE DROP COSTS, on top of the hulls that become troops:
+- `ThreatGroundFronts.defendFabricates(String factionId, MarketAPI market, CampaignFleetAPI fleet)` :4754 - Whether a DEFEND fleet of the faction fabricates troops now - the exact complement of #defendBombards:
+- `ThreatGroundFronts.defendWorth(String factionId, MarketAPI market)` :4772 - What a DEFEND fleet's day must take off per fleet point lost.
+- `ThreatGroundFronts.orbitDoneFor(MarketAPI market, CampaignFleetAPI fleet, String factionId)` :4781 - Orbit has nothing more to give this fleet here:
+- `ThreatGroundFronts.fabricateNeed(GroundFront front, MarketAPI market)` :4808 - The troops that would put this front back over the hold line, with fabricateHoldMargin of daylight so it does not sit on the boundary and oscillate.
+- `ThreatGroundFronts.fabricateArms(GroundFront front, int troops)` :4822 - The armaments a drop lands with:
+- `ThreatGroundFronts.fabricateTroops(CampaignFleetAPI fleet, MarketAPI market, String factionId, float days, String label)` :4849 - One poll of a Defend station feeding its front.
+- `ThreatGroundFronts.fabricationVisual(MarketAPI market, String factionId, int troops)` :4907 - The drop, seen from the map (2026-09-08, the bonus ask):
+- `ThreatGroundFronts.defendCommitted(CampaignFleetAPI fleet, String factionId, String marketId)` :4924 - Whether a Defend fleet over this world is committed to the ground and must NOT stand down on strength (the user, 2026-09-08:
+- `ThreatGroundFronts.navyHoldsOver(CampaignFleetAPI fleet, String factionId, MarketAPI market)` :4946 - A navy's Defend fleet over its own standing front stays however worn (2026-09-28, the user:
+- `ThreatGroundFronts.holdGap(GroundFront front, MarketAPI market)` :4961 - The troops that would put this front back over the hold line with fabricateHoldMargin of daylight, measured at the footing the front fights at:
+- `ThreatGroundFronts.counterGap(GroundFront front, MarketAPI market)` :4978 - The troops that would let a swarm front repel the world's counter-attack out of cover, with fabricateHoldMargin of daylight - the line the Defend fleets feed it to past the hold line (2026-10-09, hw93
+- `ThreatGroundFronts.readyToLand(MarketAPI market, float troops, boolean orbitDone)` :4995 - Whether an expedition should land on the world now rather than keep bombarding it:
+- `ThreatGroundFronts.readyToLand(MarketAPI market, float troops, String factionId, boolean orbitDone)` :5013 - As #readyToLand(MarketAPI, float, boolean) for a siege expedition's FIRST landing:
+- `ThreatGroundFronts.beachheadTroops(MarketAPI market)` :5029 - The smallest landing #beachheadSurvives:
+- `ThreatGroundFronts.beachheadSurvives(MarketAPI market, float troops)` :5037
+- `ThreatGroundFronts.overrunNeed(MarketAPI market)` :5056 - THE LANDING IS SIZED TO OVERRUN (the user, 2026-10-25:
+- `ThreatGroundFronts.overrunTroops(MarketAPI market)` :5066 - The landing that puts #overrunNeed ashore through the guns' toll (#landingFor).
+- `ThreatGroundFronts.landingOverruns(MarketAPI market, float troops)` :5073 - Whether a landing of troops here now overruns the world:
+- `ThreatGroundFronts.landingPhase(MarketAPI market, float troops, String besieging, boolean orbitDone)` :5086 - The expedition's status line over a world it has not landed on, saying WHY it is landing when it is (the user, 2026-09-06:
+- `ThreatGroundFronts.landingPhase(MarketAPI market, float troops, String besieging, String factionId, boolean orbitDone)` :5091 - As above, for the faction whose landing it is (#readyToLand(MarketAPI, float, String, boolean)).
+- `ThreatGroundFronts.frontCanHold(GroundFront front, MarketAPI market)` :5100 - Whether the front can hold as it stands:
+- `ThreatGroundFronts.fightsForOrbit(String factionId, MarketAPI market)` :5129 - WHETHER A FLEET ON STATION FIGHTS FOR THE ORBIT IT IS SITTING IN (2026-09-08).
+- `ThreatGroundFronts.stationFlies(String factionId, MarketAPI market)` :5150 - An enemy station over the world, back from its repairs.
+- `ThreatGroundFronts.defendRazes(String factionId, MarketAPI market, CampaignFleetAPI fleet)` :5172 - FINISH BY SATURATION (2026-09-28):
+- `ThreatGroundFronts.defendRazeSlice(CampaignFleetAPI fleet, MarketAPI market, String factionId, float days, String label)` :5191 - A day of #defendRazes:
+- `ThreatGroundFronts.defendBombards(String factionId, MarketAPI market, CampaignFleetAPI fleet)` :5211
+- `ThreatGroundFronts.guardOverHive(ThreatFleetOrders.Order o)` :5259 - The player's Deploy over a hive its landing attacks (the Domain table's attacked-world row, 2026-10-30 evening):
+- `ThreatGroundFronts.tickSupport(float elapsedDays)` :5264
+- `ThreatGroundFronts.idleReason(String factionId, MarketAPI market)` :5303 - Why a Defend fleet at its world is not bombarding now (see #defendBombards).
+- `ThreatGroundFronts.supportSlice(CampaignFleetAPI fleet, MarketAPI market, String factionId, float days, String label)` :5322 - One supporting fleet's slice for the poll:
+- `ThreatGroundFronts.orbitPoints(String factionId, MarketAPI market, float fp)` :5376 - The points a faction bombards the world with, this fleet's among them:
+- `ThreatGroundFronts.wantsExpedition(MarketAPI market)` :5398 - A Threat front signalling for the next expedition (IncursionManager weights the world up as a strike target by strikeReinforceWeight).
+- `ThreatGroundFronts.stationOverFront(GroundFront front, MarketAPI market)` :5421 - A hostile station flying over a world the swarm's army stands on - back from its repairs, or never beaten - is what the next expedition answers first (the user, 2026-10-28 evening, Haven's battlestati
+- `ThreatGroundFronts.losingGround(GroundFront front, MarketAPI market)` :5433 - The world's push is moving the line back on the front (THE LINE, 2026-10-23):
+- `ThreatGroundFronts.reliefNeed(MarketAPI market)` :5445 - Marines an own colony under a Threat army still wants banked to push the line back at frontPushBackRate (#reliefNeed(MarketAPI, float)):
+- `ThreatGroundFronts.reliefNeed(MarketAPI market, float rate)` :5460 - Marines a colony under a Threat army still wants banked for the line to move toward its defenders at rate (THE LINE, 2026-10-23:
+- `ThreatGroundFronts.deployWant(MarketAPI market)` :5474 - Marines a colony under a Threat army wants deployed in all for the line to move its way at frontPushBackRate (#deployWant(MarketAPI, float)) - the ground victory's price.
+- `ThreatGroundFronts.deployWant(MarketAPI market, float rate)` :5479 - The marines #reliefNeed(MarketAPI, float) sizes its ask to, in all:
+- `ThreatGroundFronts.reliefRate(float a, float coverA, float coverD, float garrison, float perMarine, float counter, float staff, float armed, boolean landingPushes, boolean worldPushes)` :5523 - The line's rate with armed marines banked on the world (#reliefNeed(MarketAPI, float)).
+- `ThreatGroundFronts.invadedWorlds(String factionId)` :5537 - HOME UNDER ATTACK (the user, 2026-10-20, after hw240c:
+- `ThreatGroundFronts.homeUnderAttack(String factionId)` :5553 - Whether the faction has an own world under a Threat army (knob homeUnderAttack):
+- `ThreatGroundFronts.homeFightIn(String factionId, String systemId)` :5562 - Whether the faction's home fight is in this system:
+- `ThreatGroundFronts.defenderArmsNeed(MarketAPI market)` :5577 - Heavy armaments an own colony under a Threat army wants banked beside its marines (2026-10-17):
+- `ThreatGroundFronts.defenderArmsWant(MarketAPI market)` :5582 - The heavy armaments an own colony under a Threat army wants banked:
+- `ThreatGroundFronts.daysToFinalPush(GroundFront front)` :5593 - Days until a dry Threat front's final push, or -1 when it is not waiting.
+- `ThreatGroundFronts.layerName(MarketAPI market)` :5601 - "stratum" on a hive, "district" on a colony.
+- `ThreatGroundFronts.layerPlural(MarketAPI market)` :5607 - "strata" on a hive, "districts" on a colony.
+- `ThreatGroundFronts.announceCollapse(GroundFront front, MarketAPI market)` :5612 - A player's or faction's front is gone:
+- `ThreatGroundFronts.evacuate(GroundFront front, MarketAPI market)` :5633 - The colony died under the front.
+- `ThreatGroundFronts.evacuate(GroundFront front, ThreatOutposts.Outpost outpost, Vector2f hyperLoc)` :5637
+- `ThreatGroundFronts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :5732 - SAVE COMPATIBILITY ONLY (2026-10-27):
+- `ThreatGroundFronts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :5736
 
 ## ThreatGroundWarCondition (269 lines)
 - `ThreatGroundWarCondition.apply(String id)` :36 - THE INFESTATION.

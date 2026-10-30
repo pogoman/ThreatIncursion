@@ -563,9 +563,15 @@ public class ThreatAidRequests {
 			return q;
 		}
 		float budget = (float) Math.floor(budget(helper));
-		float per = pricePerUnit(priceMarket(target), c.good, 2);
-		if (priceOf(amount, per) > budget) {
-			amount = per > 0f ? (float) Math.floor(budget / per) : amount;
+		int price = priceFor(target, c.good, amount);
+		if (price > budget) {
+			// the amount the standing buys: the price is linear in the amount (a cap only lowers it)
+			amount = (float) Math.floor(amount * budget / price);
+			price = priceFor(target, c.good, amount);
+			while (amount >= minSpare(c.good) && price > budget) {
+				amount = (float) Math.floor(amount * 0.95f);
+				price = priceFor(target, c.good, amount);
+			}
 			if (amount < minSpare(c.good)) {
 				q.why = "would take you below Favourable";
 				return q;
@@ -573,7 +579,7 @@ public class ThreatAidRequests {
 		}
 		q.donor = donor;
 		q.amount = amount;
-		q.price = priceOf(amount, per);
+		q.price = price;
 		q.etaDays = eta(ThreatBases.of(donor), target);
 		return q;
 	}
@@ -602,17 +608,15 @@ public class ThreatAidRequests {
 			return q;
 		}
 		float budget = (float) Math.floor(budget(helper));
-		float per = pricePerUnit(priceMarket(target), ThreatNeeds.FLEETS, 2);
-		if (priceOf(fp, per) > budget) {
-			fp = per > 0f ? (float) Math.floor(budget / per) : fp;
-			if (fp < min) {
-				q.why = "would take you below Favourable";
-				return q;
-			}
+		// a guard's price is flat (aidRepGuardArrived - what the player's own guard earns), whatever its size
+		int price = priceFor(target, ThreatNeeds.FLEETS, fp);
+		if (price > budget) {
+			q.why = "would take you below Favourable";
+			return q;
 		}
 		q.donor = base;
 		q.amount = fp;
-		q.price = priceOf(fp, per);
+		q.price = price;
 		q.etaDays = eta(ThreatBases.of(base), target);
 		return q;
 	}
@@ -703,7 +707,7 @@ public class ThreatAidRequests {
 				if (why == null && carried < 1f) why = "nothing could be loaded at " + donor.getName();
 				if (why == null) {
 					o.amount = carried;
-					o.price = priceOf(carried, pricePerUnit(priceMarket(target), o.good, 2));
+					o.price = priceFor(target, o.good, carried);
 					o.acceptedAt = Global.getSector().getClock().getTimestamp();
 					ThreatIncConfig.log("Aid accepted: " + helper.getId() + " sends " + (int) carried + " " + o.good + " from "
 							+ donor.getName() + " to " + target.name() + ", ETA " + (int) Math.ceil(o.etaDays)
@@ -907,10 +911,15 @@ public class ThreatAidRequests {
 		return null;
 	}
 
-	/** The whole-number standing price of an amount at a rate a unit: at least 1 for anything sent. */
-	protected static int priceOf(float amount, float per) {
-		if (amount <= 0f || per <= 0f) return 0;
-		return Math.max(1, Math.round(amount * per));
+	/**
+	 * The whole-number standing an amount of a good costs the player when a faction sends it to the
+	 * target: ThreatAid.standingFor at the target's price market - the figure the player would EARN
+	 * sending the same (the user, 2026-10-31: "parity on rep for sending and requesting") - at
+	 * least 1 for anything sent.
+	 */
+	protected static int priceFor(ThreatBases.Base target, String good, float amount) {
+		if (amount <= 0f) return 0;
+		return Math.max(1, Math.round(ThreatAid.standingFor(priceMarket(target), good, amount)));
 	}
 
 	/**
@@ -960,18 +969,6 @@ public class ThreatAidRequests {
 	// ------------------------------------------------------------------
 	// candidates, prices, standing
 	// ------------------------------------------------------------------
-
-	/** The price multiplier of a tier: Min 1.0, Med 1.25, Max 1.5 (decision 3). */
-	public static float askPrice(int tier) {
-		return tier >= 2 ? ThreatIncConfig.aidAskPriceMax() : tier == 1 ? ThreatIncConfig.aidAskPriceMed()
-				: ThreatIncConfig.aidAskPriceMin();
-	}
-
-	/** Standing points one unit of the good costs when a faction sends it to the player's market at the tier. */
-	public static float pricePerUnit(MarketAPI market, String good, int tier) {
-		if (ThreatNeeds.FLEETS.equals(good)) return ThreatIncConfig.aidRepGuardArrived() / 100f * askPrice(tier);
-		return ThreatAid.valueAt(market, good, 1f) / Math.max(1f, ThreatIncConfig.aidRepPerCredits()) * askPrice(tier);
-	}
 
 	/** Standing points the player can spend with the faction before dropping below Favourable. */
 	public static float budget(FactionAPI helper) {

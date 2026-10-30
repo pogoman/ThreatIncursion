@@ -1322,12 +1322,14 @@
 	# aid is refused by a faction at war with you, and below this standing (-1 since 2026-10-31: any faction not at war
 	# with you takes it - sending aid is how an unfavourable standing is raised; it sends nothing back below Favourable)
 	"threatinc_aidMinRelation": -1,
-	# standing earned on arrival: goods' value at the receiving market per
-	# point (1 point = 0.01 relationship), capped per delivery; flat points for
-	# a guard on station and one that serves its term; a split for a task
-	# force at a hive's door among every faction in the hive's reach
+	# standing, one rate both ways (2026-10-31, the user: "parity on rep for sending and requesting"):
+	# goods' value at the receiving market per point (1 point = 0.01 relationship) - earned when the
+	# player's aid lands, charged when a faction's aid lands at the player's; aidRepMaxPerDelivery above
+	# 0 caps a delivery both ways (it was 10: 12,900 hulls sent earned +10, 700 received cost 15 - off
+	# now); flat points for a guard on station (charged the same for a faction's guard) and one that
+	# serves its term; a split for a task force at a hive's door among every faction in the hive's reach
 	"threatinc_aidRepPerCredits": 10000,
-	"threatinc_aidRepMaxPerDelivery": 10,
+	"threatinc_aidRepMaxPerDelivery": 0,
 	"threatinc_aidRepGuardArrived": 3,
 	"threatinc_aidRepGuardCompleted": 2,
 	"threatinc_aidRepFrontTotal": 5,
@@ -1357,6 +1359,7 @@
 	# aidRequestBesetDelay (2026-10-31): a beset faction looks less often - its check days x (1 + besetness x this); at 3 a
 	# faction with half its worlds under the Threat looks every 2.5 days
 	"threatinc_aidRequestBesetDelay": 3.0,
+	# aidAskPrice* and aidRepWeight* are RETIRED (2026-10-31 parity): one rate, no tier, no purpose weight
 	"threatinc_aidAskPriceMin": 1.0,
 	"threatinc_aidAskPriceMed": 1.25,
 	"threatinc_aidAskPriceMax": 1.5,

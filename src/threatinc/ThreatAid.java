@@ -946,60 +946,63 @@ public class ThreatAid {
 	}
 
 	/**
-	 * Standing points a delivery of the load (AID_COMMODITIES order; hull units in the fifth slot or
-	 * {@code hullUnits}) would earn at the market, as {@link #onDelivered} charges it: the goods' value
-	 * over aidRepPerCredits weighted by the purpose served, capped at aidRepMaxPerDelivery. The NPC
-	 * tabs' Standing column (the user, 2026-10-31: "show exact amount requested, standing reward and
-	 * estimated eta").
+	 * STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31: "should be parity on rep for sending and
+	 * requesting" - 12,900 hulls sent read +10, the per-delivery cap, while 700 received cost 15 at
+	 * the Max rate a unit): the points an amount of a good is worth at the market, earned when the
+	 * player's aid lands there and charged when a faction's aid lands at the player's - its value
+	 * there (valueAt) over aidRepPerCredits, no tier multiplier, no purpose weight; a defence fleet
+	 * aidRepGuardArrived flat. aidRepMaxPerDelivery caps it only when above 0 (0 by default now).
 	 */
-	public static float rewardEstimate(MarketAPI market, float[] load, int hullUnits) {
+	public static float standingFor(MarketAPI market, String good, float amount) {
+		if (amount <= 0f || good == null) return 0f;
+		if (ThreatNeeds.FLEETS.equals(good)) return ThreatIncConfig.aidRepGuardArrived();
 		if (market == null) return 0f;
-		float[] qty = new float[ThreatReserves.AID_COMMODITIES.length];
-		for (int i = 0; i < qty.length; i++) qty[i] = load != null && i < load.length ? Math.max(0f, load[i]) : 0f;
-		if (hullUnits > 0) qty[qty.length - 1] += hullUnits;
-		float[] weights = ThreatNeeds.purposeWeights(market, qty);
-		float weighted = 0f;
-		for (int i = 0; i < qty.length; i++) {
-			if (qty[i] <= 0f) continue;
-			float w = weights != null && i < weights.length ? weights[i] : ThreatIncConfig.aidRepWeightSurplus();
-			weighted += valueAt(market, ThreatReserves.AID_COMMODITIES[i], qty[i]) * w;
+		return capped(valueAt(market, good, amount) / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+	}
+
+	/** As above for a load in AID_COMMODITIES order, hull units in the fifth slot or {@code hullUnits}: one figure for the whole delivery. */
+	public static float standingFor(MarketAPI market, float[] load, int hullUnits) {
+		if (market == null) return 0f;
+		float value = 0f;
+		for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length; i++) {
+			float q = load != null && i < load.length ? Math.max(0f, load[i]) : 0f;
+			if (i == ThreatReserves.AID_COMMODITIES.length - 1 && hullUnits > 0) q += hullUnits;
+			if (q > 0f) value += valueAt(market, ThreatReserves.AID_COMMODITIES[i], q);
 		}
-		return Math.min(ThreatIncConfig.aidRepMaxPerDelivery(), weighted / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+		return capped(value / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+	}
+
+	/** aidRepMaxPerDelivery above 0 caps a delivery's points; 0 leaves them to the rate. */
+	protected static float capped(float points) {
+		float cap = ThreatIncConfig.aidRepMaxPerDelivery();
+		return cap > 0f ? Math.min(cap, points) : points;
+	}
+
+	/** The NPC tabs' Standing column: what a Send of the load would earn ({@link #standingFor}). */
+	public static float rewardEstimate(MarketAPI market, float[] load, int hullUnits) {
+		return standingFor(market, load, hullUnits);
 	}
 
 	/** As above for an amount of one good. */
 	public static float rewardEstimate(MarketAPI market, String good, float amount) {
-		int idx = index(good);
-		if (idx < 0 || amount <= 0f) return 0f;
-		float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
-		load[idx] = amount;
-		return rewardEstimate(market, load, 0);
+		return standingFor(market, good, amount);
 	}
 
 	/**
-	 * Goods landed at another faction's colony, by convoy or by hand. Standing follows the goods'
-	 * value at the receiving market over aidRepPerCredits, each good weighted by the purpose it
-	 * serves (docs/war-effort-rework.md section 4: { weights} in AID_COMMODITIES order, read
-	 * by ThreatNeeds.purposeWeights BEFORE the goods landed - the served part at the purpose's
-	 * weight, the surplus at the surplus weight; null = all surplus), capped at
-	 * aidRepMaxPerDelivery. Until 2026-10-23 a delivery under an open contract was doubled instead.
+	 * Goods landed at another faction's colony, by convoy or by hand. Standing is {@link #standingFor}
+	 * of the whole load at the receiving market - the same figure a faction charges the player for
+	 * the same goods (parity, 2026-10-31). The purpose weights ({@code weights}, ThreatNeeds.purposeWeights;
+	 * docs/war-effort-rework.md section 4) and the per-delivery cap were retired with it: both made
+	 * giving cheaper than asking. Until 2026-10-23 a delivery under an open contract was doubled instead.
 	 */
 	public static void onDelivered(MarketAPI base, String recipientFactionId, int marines,
 			int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights) {
 		if (base == null || recipientFactionId == null) return;
 		if (Factions.PLAYER.equals(recipientFactionId)) return;
-		int[] qty = {marines, armaments, fuel, supplies, ships};
+		float[] load = {marines, armaments, fuel, supplies, ships};
 		float value = 0f;
-		float weighted = 0f;
-		for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length; i++) {
-			if (qty[i] <= 0) continue;
-			float v = valueAt(base, ThreatReserves.AID_COMMODITIES[i], qty[i]);
-			value += v;
-			float w = weights != null && i < weights.length ? weights[i] : ThreatIncConfig.aidRepWeightSurplus();
-			weighted += v * w;
-		}
-		float points = Math.min(ThreatIncConfig.aidRepMaxPerDelivery(),
-				weighted / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+		for (int i = 0; i < load.length; i++) if (load[i] > 0f) value += valueAt(base, ThreatReserves.AID_COMMODITIES[i], load[i]);
+		float points = standingFor(base, load, 0);
 		rep(recipientFactionId, points, text);
 		if (viaFleet) {
 			FactionAPI faction = Global.getSector().getFaction(recipientFactionId);
@@ -1012,8 +1015,7 @@ public class ThreatAid {
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, " + supplies
-				+ " supplies, " + ships + " ship hulls - value " + (int) value + " weighted " + (int) weighted
-				+ ", rep +" + points);
+				+ " supplies, " + ships + " ship hulls - value " + (int) value + ", rep +" + points);
 	}
 
 	/**

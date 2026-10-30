@@ -171,7 +171,17 @@ sits left of Transfer in the Staging group (`BUTTON_RECALL_ALL`, `ThreatFactionV
 colony row's calls home every fleet order based there (`Order.baseMarketId`), the expeditions and task
 forces raised there (`ThreatPurgeFGI.sourceBase`, `ThreatResponseIntel.baseName`) and the convoys from
 it; a Front row's lifts the front (`ThreatConvoys.pullOutFront`) and recalls the fleets over the hive
-(`Order.targetId`). The fleets table keeps its per-fleet Recall.
+(`Order.targetId`). The fleets table keeps its per-fleet Recall. **2026-10-30 (the user, on Ogre's
+retreating front: "recall should send convoy here to retrieve marines and arms"):** the lift sails the
+evacuation convoy AT ONCE from the nearest base (`pickFrontBase`, pickup) and marks the front
+`withdrawRequested`; it waits at the hive's door while the orbit is contested (`frontRunWaitDays` at
+most, then home) and lifts the front whole when it lands. Before, a contested orbit or any convoy
+already bound there refused the order outright, and the player's fronts had no planner pass to retry
+it (`planLogistics` skips the player). Only an evacuation convoy already on its way greys the Recall
+(`pullOutBlockReason`); the tooltip and confirm read `pullOutText` - "An evacuation convoy from Haven
+lifts the 288 marines and 101 heavy armaments off Ogre. It waits at the door while the orbit is
+contested, 30 days at most." A supply run landing on a player front no longer clears
+`withdrawRequested` (`ThreatGroundFronts.resupply`; an NPC front's dry-front withdrawal still is).
 
 **Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
 fleet sized based on hulls modifier ... then the attack button is available assuming the staged
