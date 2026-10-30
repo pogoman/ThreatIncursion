@@ -315,7 +315,7 @@ the hive's weak point.
 
 **The contracts are retired (2026-10-30, the user: "retire the strategic missions no longer need
 them ... missions no longer [make] sense as threat shifts colony sizes constantly").**
-`threatinc_missionsEnabled` is false by default; `IncursionManager.manageMissions` withdraws an
+`ThreatIncConfig.missionsEnabled` is false, no knob (a stored LunaLib value had shadowed the csv default); `IncursionManager.manageMissions` withdraws an
 older save's posted offers and an accepted contract runs out as the player's. The strip's Missions
 figure went. A **High-value targets** table (`addTargets`, 12:17) lived under the ledger for an
 hour; the user ("we dont need the table we just built can just put the priority there") had it

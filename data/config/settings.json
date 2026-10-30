@@ -320,9 +320,8 @@
 	# least one of each - and the weakest offer on a board is withdrawn when a
 	# better target of that same tier comes online. Accepted contracts are
 	# never withdrawn and do not count against the offer cap.
-	# Contracts are posted in a mobilised faction's name only (the nearest one
-	# at war with the swarm); while no faction is mobilised the boards are silent.
-	"threatinc_missionsEnabled": false,
+	# Contracts RETIRED 2026-10-30 (ThreatIncConfig.missionsEnabled is false, no knob); the
+	# reward and posting figures are kept for an old save's accepted contract.
 	"threatinc_missionBaseReward": 150000,
 	"threatinc_missionPostingDays": 90,
 	"threatinc_missionDurationDays": 120,

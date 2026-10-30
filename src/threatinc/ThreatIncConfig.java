@@ -280,7 +280,8 @@ public class ThreatIncConfig {
 
 	// ---- missions (defense-board contracts) ----
 
-	public static boolean missionsEnabled()  { return b("threatinc_missionsEnabled", true); }
+	/** RETIRED 2026-10-30, no knob: a stored LunaLib "true" shadowed the new default and the boards kept posting (the user: "still getting these missions"). */
+	public static boolean missionsEnabled()  { return false; }
 	public static float missionBaseReward()  { return f("threatinc_missionBaseReward"); }
 	/** Days an offer stays posted, unaccepted, before it is withdrawn. */
 	public static float missionPostingDays() { return f("threatinc_missionPostingDays"); }

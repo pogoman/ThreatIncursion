@@ -57,7 +57,6 @@ threatinc_aidRequestsEnabled,Request Aid,Boolean,true,Call friendly factions for
 threatinc_aidRequestCheckDays,Request Check Days,Double,1,Days between each friendly faction's looks at a request for aid.,0.5,30
 threatinc_aidRequestBesetWeight,Request Beset Weight,Double,1.0,"How a faction's own worlds under the Threat gate its answer: 0 always answers, 1 a faction with half its worlds beset answers only from half way to Cooperative.",0,2
 threatinc_aidCommsEnabled,War Comms,Boolean,true,Notices from colonies when they need something. Off silences them.,,
-threatinc_missionsEnabled,Defence Contracts,Boolean,false,RETIRED 2026-10-30: the war board's High-value targets table replaced the contracts. On: factions post contracts against hive infrastructure on their mission boards.,,
 threatinc_missionBaseReward,Contract Reward per Hive Size,Double,150000,Credits a contract pays per size of its target.,25000,1000000
 threatinc_maxPostedMissions,Contracts on Offer,Int,3,Contracts offered at once.,1,6
 threatinc_swarmBountiesEnabled,Swarm Bounties,Boolean,true,Factions whose sieges are outweighed post bounties on Threat ships.,,

@@ -488,8 +488,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (!ThreatIncConfig.missionsEnabled()) {
 			// RETIRED 2026-10-30 (the user: "we should also retire the strategic missions no longer
 			// need them ... missions no longer [make] sense as threat shifts colony sizes constantly"):
-			// the knob is off by default; an older save's offers are withdrawn, an accepted contract
-			// runs out as the player's. The targets table on the Threat board lists the links instead.
+			// no knob (a stored LunaLib "true" kept the boards posting, 13:30 the same day); an older
+			// save's offers are withdrawn, an accepted contract runs out as the player's. The ledger's
+			// Priority column ranks the links instead.
 			for (ThreatMissionIntel curr : ThreatMissionIntel.getPosted()) curr.standDown();
 			return;
 		}
