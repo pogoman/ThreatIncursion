@@ -92,7 +92,10 @@ public class ThreatDeploy {
 
 	/**
 	 * The plan for a Deploy / Redeploy at the target at the levers. A colony of the player's is
-	 * its own source; an outpost's source is {@link #outpostSource}. The hulls: the lever's share
+	 * its own source while its own free hulls at the Hulls lever make {@link #minPoints} - else
+	 * the nearest colony that can ({@link #nearestSource}; the user, 2026-10-30: "cant deploy to
+	 * arkoman despite having 5k+ hulls at haven"); an outpost's source is the nearest colony that
+	 * can. The hulls: the lever's share
 	 * of the source's free hulls plus what is deployed there already; under {@link #minPoints}
 	 * the plan is refused with the figures. Each good: the lever's share of what the source
 	 * spares (ThreatConvoys.handSpare) plus what is aboard already - marines and arms are then
@@ -113,7 +116,7 @@ public class ThreatDeploy {
 		} else {
 			// an outpost's, or a hive the player's landing attacks (the Domain table's row, 2026-10-30
 			// evening): built at the nearest colony; what is deployed over it already is resized like a colony's
-			p.source = outpostSource(target, levers);
+			p.source = nearestSource(target, levers, null);
 			if (target.market != null) p.staged = ThreatFleetOrders.stagedAt(target.market);
 		}
 		if (!ThreatAidCapacity.enabled()) {
@@ -134,6 +137,25 @@ public class ThreatDeploy {
 			p.reason = ThreatNotice.Reason.of("The Hulls lever is at None")
 					.line("Med or Max deploys half or all of the hulls free");
 			return p;
+		}
+		if (colony != null && hulls > 0) {
+			// a colony with too few hulls of its own borrows the nearest colony's; a fleet deployed there from
+			// another colony keeps the colony that holds its commitment as its source
+			MarketAPI holder = null;
+			for (ThreatFleetOrders.Order o : p.staged) {
+				ThreatAidCapacity.Commitment c = ThreatAidCapacity.heldBy(o.fleet);
+				if (c != null && c.marketId != null) holder = Global.getSector().getEconomy().getMarket(c.marketId);
+				if (holder != null) break;
+			}
+			if (holder != null && holder != colony && holder.isPlayerOwned()) {
+				p.source = holder;
+			} else {
+				float own = Math.max(0f, ThreatAidCapacity.ownFreeFP(colony));
+				if (ThreatConvoys.share(hulls) * (own + p.livePts) < minPoints() - 0.5f) {
+					MarketAPI other = nearestSource(target, levers, colony);
+					if (other != null) p.source = other;
+				}
+			}
 		}
 		if (p.source == null) {
 			p.reason = ThreatNotice.Reason.of("No colony of yours can field a fleet for %s at the Hulls lever",
@@ -169,17 +191,18 @@ public class ThreatDeploy {
 	}
 
 	/**
-	 * The colony of the player's an outpost's Deploy builds at: the nearest whose own free hulls at
-	 * the Hulls lever's share make at least {@link #minPoints}, or null.
+	 * The colony of the player's a Deploy builds at when the target has no hulls of its own (an
+	 * outpost, a hive, a colony short of them): the nearest, {@code not} excepted, whose own free
+	 * hulls at the Hulls lever's share make at least {@link #minPoints}, or null.
 	 */
-	protected static MarketAPI outpostSource(ThreatBases.Base target, int[] levers) {
+	protected static MarketAPI nearestSource(ThreatBases.Base target, int[] levers, MarketAPI not) {
 		if (target == null || target.hyperLoc() == null) return null;
 		float share = ThreatConvoys.share(hullsTier(levers));
 		if (share <= 0f) return null;
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(Global.getSector().getPlayerFaction().getId())) {
-			if (m.getStarSystem() == null || !ThreatAidCapacity.applies(m)) continue;
+			if (m == not || m.getStarSystem() == null || !ThreatAidCapacity.applies(m)) continue;
 			if (share * ThreatAidCapacity.ownFreeFP(m) < minPoints() - 0.5f) continue;
 			float d = Misc.getDistanceLY(m.getStarSystem().getLocation(), target.hyperLoc());
 			if (d < bestDist) {

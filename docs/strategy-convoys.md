@@ -113,6 +113,14 @@ the row tooltip names the hive a base stocks for and the four targets.
   stock convoys bring for a voyage stays spendable and the voyage can spend it, while hunts and donors
   still leave the siege's and the relay's.
 
+**Nothing of the player's sails unordered (the user, 2026-10-30: "turn off the random supply convoys for
+player. nothing moves unless player orders it").** `planLogistics` skips the player's faction
+(knob `threatinc_playerAutoConvoys`, false): no staging convoy to a player base, no relief or front
+run, no outpost return, no feeding convoy, no Support sortie for a player front. The board's Supplies,
+Reinforce, Deploy and Fleet orders move the player's stock and hulls; an NPC faction answering a
+Request still sails its own convoy. The paragraphs below describe the player's staging as the
+planner ran it before, and run again only with the knob on.
+
 A player base
 stages for the nearest hive the PLAYER HAS FOUND (`ThreatIncData.discoveredSystems`), at
 any range, as the Siege button has none for the player; until 2026-09-05 evening it took

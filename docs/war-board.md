@@ -184,8 +184,11 @@ and resizes it to the levers as they stand: ships come off as hulls (`reabsorb`,
 the ledger's commitment and health baseline scaled with them), goods the fleet no longer holds or
 the lever no longer sends go back to the reserve (`load`); at Hulls None the fleet keeps its
 ships and only the goods are reloaded - Redeploy never recalls (the user, 2026-10-30; the fleets
-table's Recall dissolves it, `ThreatFleetOrders.fold`). An outpost's Deploy builds at the nearest colony and sails
-there. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
+table's Recall dissolves it, `ThreatFleetOrders.fold`). A colony whose own free hulls at the Hulls lever
+make less than the smallest fleet borrows the nearest colony's that do (`ThreatDeploy.nearestSource`; the
+user, 2026-10-30: "cant deploy to arkoman despite having 5k+ hulls at haven" - Arkoman had no hulls,
+Haven 5,449), the fleet built and loaded there and sailed over; a Redeploy keeps the colony that holds the
+fleet's commitment as its source. An outpost's Deploy builds at the nearest colony and sails there. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
 aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` deployed: the goods come
 off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
 nothing), greyed with the figures while nothing is deployed, the fuel aboard is under the passage
@@ -193,34 +196,42 @@ or the supplies under the expedition's deposit and hold (`attackBlockFacts`). Th
 Fuel / Marines ladders went. The NPC tabs' "Hive systems in reach" table and its Hunt went ("we
 dont need to see that table at all").
 
-**The call for aid (2026-10-29 evening, the user: "i want to rework the request and aid system";
-`ThreatAidRequests`, docs/war-effort-rework.md 3).** No Request button anywhere. A Transfer or
-Deploy whose load at the levers is under what the colony needs (a good's convoy load under the
-colony's need at the lever's tier, `ThreatAidRequests.transferShortfall`; a Deploy's fleet under
-the fleets need, `deployShortfall` - "deploy would be for a relief task force") says so in its own
-intel confirm box (`ThreatFactionView.addOrderPrompt`; the user, 2026-10-30: "use this kind of dialog
-not the full screen one"; vanilla's `CampaignUIAPI.showConfirmDialog` draws nothing over the intel
-screen): "Short of marines: Confirm also calls for any marines that can be spared", and Confirm sails
-the order and logs the call; a button that would send nothing confirms the call alone ("{World} is
-short of marines. / Call for aid?");
-a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
-alone. The request is one a world, a part a good, each part its own call (2026-10-30, so different
-factions can answer each) standing until it lands or is withdrawn; the confirm box and the notice
-word the call by the lever's tier (`ThreatAidRequests.askLabel`: Max "any marines that can be
-spared", Med "some spare marines").
-**Requests for aid** is a table at the top of every faction tab (`ThreatFactionView.addRequests`;
-nothing drawn with none). Since 2026-10-30 (the user: "each factions requests table should only show
-their requests") the player's tab lists the player's calls and an NPC faction's tab its own: its
-colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`) - World, Asked (purpose and
-good), Answer (the convoy at sea with the good and whose it is, `convoysWith`; a task force bound
-for a fleets need; else waiting), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a
-convoy of that good alone at its lever, Med when None, from the player's colony sparing the most -
-`ThreatAid.quoteAid` through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever).
-The player's: World, Asked (all or half of what one colony of each faction spares),
-Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on every
-row (one call a row; off once that part is answered). The player's tab shows every faction's answer, an NPC tab that faction's own
-(its part sailing, another's taken, or its last reason and when it looks again). The colony rows'
-Transfer and Deploy tooltips end with the shortfall when there is one. An ally's colony rows hold
+**The calls and the offers (2026-10-31, the user: "these are just on/off toggles. when toggle
+active that counts as you asking the sector for the given commodity. the table then will have
+responses from other factions which you can accept or ignore"; `ThreatAidRequests`,
+docs/war-effort-rework.md 3).** No Request button and no shortfall prompt: under the **Requests for
+aid** heading of the player's tab sits a toggle row (`ThreatFactionView.addRequestButtons`, floated
+into the row reserved under the heading) - **Colony** reads the Domain entry the toggles are for
+and cycles the next (the player's colonies, then the hive worlds their landings attack, then their
+outposts, `requestTargets`; `ThreatIncursionIntel.requestTarget`), then **Fuel / Supplies / Marines /
+Arms / Hulls**, each a button reading On or Off for that entry (`BUTTON_REQ_TOGGLE` ->
+`ThreatAidRequests.toggle`, no Confirm; a front's Fuel, Supplies and Hulls and an outpost's Hulls are
+off with the reason, `goodOffReason`). On is a standing call (`Call`): "Distress Call - {World}
+calls for marines"; off withdraws it and drops its open offers. Every faction at Favourable or
+better looks once a day on its own clock and puts an **offer** on the table (`Offer`, `quote`: all
+that its colony sparing the most in reach spares, at least `aidRequestMinSpare`, cut to the standing
+the player can spend with it; "Aid Offered" notice with the ETA and the price). The table
+(`addRequests` / `addOfferRow`): World, Commodity, Age (days the call has stood), Answer ("Hegemony:
+1,568 marines from Ilm" in the faction's colour; "waiting" on a call nobody has answered),
+Standing (charged on receipt), ETA (once accepted) and **Actions**: **Accept** and **Reject** on an
+offer, **Cancel** on one at sea. Accept (`BUTTON_REQ_ACCEPT`, a Confirm with the figures) quotes it
+afresh and sails it now - a convoy to a colony or outpost (`ThreatConvoys.dispatch` with the base),
+a supply run to a front (`ThreatConvoys.aidFrontRun`, the player's own cover opening its door) -
+carrying the offer's id; Reject (`BUTTON_REQ_REJECT`, no Confirm) clears it and the faction offers
+nothing more on that call until it is toggled again (`Call.declined`); Cancel (`BUTTON_REQ_CANCEL`)
+turns the convoy home, nothing charged. A landed offer leaves the table ("Aid Landed", the standing
+charged); with the call still on the faction may offer again - several offers of one good stand
+together, from different factions or in turn. An offer whose call was toggled off still sails and
+keeps its Cancel (`strays`). Since 2026-10-30 (the user: "each factions requests table should only
+show their requests") an NPC faction's tab lists its own needs instead: its colonies' needs on the
+ledger (`ThreatNeeds.of`, `addFactionNeeds`) - World, Asked (purpose and good), Answer (the convoy
+at sea with the good and whose it is, `convoysWith`; a task force bound for a fleets need; else
+waiting), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
+alone at its lever, Med when None, from the player's colony sparing the most - `ThreatAid.quoteAid`
+through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever). Until 2026-10-31 a
+request was logged from a Transfer or Deploy short of the colony's needs in the order's own confirm
+box, one a world with a part a good in the lever's tier words, and the first faction with the
+capacity sailed on its own; that flow, its Withdraw and the task-force part are gone. An ally's colony rows hold
 no buttons any more (the Defend at every hull free and the Aid convoy went); its sieged world's
 front row holds **Defend** at the Fleet lever instead (`BUTTON_AID_DEFEND` ->
 `ThreatAid.quoteDefend(market, fleetTier)`). The fronts' Reinforce and Request went: a Transfer

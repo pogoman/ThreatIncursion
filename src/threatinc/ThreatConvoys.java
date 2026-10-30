@@ -1332,6 +1332,11 @@ public class ThreatConvoys {
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null) continue;
+			// NOTHING OF THE PLAYER'S MOVES UNORDERED (the user, 2026-10-30, after "Your faction Expedition Sails" notices: "turn off
+			// the random supply convoys for player. nothing moves unless player orders it"): no staging stock, relief, front
+			// run, outpost return, feeding convoy or Support sortie sails from the player's colonies by itself - the board's
+			// Supplies, Reinforce, Deploy and Fleet buttons are the only orders (knob threatinc_playerAutoConvoys)
+			if (faction.isPlayerFaction() && !ThreatIncConfig.playerAutoConvoys()) continue;
 			List<MarketAPI> markets = ThreatReserves.marketsOf(factionId);
 			// the bases short of the most (as a share of their target) sail
 			// first, so the donors' stock goes to them first. No cap on
@@ -1924,6 +1929,21 @@ public class ThreatConvoys {
 		return dispatchFrontRun(base, hive, front, faction, load, false, random);
 	}
 
+	/**
+	 * AN ALLY'S SUPPLY RUN TO THE PLAYER'S FRONT (ThreatAidRequests.accept, 2026-10-31): the helper's
+	 * run from its base to the hive world the player's landing attacks, {@code load} = [marines,
+	 * armaments], flagged for the player so the player's own cover opens its door (pollFrontRun) and
+	 * its landing is received as aid. The lead convoy, or null when nothing sailed.
+	 */
+	public static Convoy aidFrontRun(ThreatBases.Base base, MarketAPI hive, FactionAPI helper, float[] load, Random random) {
+		if (base == null || hive == null || helper == null || load == null) return null;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+		if (front == null || !front.isPlayerOwned()) return null;
+		Convoy c = dispatchFrontRun(base, hive, front, helper, load, false, random);
+		if (c != null) c.recipientFactionId = com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
+		return c;
+	}
+
 	/** Why the board's Supply order at this load tier would send nothing now, or null if a run would sail. */
 	public static String supplyBlockReason(FactionAPI faction, MarketAPI hive, int[] levers) {
 		ThreatGroundFronts.GroundFront front = hive != null
@@ -2104,7 +2124,12 @@ public class ThreatConvoys {
 		if (!c.runningIn) {
 			// the same door canRunTo keeps: our own escort or orbit cover over the
 			// planet lets the run in
-			if (canRunTo(fleet.getFaction(), hive) != null) {
+			// (an ally's run to the player's front, 2026-10-31: the player's cover opens it too)
+			String door = canRunTo(fleet.getFaction(), hive);
+			if (door != null && c.recipientFactionId != null) {
+				door = canRunTo(Global.getSector().getFaction(c.recipientFactionId), hive);
+			}
+			if (door != null) {
 				long now = Global.getSector().getClock().getTimestamp();
 				if (c.waitSinceTimestamp == 0L) {
 					c.waitSinceTimestamp = now;
@@ -2164,6 +2189,8 @@ public class ThreatConvoys {
 			}
 			ThreatIncConfig.log("Supply run delivered at " + hive.getName() + ": " + marines
 					+ " marines, " + armaments + " armaments");
+			// an ally's run answering the player's call (ThreatAidRequests, 2026-10-31): received and charged
+			if (c.recipientFactionId != null && c.requestId != null) ThreatAidRequests.onConvoyLanded(c, ThreatBases.of(hive));
 		}
 		all().remove(c);
 		// home on the tracked leg: survivors and any undelivered cargo return to
@@ -3384,13 +3411,13 @@ public class ThreatConvoys {
 
 		// another faction's colony: the player's standing, an ally's word
 		FactionAPI sender = Global.getSector().getFaction(c.factionId);
-		if (c.recipientFactionId != null && sender != null && base.market != null) {
-			if (sender.isPlayerFaction()) {
+		if (c.recipientFactionId != null && sender != null) {
+			if (sender.isPlayerFaction() && base.market != null) {
 				ThreatAid.onDelivered(base.market, c.recipientFactionId, marines, armaments, fuel,
 						supplies, ships, true, null, weights);
 			} else {
 				// an answer to the player's request for aid lands: the part is received and charged (ThreatAidRequests); any other ally's convoy, its word
-				if (!ThreatAidRequests.onConvoyLanded(c, base.market)) ThreatCoalition.onAllyDelivered(c, base.market);
+				if (!ThreatAidRequests.onConvoyLanded(c, base) && base.market != null) ThreatCoalition.onAllyDelivered(c, base.market);
 			}
 		}
 

@@ -998,6 +998,10 @@
 	# No radius (2026-10-01): an NPC donor reaches as far as its fuel above the
 	# floor pays the base escort's voyage (12 fuel a light-year); the player's any range
 	"threatinc_convoyEnabled": true,
+	# the player's colonies never sail a convoy by themselves (the user, 2026-10-30: "nothing moves
+	# unless player orders it"): no staging, relief, front run, outpost return or feeding convoy
+	# and no Support sortie for the player's fronts - only the board's orders. True restores them
+	"threatinc_playerAutoConvoys": false,
 	# fewer, larger, escorted (docs/design-theory.md 8.2): loads size to the
 	# whole shortfall, and these reference loads measure the minimum
 	# worthwhile sailing (2026-09-29: they were caps) and price a pool's haul
