@@ -47,6 +47,8 @@ public class ThreatObjectives {
 
 	protected static class Row {
 		String objective;
+		/** The producer industry id of a producer row; null for a strike staging. */
+		String industry;
 		MarketAPI world;
 		ThreatWarBoard.Entry entry;
 		float score;
@@ -78,6 +80,10 @@ public class ThreatObjectives {
 			if (out.isEmpty()) out.add("Never scouted");
 			return out;
 		}
+		// ONE THING A ROW, THE MOST IMPORTANT FIRST (the user, 2026-10-30 16:15: "dont say top or next. just say
+		// the thing and its size ... should just show the most important thing"): a strike massing, then a
+		// producer the hive leans on (the largest or next-largest known, rows), then a low mass, then the
+		// system's best producer, then isolation, then the mass - the cell shows the first, the tooltip all
 		Set<String> covered = new HashSet<String>();
 		if (rows != null) {
 			for (Row r : rows) {
@@ -85,13 +91,10 @@ public class ThreatObjectives {
 					out.add(r.objective);
 					continue;
 				}
-				int size = sizeSeen(e, r.world);
-				out.add(r.objective + (size > 0 ? " (size " + size + ")" : ""));
-				covered.add(r.world.getId() + "|" + r.objective.substring(r.objective.indexOf(' ') + 1));
+				out.add(made(r.industry, sizeSeen(e, r.world)));
+				covered.add(r.world.getId() + "|" + r.industry);
 			}
 		}
-		String best = bestMade(e, covered);
-		if (best != null) out.add(best);
 		float mass = 0f;
 		boolean any = false;
 		for (MarketAPI m : e.markets) {
@@ -101,20 +104,34 @@ public class ThreatObjectives {
 			mass += st;
 			any = true;
 		}
-		if (any) out.add(mass < LOW_MASS ? "Low strata mass (" + n(mass) + ")" : "Strata mass " + n(mass));
+		if (any && mass < LOW_MASS) out.add("Low strata mass (" + n(mass) + ")");
+		String best = bestMade(e, covered);
+		if (best != null) out.add(best);
 		if (isolated(e, all)) out.add("Isolated");
+		if (any && mass >= LOW_MASS) out.add("Strata mass " + n(mass));
 		return out;
 	}
 
-	/** The cell: the notes joined; "-" with none. */
+	/** The cell: the first note alone; "-" with none. */
 	public static String noteText(List<String> lines) {
 		if (lines == null || lines.isEmpty()) return "-";
+		return lines.get(0);
+	}
+
+	/** Every note, joined, for the tooltip. */
+	public static String allText(List<String> lines) {
 		StringBuilder b = new StringBuilder();
 		for (String l : lines) {
 			if (b.length() > 0) b.append(", ");
 			b.append(l);
 		}
 		return b.toString();
+	}
+
+	/** "Size 8 fuel production" - a producer and the size the report saw it at (the size left off when unknown). */
+	protected static String made(String industry, int size) {
+		String what = Industries.FUELPROD.equals(industry) ? "fuel production" : Industries.REFINING.equals(industry) ? "refining" : "mining";
+		return size > 0 ? "Size " + size + " " + what : Character.toUpperCase(what.charAt(0)) + what.substring(1);
 	}
 
 	/** The cell's colour: a lost party in the loss colour, a strike staging in the Threat's, nothing known grey, else the highlight. */
@@ -139,7 +156,7 @@ public class ThreatObjectives {
 	public static void addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all, float pad) {
 		List<String> lines = lines(e, rows, all);
 		Color h = Misc.getHighlightColor();
-		if (!lines.isEmpty()) tooltip.addPara("Notes: %s.", pad, h, noteText(lines));
+		if (!lines.isEmpty()) tooltip.addPara("Notes: %s.", pad, h, allText(lines));
 		float lost = ThreatIntel.lostDay(Factions.PLAYER, e.systemId);
 		float seenDay = e.seen != null ? e.seen.day : -1f;
 		if (lost >= 0f && lost > seenDay) {
@@ -151,7 +168,8 @@ public class ThreatObjectives {
 		CampaignFleetAPI player = Global.getSector().getPlayerFleet();
 		float fp = player != null ? player.getFleetPoints() : 0f;
 		for (Row r : rows) {
-			tooltip.addPara(r.objective + ": %s. " + r.why + " " + r.effect + ".", 4f, h, r.world.getName());
+			String label = r.industry != null ? made(r.industry, sizeSeen(e, r.world)) : r.objective;
+			tooltip.addPara(label + ": %s. " + r.why + " " + r.effect + ".", 4f, h, r.world.getName());
 			if (ThreatSatBomb.enabled() && fp > 0f) {
 				tooltip.addPara("A saturation bombardment by your fleet costs %s fuel here, razes %s strata and keeps the world's industries offline %s days.",
 						2f, h, Misc.getWithDGS(Math.round(ThreatSatBomb.price(r.world, fp))),
@@ -185,10 +203,8 @@ public class ThreatObjectives {
 			}
 		}
 		if (bestInd == null) return null;
-		String noun = Industries.FUELPROD.equals(bestInd) ? "fuel plant" : Industries.REFINING.equals(bestInd) ? "refinery" : "mine";
-		if (covered.contains(bestWorld + "|" + noun)) return null;
-		String what = Industries.FUELPROD.equals(bestInd) ? "fuel production" : Industries.REFINING.equals(bestInd) ? "refining" : "mining";
-		return (bestSize > 0 ? "Size " + bestSize + " " : "") + what;
+		if (covered.contains(bestWorld + "|" + bestInd)) return null;
+		return made(bestInd, bestSize);
 	}
 
 	/** No other known hive system within ISOLATED_LY, among at least two others. */
@@ -275,6 +291,7 @@ public class ThreatObjectives {
 				}
 				Row r = new Row();
 				r.objective = (k == 0 ? "Top " : "Next ") + nouns[i];
+				r.industry = industry;
 				r.world = top;
 				r.entry = entryOf.get(top.getId());
 				r.score = starve * 3f + hold + (Industries.FUELPROD.equals(industry) ? 1f : 0f) - k * 0.5f;

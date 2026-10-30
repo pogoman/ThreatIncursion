@@ -34,11 +34,13 @@ is the layout it implements.
    `ThreatIntel.markLost` from `ThreatScouts.Sorties.onLost`), "Never scouted", then "Strike staging" where the player's report of a world recorded a strike massing
    (`ThreatIntel.Report.worldStaging`: staged + flying in for it when seen; never the offensive's live
    plan - 15:45, "kinda cheating. fog of war"; the Strikes column counts expeditions in flight, so a
-   staging has a note and an empty Strikes cell until it sails), then each resource's top
-   and next-largest KNOWN producer ("Top fuel plant (size 8)", "Next refinery (size 6)"), the system's
-   best producer as the report saw it ("Size 7 mining", `Report.made` / `bestMade`, unless an objective
-   names it), its strata mass ("Low strata mass (8,000)" under `LOW_MASS` 10,000, else "Strata mass
-   45,000") and "Isolated" (no other known hive system within `ISOLATED_LY` 8). Colours: a loss red, a
+   staging has a note and an empty Strikes cell until it sails), then a producer the hive leans
+   on - the largest or next-largest known holder of a fuel plant, refinery or mine (`rows`), written as
+   the thing and its size, "Size 8 fuel production" (`made`; 16:15, the user: "dont say top or next") -
+   then "Low strata mass (8,000)" under `LOW_MASS` 10,000, the system's best producer as the report saw
+   it ("Size 7 mining", `Report.made` / `bestMade`, unless a producer line names it), "Isolated" (no other
+   known hive system within `ISOLATED_LY` 8) and the mass ("Strata mass 45,000"). **The cell shows the
+   first note alone** ("should just show the most important thing"); the tooltip lists them all. Colours: a loss red, a
    staging the Threat's, nothing known grey. The row tooltip (`addTooltip`) carries the notes, the loss,
    the last look, each objective's reasoning and the sat bomb's fuel / strata / days for the player's
    fleet (`ThreatSatBomb.price`); its live mass and growth / starving lines went. **Scout** floats on

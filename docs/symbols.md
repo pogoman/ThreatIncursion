@@ -3658,21 +3658,23 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatObjectives (315 lines)
-- `ThreatObjectives.lines(ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all)` :72 - The system's notes, best first, from the player's report of it;
-- `ThreatObjectives.noteText(List<String> lines)` :110 - The cell:
-- `ThreatObjectives.noteColor(List<String> lines, Color bright, Color h, Color gray, Color loss)` :121 - The cell's colour:
-- `ThreatObjectives.ageText(ThreatWarBoard.Entry e)` :129 - The Age cell:
-- `ThreatObjectives.addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all, float pad)` :139 - The row tooltip's lines:
-- `ThreatObjectives.sizeSeen(ThreatWarBoard.Entry e, MarketAPI world)` :164 - The world's size as the report saw it, 0 unknown.
-- `ThreatObjectives.bestMade(ThreatWarBoard.Entry e, Set<String> covered)` :170 - "Size 8 fuel production":
-- `ThreatObjectives.isolated(ThreatWarBoard.Entry e, List<ThreatWarBoard.Entry> all)` :195 - No other known hive system within ISOLATED_LY, among at least two others.
-- `ThreatObjectives.n(float v)` :206
-- `ThreatObjectives.rows(List<ThreatWarBoard.Entry> entries)` :211 - The rows, best first:
-- `ThreatObjectives.compare(MarketAPI a, MarketAPI b)` :252
-- `ThreatObjectives.compare(Row a, Row b)` :296
-- `ThreatObjectives.output(String industry, int size)` :304 - Units the broadcast gives from a producer of this size:
-- `ThreatObjectives.demand(String industry, MarketAPI m)` :310 - Units the world demands of the producer's good:
+## ThreatObjectives (332 lines)
+- `ThreatObjectives.lines(ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all)` :74 - The system's notes, best first, from the player's report of it;
+- `ThreatObjectives.noteText(List<String> lines)` :116 - The cell:
+- `ThreatObjectives.allText(List<String> lines)` :122 - Every note, joined, for the tooltip.
+- `ThreatObjectives.made(String industry, int size)` :132 - "Size 8 fuel production" - a producer and the size the report saw it at (the size left off when unknown).
+- `ThreatObjectives.noteColor(List<String> lines, Color bright, Color h, Color gray, Color loss)` :138 - The cell's colour:
+- `ThreatObjectives.ageText(ThreatWarBoard.Entry e)` :146 - The Age cell:
+- `ThreatObjectives.addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all, float pad)` :156 - The row tooltip's lines:
+- `ThreatObjectives.sizeSeen(ThreatWarBoard.Entry e, MarketAPI world)` :182 - The world's size as the report saw it, 0 unknown.
+- `ThreatObjectives.bestMade(ThreatWarBoard.Entry e, Set<String> covered)` :188 - "Size 8 fuel production":
+- `ThreatObjectives.isolated(ThreatWarBoard.Entry e, List<ThreatWarBoard.Entry> all)` :211 - No other known hive system within ISOLATED_LY, among at least two others.
+- `ThreatObjectives.n(float v)` :222
+- `ThreatObjectives.rows(List<ThreatWarBoard.Entry> entries)` :227 - The rows, best first:
+- `ThreatObjectives.compare(MarketAPI a, MarketAPI b)` :268
+- `ThreatObjectives.compare(Row a, Row b)` :313
+- `ThreatObjectives.output(String industry, int size)` :321 - Units the broadcast gives from a producer of this size:
+- `ThreatObjectives.demand(String industry, MarketAPI m)` :327 - Units the world demands of the producer's good:
 
 ## ThreatOccupation (1186 lines)
 - `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :95 - XStream:
