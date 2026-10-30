@@ -1986,7 +1986,7 @@ public class ThreatFactionView {
 		if (call && promptOnly(id, intel)) {
 			prompt.addPara(shortMarket.getName() + " is short of %s.", 0f, Misc.getHighlightColor(),
 					ThreatAidRequests.shortText(shorts));
-			prompt.addPara("Call for " + ThreatAidRequests.askText(shorts) + "?", 10f);
+			prompt.addPara("Call for aid?", 10f);
 			return;
 		}
 		addOrderPromptBody(prompt, id, parts, intel);

@@ -134,7 +134,7 @@ intel confirm box (`ThreatFactionView.addOrderPrompt`; the user, 2026-10-30: "us
 not the full screen one"; vanilla's `CampaignUIAPI.showConfirmDialog` draws nothing over the intel
 screen): "Short of marines: Confirm also calls for any marines that can be spared", and Confirm sails
 the order and logs the call; a button that would send nothing confirms the call alone ("{World} is
-short of marines. / Call for any marines that can be spared?");
+short of marines. / Call for aid?");
 a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
 alone. The request is one a world, a part a good, each part its own call (2026-10-30, so different
 factions can answer each) standing until it lands or is withdrawn; the confirm box and the notice
