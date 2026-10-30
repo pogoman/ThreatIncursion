@@ -1883,3 +1883,25 @@ spread at or above the lump jar's band on set B (341-352) and inside it on set A
 dwell's dig-in count unchanged (20-89), 0 exceptions in twenty-four games since the pull. The
 current jar is origin's (the other machine's build of the merged tree, 8d24a655: keep-progress +
 dwell + hysteresis + fleet-on-own-row + gate pricing). Nothing running.
+
+## 90. hw322-hw323 - rounds 90-91, THE STRATEGY LAYER from the pre-opening snapshots (2026-10-30 16:35-)
+
+The user, 16:25: "pull and build jar and run balance test from prestrike seed, given recent changes to
+threat strategy layer. so be sure to monitor specifics with regard to that." Pulled 13bc6c2d (fast-forward,
+51 files), jar 16:29:33. The layer under test (all 2026-10-30, untested in a batch): strikes bud at every
+giver in parallel + the shift stages the front while the offensive saves (ce34f3ec), the shift's donor the
+richest quiet world (3cedccdf), critical producers keep their size + standing swarms count as held
+(10103995), one claim a district (4e988984), staging notes from scouts only (cc5dcb9a). Driver
+`run-seeds-40.ps1`, from the pre-opening snapshots (the 300-day save before each game's first strike):
+hw322 set A = hw321a d939 / hw321b d934 / hw321c d956 (first strikes w1,188 / 1,042 / 1,223), hw323 set B =
+hw320a d955 / hw320b d926 / hw320c d626 (w1,063 / 1,061 / 920); `-Days 2900 -Snapshots 300`, watcher
+`watch-seeds-40.sh` with `check-strategy.sh` (nostage: no parallel staging line 500 d into the war;
+savinglong: 400 d saving without a launch; shiftstuck: 30+ shift swarms that cannot sail), tasks
+ThreatIncSeeds40 / WatchSeeds40. Read with `strategy-read.sh` against hw320 / hw321 (the keep-progress
+jar, same saves): campaigns launched 59-78 a game, 50-101 days from "saving for" to the launch, strike
+buds 197-242, parallel staging lines 0, shift swarms 1,364-3,217 spawned / 0-10 stuck, "Shifted from" size
+drops 501-710, hives 260-352, 0 exceptions. What to see: the parallel staging line fires and the wait from
+saving to launch shortens; the launched FP per campaign up (bills budding at every giver); the back line
+drawn down by the richest-donor shifts without the sole largest producer of metals / fuel / ore losing a
+size; the shift not stacking swarms over a staging; hives at or above the band; 0 exceptions on saves
+from the older jar.
