@@ -28,8 +28,10 @@ public class ThreatObjectives {
 			return ThreatIncData.STAGE_COLONIZING.equals(e.stage) ? "Colonizing" : "Seeded";
 		}
 		float mass = massSeen(e);
-		// no "Remark:" label (the user, 2026-10-30 17:00)
-		return "Worlds: " + e.markets.size() + ", Mass: " + (mass >= 0f ? n(mass) : "?") + ", " + remark(e);
+		// no "Remark:" label (the user, 2026-10-30 17:00); the age at the end, "(25d)", in place of the Age column (17:50)
+		String age = ageText(e);
+		return "Worlds: " + e.markets.size() + ", Mass: " + (mass >= 0f ? n(mass) : "?") + ", " + remark(e)
+				+ (age != null ? " (" + age + ")" : "");
 	}
 
 	/** The one remark, the most important first. */
@@ -64,19 +66,19 @@ public class ThreatObjectives {
 		return h;
 	}
 
-	/** The Age cell: days since the newest of the player's report and a lost party, "today", "-" never. */
+	/**
+	 * The note's age: days since the player's report (Report.age, the census's own arithmetic) or since a newer
+	 * lost party - "25d", "today"; null when nothing is known. The Age column it replaced (16:00-17:50) read "-"
+	 * on every row for a reason never found.
+	 */
 	public static String ageText(ThreatWarBoard.Entry e) {
 		float lost = ThreatIntel.lostDay(Factions.PLAYER, e.systemId);
 		float seenDay = e.seen != null ? e.seen.day : -1f;
-		float latest = Math.max(lost, seenDay);
-		if (ThreatIncConfig.debugMode()) {
-			// the Age column read "-" on every row at 16:55 while the Notes beside it read the same report; the figures
-			ThreatIncConfig.log("Age " + e.systemId + ": seen " + (e.seen != null ? e.seen.day + " " + e.seen.source + " by " + e.seen.seenBy : "null")
-					+ ", lost " + lost + ", today " + ThreatPosture.today());
-		}
-		if (latest < 0f) return "-";
-		int days = (int) Math.max(0f, ThreatPosture.today() - latest);
-		return days < 1 ? "today" : days + " d";
+		int days;
+		if (lost >= 0f && lost > seenDay) days = (int) Math.max(0f, ThreatPosture.today() - lost);
+		else if (e.seen != null) days = (int) e.seen.age();
+		else return null;
+		return days < 1 ? "today" : days + "d";
 	}
 
 	/** The row tooltip's lines: the loss, the last look, then each world as the report saw it. */

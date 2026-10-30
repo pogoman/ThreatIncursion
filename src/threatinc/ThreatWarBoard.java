@@ -1991,8 +1991,8 @@ public class ThreatWarBoard {
 			// sorted nearest first; the priority score and the Swarm fleet column are gone (0 width), the
 			// Notes column (15:30, in the old Core (ly) slot) says what to hit
 			float[] frac = narrow
-					? new float[] {.07f, .11f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .29f, .06f, .17f}
-					: new float[] {.07f, .12f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .30f, .06f, .15f};
+					? new float[] {.07f, .11f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .35f, 0f, .17f}
+					: new float[] {.07f, .12f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .36f, 0f, .15f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2142,7 +2142,7 @@ public class ThreatWarBoard {
 				cell(cells, Alignment.LMID, ThreatObjectives.noteColor(e, bright, h, gray, neg),
 						main.shortenString(ThreatObjectives.cellText(e), c.w[NOTES] - 2f * CELL_PAD));
 			}
-			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
+			// the Age column (16:00-17:50) is 0 width: the age ends the note (the user, 17:50)
 			if (c.has(AGE)) {
 				String age = ThreatObjectives.ageText(e);
 				cell(cells, Alignment.MID, "-".equals(age) ? gray : text, age);

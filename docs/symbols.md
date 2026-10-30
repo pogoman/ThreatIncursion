@@ -3698,16 +3698,16 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatObjectives (159 lines)
+## ThreatObjectives (161 lines)
 - `ThreatObjectives.cellText(ThreatWarBoard.Entry e)` :26 - The cell:
-- `ThreatObjectives.remark(ThreatWarBoard.Entry e)` :36 - The one remark, the most important first.
-- `ThreatObjectives.noteColor(ThreatWarBoard.Entry e, Color bright, Color h, Color gray, Color loss)` :59 - The cell's colour:
-- `ThreatObjectives.ageText(ThreatWarBoard.Entry e)` :68 - The Age cell:
-- `ThreatObjectives.addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, float pad)` :83 - The row tooltip's lines:
-- `ThreatObjectives.massSeen(ThreatWarBoard.Entry e)` :118 - Strata over the system's worlds as the report saw them, -1 when none recorded.
-- `ThreatObjectives.bestMade(ThreatWarBoard.Entry e)` :132 - "Size 8 Fuel Production":
-- `ThreatObjectives.what(String industry)` :152
-- `ThreatObjectives.n(float v)` :156
+- `ThreatObjectives.remark(ThreatWarBoard.Entry e)` :38 - The one remark, the most important first.
+- `ThreatObjectives.noteColor(ThreatWarBoard.Entry e, Color bright, Color h, Color gray, Color loss)` :61 - The cell's colour:
+- `ThreatObjectives.ageText(ThreatWarBoard.Entry e)` :74 - The note's age:
+- `ThreatObjectives.addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, float pad)` :85 - The row tooltip's lines:
+- `ThreatObjectives.massSeen(ThreatWarBoard.Entry e)` :120 - Strata over the system's worlds as the report saw them, -1 when none recorded.
+- `ThreatObjectives.bestMade(ThreatWarBoard.Entry e)` :134 - "Size 8 Fuel Production":
+- `ThreatObjectives.what(String industry)` :154
+- `ThreatObjectives.n(float v)` :158
 
 ## ThreatOccupation (1186 lines)
 - `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :95 - XStream:

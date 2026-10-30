@@ -26,8 +26,9 @@ is the layout it implements.
    sorting top producers by priority" -> "just new second last column on the threat colony board,
    Notes" -> "notes should be updated by what scout finds ... Scout lost / Size 8 Fuel Production /
    Low strata mass (8000) / Isolated ... things of tactical value"): the ledger's **Notes** column
-   (`Cols.NOTES`; the table lived 15:09-15:24) and **Age** after it (`Cols.AGE`: days since the newest of
-   the player's report and a lost party, `ageText`). Every note reads the player's report of the system
+   (`Cols.NOTES`; the table lived 15:09-15:24), the note ending with its age "(25d)" (`ageText`: days since
+   the player's report, `Report.age`, or a newer lost party; the Age column of 16:00-17:50, `Cols.AGE`, is 0
+   width - it read "-" on every row for a reason never found). Every note reads the player's report of the system
    (`ThreatIntel.report(PLAYER, ...)`, the newest of the player's own and every Cooperative faction's;
    written daily for every observer with eyes there, `ThreatIntel.advanceDay`, and by a scout home) -
    never the live world. **The cell (16:30, the user: "Each entry should read Worlds: x, Mass: y Remark:
