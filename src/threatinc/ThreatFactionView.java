@@ -1300,6 +1300,28 @@ public class ThreatFactionView {
 		return Math.max(0f, days);
 	}
 
+	/** A convoy row's Status: lost, hunted, held off at the jump-point by the Threat's blockade of its destination (ThreatConvoys.holdsOff / the front-run door), else in transit. */
+	protected static String convoyStatus(ThreatConvoys.Convoy c, int hunters) {
+		if (c.fleet == null || !c.fleet.isAlive()) return "lost";
+		if (hunters > 0) return "HUNTED";
+		if (c.waitSinceTimestamp != 0L && !c.runningIn) return "held off - orbit blockaded";
+		return "in transit";
+	}
+
+	/** A convoy row's ETA: days until it lands by its passage; while held off, how long it has waited (it gives up at convoyBlockadeWaitDays). */
+	protected static String convoyEtaText(ThreatConvoys.Convoy c) {
+		if (c.waitSinceTimestamp != 0L && !c.runningIn) {
+			int held = (int) Global.getSector().getClock().getElapsedDaysSince(c.waitSinceTimestamp);
+			return "held " + held + " d";
+		}
+		MarketAPI to = c.toMarketId != null ? Global.getSector().getEconomy().getMarket(c.toMarketId) : null;
+		if (to == null) {
+			int days = (int) Global.getSector().getClock().getElapsedDaysSince(c.departedTimestamp);
+			return days + " d out";
+		}
+		return (int) Math.ceil(convoyEta(c, to)) + " d";
+	}
+
 	/** The Withdraw button on each call's row - Send on an NPC faction's need rows - floated in last (platform traps 1 and 2); off with its reason as the tooltip. */
 	protected static void addWithdrawButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Requests requests) {
 		if (requests == null || requests.table == null) return;
@@ -1847,16 +1869,13 @@ public class ThreatFactionView {
 			f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies, c.ships);
 			if (c.isFrontRun()) {
 				f.kind = c.pickup ? "Evacuation" : "Supply run";
-				f.task = (c.pickup ? "lifting the front off " : "to the front on ") + c.toName()
-						+ (c.waitSinceTimestamp != 0L && !c.runningIn ? " - waiting at the door" : "");
+				f.task = (c.pickup ? "lifting the front off " : "to the front on ") + c.toName();
 			}
 			int hunters = ThreatRaiders.huntersOf(c.fleet);
-			f.status = c.fleet == null || !c.fleet.isAlive() ? "lost"
-					: hunters > 0 ? "HUNTED" : "in transit";
+			f.status = convoyStatus(c, hunters);
 			if (hunters > 0) f.color = neg;
 			f.strength = "-";
-			int days = (int) Global.getSector().getClock().getElapsedDaysSince(c.departedTimestamp);
-			f.eta = days + " d out";
+			f.eta = convoyEtaText(c);
 			f.rowId = c.fleet;
 			f.recallKey = "convoy:" + i;
 			rows.add(f);
@@ -1972,12 +1991,10 @@ public class ThreatFactionView {
 				f.name = c.fromName() + " -> " + c.toName();
 				f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies, c.ships);
 				int hunters = ThreatRaiders.huntersOf(c.fleet);
-				f.status = c.fleet == null || !c.fleet.isAlive() ? "lost"
-						: hunters > 0 ? "HUNTED" : "in transit";
+				f.status = convoyStatus(c, hunters);
 				if (hunters > 0) f.color = neg;
 				f.strength = "-";
-				int days = (int) Global.getSector().getClock().getElapsedDaysSince(c.departedTimestamp);
-				f.eta = days + " d out";
+				f.eta = convoyEtaText(c);
 				f.rowId = c.fleet;
 				f.recallKey = "aidconvoy:" + i;
 				f.playerAid = true;
