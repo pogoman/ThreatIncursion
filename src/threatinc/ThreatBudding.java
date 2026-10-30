@@ -357,6 +357,31 @@ public class ThreatBudding {
 				clear(market);
 				return;
 			}
+			// the passage sizes the swarm (fuelAffordFP): the pool fills only to what the free fuel pays one way today, and a
+			// shift the fuel cannot pay a seed's worth of settles back instead of standing as a swarm that cannot sail
+			float afford = fuelAffordFP(market, to);
+			float floor = ThreatStrata.fpOf(Math.max(ThreatStrata.sizeAt(1), ThreatIncConfig.shiftFloorStrata()));
+			if (afford < Math.min(floor, want)) {
+				ThreatIncConfig.log("Budding: " + market.getName() + " drops its shift to " + to.getName() + ", the fuel pays the passage of "
+						+ (int) afford + " FP (" + (int) want + " FP wanted, " + (int) pool + " pooled)");
+				ThreatStrata.add(market, ThreatStrata.strataOf(pool), "Absorbed into", null);
+				clear(market);
+				return;
+		}
+			if (afford < want) {
+				want = afford;
+				mem.set(KEY_WANT, want);
+			}
+			// a pool budded while the fuel was high and spawned after the strikes drained it (hw324c: 800-1,300 FP spawned
+			// against 3.5-5.6k fuel) settles its excess first, so what spawns is what sails
+			if (pool > want + 0.5f) {
+				float back = pool - want;
+				ThreatStrata.add(market, ThreatStrata.strataOf(back), "Absorbed into", null);
+				pool = want;
+				mem.set(KEY_POOL, pool);
+				ThreatIncConfig.logQuiet("shiftback:" + market.getId(), "Budding: " + market.getName() + " settles " + (int) back
+						+ " FP of its shift to " + to.getName() + " back, the fuel pays the passage of " + (int) afford + " FP");
+			}
 		}
 		float short_ = want - pool;
 		float took = 0f;
@@ -397,6 +422,18 @@ public class ThreatBudding {
 		float take = Math.min(ThreatStrata.strataOf(rest), Math.max(0f, ThreatStrata.of(market) - ThreatStrata.sizeAt(1)));
 		if (take > 0f) ThreatStrata.add(market, -take, "Budded from", null);
 		return fromStaged + ThreatStrata.fpOf(take);
+	}
+
+	/**
+	 * Fleet points whose one-way passage from {@code from} to {@code to} the hive's free fuel pays today (ThreatFuel.passage is
+	 * linear in FP; unbounded with no fuel rule or in the same system). THE PASSAGE SIZES THE SHIFT (2026-10-30, hw322: the
+	 * richest donor budded one 5.4k-FP swarm of 320 ships whose passage ThreatFuel.canPay refused, and it stood as defence).
+	 */
+	protected static float fuelAffordFP(MarketAPI from, MarketAPI to) {
+		if (from == null || to == null || from.getStarSystem() == null || to.getStarSystem() == null) return Float.MAX_VALUE;
+		float perPoint = ThreatFuel.passage(1f, ThreatFuel.ly(from.getStarSystem(), to.getStarSystem()), false);
+		if (perPoint <= 0f) return Float.MAX_VALUE;
+		return 0.95f * Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL)) / perPoint;
 	}
 
 	protected static MarketAPI receiverOf(MarketAPI market) {
@@ -780,7 +817,8 @@ public class ThreatBudding {
 			if (c.getStarSystem() == receiver.getStarSystem() || hasOrder(c)) continue;
 			if (stagingSystems.contains(c.getStarSystem().getId())) continue;
 			if (ThreatPosture.underAttack(c.getStarSystem()) || ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
-			float can = buddableFP(c, false);
+			// what it can give: its buddable mass, at most the swarm whose passage the fuel pays (fuelAffordFP)
+			float can = Math.min(buddableFP(c, false), fuelAffordFP(c, receiver));
 			if (can < min) continue;
 			float ly = ThreatFuel.ly(c.getStarSystem(), receiver.getStarSystem());
 			float gives = Math.min(amount, can);
@@ -792,7 +830,7 @@ public class ThreatBudding {
 			}
 		}
 		if (donor == null) return;
-		float give = Math.min(amount, buddableFP(donor, false));
+		float give = Math.min(amount, Math.min(buddableFP(donor, false), fuelAffordFP(donor, receiver)));
 		order(donor, SHIFT, give, receiver, why + ", " + (int) near + " ly");
 	}
 
