@@ -28,7 +28,7 @@ import com.fs.starfarer.api.util.Misc;
  * system"; docs/war-effort-rework.md section 3). A request is logged from the war board when a
  * Transfer or Deploy at the colonies table's levers cannot meet what the player's colony needs
  * ({@link #transferShortfall}, {@link #deployShortfall}; the yes / no prompt is
- * {@link ThreatAidRequestDialog}): one request a world, a {@link Part} a good - or the task force,
+ * the confirm box {@link ThreatIncursionIntel#buttonPressConfirmed} opens): one request a world, a {@link Part} a good - or the task force,
  * {@link ThreatNeeds#FLEETS}, a Deploy's relief - at the lever's tier. It stands until every part
  * has landed or the player withdraws it ({@link #withdraw}), however long that takes. Every
  * candidate faction (Favourable or better, not hostile, {@link #candidates}) looks at it once a
@@ -309,29 +309,40 @@ public class ThreatAidRequests {
 		if (asked.isEmpty()) return r;
 		r.checkedAt().clear();
 		ThreatIncConfig.log("Aid requested for " + market.getName() + ": " + ThreatWarBoard.join(asked));
-		// an SOS (the user, 2026-10-29 night: "you dont know if anyone is coming"): the call, nothing of how it is answered
-		ThreatNotice.titled("Distress Call").icon(market.getFaction())
-				.line("%s calls for %s", ThreatNotice.market(market), ThreatWarBoard.join(asked))
-				.send();
+		// an SOS (the user, 2026-10-29 night: "you dont know if anyone is coming"): the call, nothing of how
+		// it is answered; a call a good (2026-10-30: "a request for each resource type ... so different
+		// factions can answer each"), one line each
+		ThreatNotice n = ThreatNotice.titled("Distress Call").icon(market.getFaction());
+		for (String a : asked) n.line("%s calls for %s", ThreatNotice.market(market), a);
+		n.send();
 		return r;
 	}
 
 	/**
-	 * The player withdraws the call: its open parts are dropped; a part already sailing still lands,
-	 * and is still charged on receipt. False with no request standing.
+	 * The player withdraws the call for one good (null: every open one): the open part is dropped; a
+	 * part already sailing still lands, and is still charged on receipt. The request goes when no
+	 * part is left open or at sea. False with nothing open to withdraw.
 	 */
-	public static boolean withdraw(MarketAPI market) {
+	public static boolean withdraw(MarketAPI market, String good) {
 		Request r = requestAt(market);
 		if (r == null) return false;
+		Part dropped = null;
 		for (Iterator<Part> it = r.parts().iterator(); it.hasNext();) {
-			if (it.next().open()) it.remove();
+			Part p = it.next();
+			if (!p.open()) continue;
+			if (good != null && !good.equals(p.good)) continue;
+			dropped = p;
+			it.remove();
 		}
-		r.withdrawn = true;
+		if (dropped == null) return false;
+		if (!r.anyOpen()) r.withdrawn = true;
 		boolean sailing = r.anyAtSea();
-		if (!sailing) requests().remove(r);
+		if (!r.anyOpen() && !sailing) requests().remove(r);
 		ThreatNotice.titled("Call Withdrawn").icon(market.getFaction())
-				.line("%s withdraws its call", ThreatNotice.market(market)).send();
-		ThreatIncConfig.log("Aid request withdrawn for " + market.getName() + (sailing ? " (parts at sea)" : ""));
+				.line("%s withdraws its call for %s", ThreatNotice.market(market),
+						good != null ? goodLabel(dropped) : "aid").send();
+		ThreatIncConfig.log("Aid request withdrawn for " + market.getName() + (good != null ? " (" + good + ")" : "")
+				+ (sailing ? " (parts at sea)" : ""));
 		return true;
 	}
 
@@ -408,21 +419,36 @@ public class ThreatAidRequests {
 
 	/** "marines, fuel and a task force" - what the parts are, no figures (the user, 2026-10-29 night: "keep all the text simple"). */
 	public static String shortText(List<Part> parts) {
-		return askText(parts);
+		List<String> bits = new ArrayList<String>();
+		if (parts != null) for (Part p : parts) bits.add(goodLabel(p));
+		return bits.isEmpty() ? "nothing" : ThreatWarBoard.join(bits);
 	}
 
-	/** "marines, fuel and a task force" - what the parts call for. */
+	/** "any marines that can be spared and some spare fuel" - what the parts call for. */
 	public static String askText(List<Part> parts) {
 		List<String> bits = new ArrayList<String>();
 		if (parts != null) for (Part p : parts) bits.add(askLabel(p));
 		return bits.isEmpty() ? "nothing" : ThreatWarBoard.join(bits);
 	}
 
-	/** "marines" / "a task force" - one part, the good alone: the tier and the share are the mechanism, not the call. */
-	public static String askLabel(Part p) {
+	/** "marines" / "a task force" - the part's good alone. */
+	public static String goodLabel(Part p) {
 		if (p == null) return "";
 		if (p.isFleets()) return "a task force";
 		return ThreatReserves.label(p.good);
+	}
+
+	/**
+	 * What one part calls for, in the tier's words (the user, 2026-10-30: "when you call for max
+	 * marines the request should be like Call for any marines that can be spared ... if med then
+	 * ... call for some spare reserves"): Max "any marines that can be spared", Med "some spare
+	 * marines"; the task force "any task force that can be spared" / "a modest task force".
+	 */
+	public static String askLabel(Part p) {
+		if (p == null) return "";
+		if (p.isFleets()) return p.tier >= 2 ? "any task force that can be spared" : "a modest task force";
+		String good = ThreatReserves.label(p.good);
+		return p.tier >= 2 ? "any " + good + " that can be spared" : "some spare " + good;
 	}
 
 	/** "320 marines" / "900 fleet points" - the part's amount. */

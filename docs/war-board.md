@@ -114,8 +114,9 @@ its holds, fuel and supplies as figures aboard (`ThreatReturns.MEM_FUEL_ABOARD`,
 hold) - drawn from the colony's reserve. The button reads **Redeploy** while a fleet is deployed
 and resizes it to the levers as they stand: ships come off as hulls (`reabsorb`, smallest first,
 the ledger's commitment and health baseline scaled with them), goods the fleet no longer holds or
-the lever no longer sends go back to the reserve (`load`), and Hulls at None dissolves it
-(`ThreatFleetOrders.fold`, the recall). An outpost's Deploy builds at the nearest colony and sails
+the lever no longer sends go back to the reserve (`load`); at Hulls None the fleet keeps its
+ships and only the goods are reloaded - Redeploy never recalls (the user, 2026-10-30; the fleets
+table's Recall dissolves it, `ThreatFleetOrders.fold`). An outpost's Deploy builds at the nearest colony and sails
 there. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
 aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` deployed: the goods come
 off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
@@ -128,20 +129,29 @@ dont need to see that table at all").
 `ThreatAidRequests`, docs/war-effort-rework.md 3).** No Request button anywhere. A Transfer or
 Deploy whose load at the levers is under what the colony needs (a good's convoy load under the
 colony's need at the lever's tier, `ThreatAidRequests.transferShortfall`; a Deploy's fleet under
-the fleets need, `deployShortfall` - "deploy would be for a relief task force") sails, then a yes /
-no dialog over the board (`ThreatAidRequestDialog`) names the shortfall and asks "Call the sector for aid?";
+the fleets need, `deployShortfall` - "deploy would be for a relief task force") sails, then the small
+confirm box an order's Confirm uses (`CampaignUIAPI.showConfirmDialog`, from
+`ThreatIncursionIntel.buttonPressConfirmed`; the user, 2026-10-30: "use this kind of dialog not the
+full screen one") names the shortfall and asks "Call the sector for aid?" - Call for aid / Not now;
 a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
-alone. The request is one a world, a part a good, and stands until every part lands or Withdraw.
+alone. The request is one a world, a part a good, each part its own call (2026-10-30, so different
+factions can answer each) standing until it lands or is withdrawn; the confirm box and the notice
+word the call by the lever's tier (`ThreatAidRequests.askLabel`: Max "any marines that can be
+spared", Med "some spare marines").
 **Requests for aid** is a table at the top of every faction tab (`ThreatFactionView.addRequests`;
 nothing drawn with none): World, Asked (all or half of what one colony of each faction spares),
-Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on each
-request's first row. The player's tab shows every faction's answer, an NPC tab that faction's own
+Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on every
+row (one call a row; off once that part is answered). The player's tab shows every faction's answer, an NPC tab that faction's own
 (its part sailing, another's taken, or its last reason and when it looks again). The colony rows'
 Transfer and Deploy tooltips end with the shortfall when there is one. An ally's colony rows hold
 no buttons any more (the Defend at every hull free and the Aid convoy went); its sieged world's
 front row holds **Defend** at the Fleet lever instead (`BUTTON_AID_DEFEND` ->
 `ThreatAid.quoteDefend(market, fleetTier)`). The fronts' Reinforce and Request went: a Transfer
-reinforces an own world. The colonies table's hulls column reads **Hulls/FP**.
+reinforces an own world. The colonies table's columns (2026-10-30): Colony, Size, Military, Def,
+**Hulls** (the colony's own free hulls), **Fleet** (the points deployed over it,
+`ThreatAidCapacity.stagedFP` - the Convoys column went; a colony's staging route and an outpost's
+forward-base / ships-home line are in the row tooltip), the four goods, Strikes, Status (widened)
+and the buttons column (narrowed to its two buttons).
 
 **Load ladders** (2026-09-07, `ThreatFactionView.addTierSelector`, docs/player-aid.md): a table
 whose buttons move a quantity carries a **Min / Med / Max** selector in a row reserved under its

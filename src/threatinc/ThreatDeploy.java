@@ -32,8 +32,10 @@ import com.fs.starfarer.api.util.Misc;
  * reloaded to the levers as they stand now - hulls built from the colony's free hulls when the
  * lever asks for more, the smallest ships reabsorbed as hulls when it asks for less
  * ({@link #reabsorb}), each good drawn from the reserve or put back into it, and what the resized
- * fleet can no longer berth or hold put back too. At Hulls None the fleet dissolves into the
- * colony: hulls and everything aboard back where they came from (ThreatFleetOrders.fold).
+ * fleet can no longer berth or hold put back too. At Hulls None the fleet keeps its ships and
+ * only the goods are reloaded (the user, 2026-10-30: Redeploy "is supposed to redeploy the
+ * currently deployed fleet with the changes in marines/arms/fuel etc, not recall" it); the
+ * fleets table's Recall dissolves it into the colony (ThreatFleetOrders.fold).
  *
  * <p>What is deployed is what an Attack sails (IncursionManager.attackPlan: the nearest colony
  * with a fleet deployed, everything aboard it - the passage out of the fuel first, the rest
@@ -61,8 +63,6 @@ public class ThreatDeploy {
 		public float ownFree;
 		/** Aboard now, and at the levers: marines, heavy armaments, fuel, supplies (ThreatReserves.COMMODITIES order). */
 		public float[] aboard = new float[4], load = new float[4];
-		/** Hulls None with a fleet deployed: it dissolves into the colony. */
-		public boolean dissolve;
 		/** The Hulls lever asked for more than one fleet holds (ThreatIncConfig.fleetMaxFP): targetPts is the cap, the rest stays as hulls. */
 		public boolean capped;
 		/** Why not, one fact per line; null when the order would go. */
@@ -127,12 +127,7 @@ public class ThreatDeploy {
 			p.aboard[3] += ThreatReturns.hold(f);
 		}
 		int hulls = hullsTier(levers);
-		if (hulls <= 0) {
-			if (p.redeploy()) {
-				p.dissolve = true;
-				p.targetPts = 0f;
-				return p;
-			}
+		if (hulls <= 0 && !p.redeploy()) {
 			p.reason = ThreatNotice.Reason.of("The Hulls lever is at None")
 					.line("Med or Max deploys half or all of the hulls free");
 			return p;
@@ -143,7 +138,9 @@ public class ThreatDeploy {
 			return p;
 		}
 		p.ownFree = Math.max(0f, ThreatAidCapacity.ownFreeFP(p.source));
-		p.targetPts = (float) Math.floor(ThreatConvoys.share(hulls) * (p.ownFree + p.livePts));
+		// a Redeploy at Hulls None keeps the fleet's ships (2026-10-30: never a recall)
+		p.targetPts = hulls <= 0 ? (float) Math.floor(p.livePts)
+				: (float) Math.floor(ThreatConvoys.share(hulls) * (p.ownFree + p.livePts));
 		// THE FLEET CAP (2026-10-29): one fleet holds at most fleetMaxFP, the rest stays as hulls - a Deploy at
 		// Haven came out at 7,325 FP on the capped jar, the one build outside the cap; a Redeploy at the lever
 		// takes a fleet over it back down (reabsorb)
@@ -209,7 +206,6 @@ public class ThreatDeploy {
 	 */
 	public static String execute(Plan p, FactionAPI faction) {
 		if (p == null || faction == null || !faction.isPlayerFaction() || p.target == null) return null;
-		if (p.dissolve) return dissolve(p, faction);
 		if (!p.ok()) {
 			ThreatNotice.titled("Deploy Refused").bad().icon(faction).lines(p.reason).send();
 			return null;
@@ -275,24 +271,6 @@ public class ThreatDeploy {
 				+ ", back " + loadText(back));
 		ThreatAidCapacity.logHulls("after deploy at " + p.target.name());
 		return redeploy ? "redeploy" : "deploy";
-	}
-
-	/** Hulls None with a fleet deployed: it dissolves into the colony where it stands - hulls, cargo and holds (ThreatFleetOrders.fold). */
-	protected static String dissolve(Plan p, FactionAPI faction) {
-		float pts = 0f;
-		for (ThreatFleetOrders.Order o : p.staged) {
-			if (o.fleet == null || !o.fleet.isAlive()) continue;
-			ThreatFleetOrders.rehome(o);
-			pts += ThreatAidCapacity.liveFP(o.fleet);
-			ThreatFleetOrders.fold(o, p.target.market != null ? p.target.market : p.source);
-		}
-		ThreatNotice.titled("Fleet Dissolved").icon(faction)
-				.line("At %s: %s fleet points back as hulls", ThreatNotice.base(p.target), Misc.getWithDGS((int) pts))
-				.line("Back in the reserve: %s", loadText(p.aboard)).send();
-		ThreatIncConfig.log("Deploy: fleet over " + p.target.name() + " dissolved, " + (int) pts + " FP, aboard "
-				+ loadText(p.aboard));
-		ThreatAidCapacity.logHulls("after the fleet over " + p.target.name() + " dissolved");
-		return "dissolve";
 	}
 
 	/**

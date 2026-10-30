@@ -109,10 +109,10 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_FRONT_FLEET) };
 	}
 
-	/** The intel screen the board was last drawn in; the call-for-aid prompt redraws the board through it ({@link #refreshBoard}). */
+	/** The intel screen the board was last drawn in; the call-for-aid confirm redraws the board through it ({@link #refreshBoard}). */
 	protected transient com.fs.starfarer.api.ui.IntelUIAPI lastUi;
 
-	/** Redraws the board where it stands once a dialog over it has closed (ThreatAidRequestDialog); nothing without a screen. */
+	/** Redraws the board where it stands once a request for aid has been logged from the confirm box over it; nothing without a screen. */
 	public void refreshBoard() {
 		if (lastUi == null) return;
 		try {
@@ -419,7 +419,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		if (ThreatFactionView.isOrderButton(id)) {
 			// THE CALL-FOR-AID PROMPT (2026-10-29 evening): what a Transfer or Deploy leaves short at the
 			// player's colony is read before the order sails (the need is net of what is at sea), and the
-			// prompt opens over the redrawn board; a button that would send nothing opens it alone
+			// confirm box opens over the redrawn board; a button that would send nothing opens it alone
 			java.util.List<ThreatAidRequests.Part> shorts = ThreatFactionView.shortfallFor(id, this);
 			com.fs.starfarer.api.campaign.econ.MarketAPI shortMarket = ThreatFactionView.shortfallMarket(id);
 			String result = ThreatFactionView.promptOnly(id, this) ? "prompt-only"
@@ -427,14 +427,28 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			ThreatIncConfig.log("Board order " + id + " -> " + result
 					+ (shorts.isEmpty() ? "" : ", short of " + ThreatAidRequests.shortText(shorts)));
 			rerenderInPlace(ui);
-			if (!shorts.isEmpty() && shortMarket != null && shortMarket.getPrimaryEntity() != null) {
+			if (!shorts.isEmpty() && shortMarket != null
+					&& ThreatAidRequests.requestOffReason(shortMarket) == null) {
+				// the small confirm box, as an order's own Confirm / Cancel is (the user, 2026-10-30:
+				// "use this kind of dialog not the full screen one"): the shortfall and the question,
+				// an SOS - nothing of who answers or how (2026-10-29 night)
 				final ThreatIncursionIntel self = this;
-				ui.showDialog(shortMarket.getPrimaryEntity(), new ThreatAidRequestDialog(shortMarket, shorts,
-						new Runnable() {
+				final com.fs.starfarer.api.campaign.econ.MarketAPI m = shortMarket;
+				final java.util.List<ThreatAidRequests.Part> s = shorts;
+				Global.getSector().getCampaignUI().showConfirmDialog(
+						m.getName() + " is short of " + ThreatAidRequests.shortText(s) + ".\n"
+								+ "Call for " + ThreatAidRequests.askText(s) + "?",
+						"Call for aid", "Not now",
+						new com.fs.starfarer.api.Script() {
 							public void run() {
+								ThreatAidRequests.request(m, s);
 								self.refreshBoard();
 							}
-						}));
+						},
+						new com.fs.starfarer.api.Script() {
+							public void run() {
+							}
+						});
 			}
 			return;
 		}

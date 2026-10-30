@@ -93,11 +93,12 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
 **Since 2026-10-29 evening (the user: "i want to rework the request and aid system"; BUILT jar
 19:43:00, untested):** no Request button. A request is logged from a **Transfer or Deploy that
 cannot meet what the colony needs** at the colonies table's levers: after the order sails (at once
-when nothing can sail) a yes / no dialog over the board (`ThreatAidRequestDialog`) lists the
+when nothing can sail) the small confirm box an order's Confirm uses (`CampaignUIAPI.showConfirmDialog`
+from `ThreatIncursionIntel.buttonPressConfirmed`; since 2026-10-30, the full-screen dialog before it) names the
 shortfall - each good whose convoy load is under the colony's need at the lever's tier
 (`ThreatAidRequests.transferShortfall`, the largest `ThreatNeeds` need of the good: Med its med
 figure, Max its max), or a Deploy's fleet under the fleets need (`deployShortfall`, a relief task
-force) - and "Call for aid" logs one request a world, a `Part` a good at the lever's tier
+force) - in the tier's words (2026-10-30, `askLabel`: Max "any marines that can be spared", Med "some spare marines") - and Call for aid logs one request a world, a `Part` a good at the lever's tier, each part its own call with its own Withdraw so different factions can answer each (2026-10-30)
 (`request`; an open part of the same good is retiered, one already accepted left alone). It
 **stands until every part lands or the player withdraws it** from the Requests table (`withdraw`;
 parts already sailing still land and are still charged). **Every faction at Favourable or better
