@@ -159,11 +159,18 @@ price, an **Outpost** button - the "Purged worlds in reach" table under the boar
 outposts, then Total; `tableRows` counts them all for the floating buttons' offsets. The fronts table
 lost its System column and the second row under each of the player's fronts (`Fronts.buttonRows`),
 and gained an **Actions** column on the faction tabs holding ONE button a row: the player's landing's
-stance as it stands - Push / Hold / Regroup - pressed the other (no strength gate: `pushRefusal`
+order - Push while it holds or regroups, Hold while it pushes; the label is the action, not the state (the user, 21:00) - (no strength gate: `pushRefusal`
 refuses only when nothing is left to take); the own colony's defenders' stance the same way; an
 ally's Defend at the Fleet lever, which is drawn only for such a row. Supply, Support, Defend and
-Pull out went from the fronts; there is no Pull out order on the board since. Every lever is ONE
-button reading its tier; pressing it sets the next round the ladder (`addTierSelector`).
+Pull out went from the fronts. Every lever is ONE button reading its tier; pressing it sets the next
+round the ladder (`addTierSelector`). **21:00:** Deploy's cap is the Hulls lever's share of `fleetMaxFP`
+(Med 1,200, Max 2,400); the player's supply run loads at whichever colony has the most of what the front
+wants, at any range (`ThreatConvoys.pickFrontBase` - the nearest base alone greyed Transfer); **Recall**
+sits left of Transfer in the Staging group (`BUTTON_RECALL_ALL`, `ThreatFactionView.recallAll`): a
+colony row's calls home every fleet order based there (`Order.baseMarketId`), the expeditions and task
+forces raised there (`ThreatPurgeFGI.sourceBase`, `ThreatResponseIntel.baseName`) and the convoys from
+it; a Front row's lifts the front (`ThreatConvoys.pullOutFront`) and recalls the fleets over the hive
+(`Order.targetId`). The fleets table keeps its per-fleet Recall.
 
 **Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
 fleet sized based on hulls modifier ... then the attack button is available assuming the staged

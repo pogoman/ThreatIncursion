@@ -147,8 +147,11 @@ public class ThreatDeploy {
 		// THE FLEET CAP (2026-10-29): one fleet holds at most fleetMaxFP, the rest stays as hulls - a Deploy at
 		// Haven came out at 7,325 FP on the capped jar, the one build outside the cap; a Redeploy at the lever
 		// takes a fleet over it back down (reabsorb)
-		if (p.targetPts > ThreatIncConfig.fleetMaxFP()) {
-			p.targetPts = (float) Math.floor(ThreatIncConfig.fleetMaxFP());
+		// ... and the cap is the lever's share of it (the user, 2026-10-30 21:00: "med capped 1.2k full
+		// capped 2.4k" - Med and Max both asked for the whole cap at a colony with more than it free)
+		float cap = (float) Math.floor((hulls <= 0 ? 1f : ThreatConvoys.share(hulls)) * ThreatIncConfig.fleetMaxFP());
+		if (p.targetPts > cap) {
+			p.targetPts = cap;
 			p.capped = true;
 		}
 		if (p.targetPts < minPoints() - 0.5f) {

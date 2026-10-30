@@ -65,6 +65,12 @@ public class ThreatFactionView {
 	/** Sets one of THE LEVERS (payload: ThreatIncursionIntel.LEVER_ index, then the tier 0/1/2; 2026-10-28); a view toggle, not an order. */
 	public static final String BUTTON_LEVER = "threatinc_board_lever:";
 	public static final String BUTTON_RECALL = "threatinc_board_recall:";
+	/**
+	 * The Staging group's Recall (the user, 2026-10-30 21:00): on a colony row, every fleet, expedition,
+	 * task force and convoy sent from it comes home; on a Front row, the front is lifted and the fleets
+	 * over the hive come home (payload: factionId:marketId). The fleets table keeps its per-fleet Recall.
+	 */
+	public static final String BUTTON_RECALL_ALL = "threatinc_board_recall_all:";
 	/** One fleet of an expedition or task force is detached to hunt (payload: factionId:huntKey). */
 	public static final String BUTTON_DETACH = "threatinc_board_detach:";
 	/** Supply run to the faction's front on a hive world (payload: factionId:hiveMarketId). */
@@ -391,7 +397,7 @@ public class ThreatFactionView {
 			// the Convoys column went (its staging route is in the row tooltip); the buttons column holds
 			// two buttons now (Deploy + Transfer = 136 px with gaps), so it narrows and Status widens
 			float[] frac = own
-					? new float[] {.11f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .04f, .16f, .07f, .14f}
+					? new float[] {.11f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .04f, .12f, .07f, .18f}
 					: new float[] {.13f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .05f, .17f, .07f, .10f};
 			// the user (2026-10-11): under the hull pool the column is the hulls available, nothing else
 			String[] names = {"Colony", "Size", "Military", "Def", ThreatHulls.enabled() ? "Hulls" : "Free",
@@ -676,7 +682,8 @@ public class ThreatFactionView {
 				float[] asked = ThreatConvoys.supplyAsk(fr.front, hm, fl);
 				disableWith(main, supply, mayOrder && supplyWhy == null, blocked != null ? blocked : supplyWhy,
 						"A convoy runs " + Misc.getWithDGS((int) asked[0]) + " marines and "
-						+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your nearest base to the front.");
+						+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your colony with the most to give to the front.");
+				addRecallAllButton(intel, main, colonyTable, up, faction, hm, mayOrder, blocked);
 			}
 			// the purged worlds' Outpost
 			for (int j = 0; j < purged.size(); j++) {
@@ -773,6 +780,7 @@ public class ThreatFactionView {
 					}
 					disableWith(main, stage, stageOk, blocked != null ? blocked
 							: ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours"), stageHelp);
+					addRecallAllButton(intel, main, colonyTable, up, faction, r.market, mayOrder, blocked);
 				}
 				// an ally's row holds no button since 2026-10-29 evening (the user: "remove defend button
 				// from the colony list and remove aid from there as well for human factions"): its
@@ -2041,6 +2049,8 @@ public class ThreatFactionView {
 
 	/** The Transfer button's width. */
 	protected static final float TRANSFER_W = SMALL_BUTTON_W + 8f;
+	/** The Staging group's Recall (2026-10-30 21:00). */
+	protected static final float RECALL_W = SMALL_BUTTON_W + 8f;
 
 	/** "2" for 2.0, "1.5" for 1.5 - a factor without a trailing zero. */
 	protected static String trimZero(float f) {
@@ -2112,7 +2122,7 @@ public class ThreatFactionView {
 		return id.startsWith(BUTTON_GUARD) || id.startsWith(BUTTON_STAGE)
 				|| id.startsWith(BUTTON_HUNT) || id.startsWith(BUTTON_SIEGE)
 				|| id.startsWith(BUTTON_BOMBARD) || id.startsWith(BUTTON_SCOUT)
-				|| id.startsWith(BUTTON_RECALL) || id.startsWith(BUTTON_DETACH)
+				|| id.startsWith(BUTTON_RECALL) || id.startsWith(BUTTON_RECALL_ALL) || id.startsWith(BUTTON_DETACH)
 				|| id.startsWith(BUTTON_SUPPLY)
 				|| id.startsWith(BUTTON_PULLOUT) || id.startsWith(BUTTON_SUPPORT)
 				|| id.startsWith(BUTTON_DEFEND)
@@ -2128,7 +2138,7 @@ public class ThreatFactionView {
 	/** Splits "prefix" + "factionId:target" into [prefix, factionId, target]. */
 	protected static String[] parse(String id) {
 		String[] prefixes = {BUTTON_GUARD, BUTTON_STAGE, BUTTON_HUNT, BUTTON_SIEGE, BUTTON_BOMBARD, BUTTON_SCOUT,
-				BUTTON_RECALL,
+				BUTTON_RECALL, BUTTON_RECALL_ALL,
 				BUTTON_DETACH,
 				BUTTON_SUPPLY, BUTTON_PULLOUT, BUTTON_SUPPORT, BUTTON_DEFEND, BUTTON_PUSH, BUTTON_ENTRENCH,
 				BUTTON_OUTPOST, BUTTON_AID_DEFEND, BUTTON_AID_NEED,
@@ -2258,6 +2268,9 @@ public class ThreatFactionView {
 			} else {
 				addBombardPrompt(prompt, base, faction, system, siegeTier);
 			}
+		} else if (BUTTON_RECALL_ALL.equals(parts[0])) {
+			MarketAPI world = ThreatGroundFronts.resolveMarket(parts[2]);
+			prompt.addPara(world == null ? "The situation has changed." : recallAllText(faction, world), 0f);
 		} else if (BUTTON_RECALL.equals(parts[0])) {
 			if (parts[2].startsWith("purgefleet:") || parts[2].startsWith("tffleet:")) {
 				CampaignFleetAPI fleet = groupFleet(parts[2]);
@@ -2546,7 +2559,7 @@ public class ThreatFactionView {
 			prompt.addPara("Fleet: %s fleet points of " + d.source.getName() + "'s %s free.", 10f, h,
 					Misc.getWithDGS((int) d.targetPts), Misc.getWithDGS((int) d.ownFree));
 		}
-		if (d.capped) prompt.addPara("One fleet holds at most %s.", 3f, h, Misc.getWithDGS((int) d.targetPts));
+		if (d.capped) prompt.addPara("Capped at %s at this lever.", 3f, h, Misc.getWithDGS((int) d.targetPts));
 		String[] goods = { "Marines", "Arms", "Fuel", "Supplies" };
 		for (int i = 0; i < 4; i++) {
 			String aboard = d.redeploy() ? ", " + Misc.getWithDGS((int) d.aboard[i]) + " aboard now" : "";
@@ -2754,6 +2767,11 @@ public class ThreatFactionView {
 					.send();
 			return "bombard";
 		}
+		if (BUTTON_RECALL_ALL.equals(parts[0])) {
+			MarketAPI world = ThreatGroundFronts.resolveMarket(parts[2]);
+			if (world == null) return null;
+			return recallAll(faction, world, random) > 0 ? "recall-all" : null;
+		}
 		if (BUTTON_RECALL.equals(parts[0])) {
 			return recall(parts[1], parts[2]) ? "recall" : null;
 		}
@@ -2883,6 +2901,18 @@ public class ThreatFactionView {
 	}
 
 	/** Purged worlds within expedition reach of one of the faction's military worlds. */
+	/** The Staging group's Recall, left of Transfer (2026-10-30 21:00): greyed with nothing out; the tooltip says what comes home. */
+	protected static void addRecallAllButton(ThreatIncursionIntel intel, TooltipMakerAPI main, UIPanelAPI table,
+			float up, FactionAPI faction, MarketAPI world, boolean mayOrder, String blocked) {
+		ButtonAPI recall = intel.addGenericButton(main, RECALL_W, "Recall",
+				BUTTON_RECALL_ALL + faction.getId() + ":" + world.getId());
+		recall.getPosition().belowRight(table, -up).setXAlignOffset(-6f - DEPLOY_W - 4f - TRANSFER_W - 4f);
+		int[] n = recallAllCount(faction, world);
+		boolean any = n[0] + n[1] + n[2] > 0;
+		disableWith(main, recall, mayOrder && any, blocked != null ? blocked : recallAllText(faction, world),
+				recallAllText(faction, world));
+	}
+
 	/** The hive worlds the player's landings are attacking - the Domain table's Front rows (2026-10-30 evening). */
 	protected static List<ThreatWarBoard.FrontRow> attackedRows() {
 		List<ThreatWarBoard.FrontRow> rows = new ArrayList<ThreatWarBoard.FrontRow>();
@@ -3010,6 +3040,113 @@ public class ThreatFactionView {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * What the Staging group's Recall would call home (2026-10-30 21:00): [fleets, convoys, fronts]. A
+	 * colony's: the orders based there, the expeditions and task forces raised there, the convoys from
+	 * it. A hive's (a Front row): the orders over it, and its front if a pickup run can sail.
+	 */
+	protected static int[] recallAllCount(FactionAPI faction, MarketAPI world) {
+		int[] n = new int[3];
+		if (faction == null || world == null) return n;
+		boolean hive = ThreatIncData.resolveColonyMarket(world.getId()) != null;
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!faction.getId().equals(o.factionId) || o.fleet == null || !o.fleet.isAlive()) continue;
+			if (hive ? world.getId().equals(o.targetId) : world.getId().equals(o.baseMarketId)) n[0]++;
+		}
+		if (hive) {
+			if (ThreatConvoys.pullOutBlockReason(faction, world) == null) n[2] = 1;
+			return n;
+		}
+		for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
+			if (faction.getId().equals(c.factionId) && world.getId().equals(c.fromMarketId)
+					&& c.fleet != null && c.fleet.isAlive() && !c.pickup) n[1]++;
+		}
+		for (Object g : IncursionManager.getPurgeList()) {
+			if (!(g instanceof ThreatPurgeFGI)) continue;
+			ThreatPurgeFGI p = (ThreatPurgeFGI) g;
+			if (p.getFaction() == null || !faction.getId().equals(p.getFaction().getId())) continue;
+			if (p.isEnding() || p.isEnded()) continue;
+			MarketAPI base = p.sourceBase();
+			if (base != null && world.getId().equals(base.getId())) n[0]++;
+		}
+		for (Object g : IncursionManager.getResponseList()) {
+			if (!(g instanceof ThreatResponseIntel)) continue;
+			ThreatResponseIntel r = (ThreatResponseIntel) g;
+			if (r.getFaction() == null || !faction.getId().equals(r.getFaction().getId())) continue;
+			if (world.getName().equals(r.baseName) && !r.livingFleets().isEmpty()) n[0]++;
+		}
+		return n;
+	}
+
+	/** The Recall's tooltip and confirm: "Recalls 2 fleets and 1 convoy sent from Haven." / "Lifts the front off Ogre and brings it home; recalls 1 fleet over it." */
+	protected static String recallAllText(FactionAPI faction, MarketAPI world) {
+		int[] n = recallAllCount(faction, world);
+		boolean hive = ThreatIncData.resolveColonyMarket(world.getId()) != null;
+		List<String> parts = new ArrayList<String>();
+		if (n[0] > 0) parts.add(n[0] + (n[0] == 1 ? " fleet" : " fleets"));
+		if (n[1] > 0) parts.add(n[1] + (n[1] == 1 ? " convoy" : " convoys"));
+		if (hive) {
+			String lift = n[2] > 0 ? "Lifts the front off " + world.getName() + " and brings it home" : "";
+			if (parts.isEmpty()) return lift.isEmpty() ? "Nothing to recall." : lift + ".";
+			return (lift.isEmpty() ? "Recalls " : lift + "; recalls ") + Misc.getAndJoined(parts) + " over it.";
+		}
+		if (parts.isEmpty()) return "Nothing sent from " + world.getName() + " is out.";
+		return "Recalls " + Misc.getAndJoined(parts) + " sent from " + world.getName() + ".";
+	}
+
+	/** The Recall carried out (recallAllCount says what); how many orders went out, with the notice. */
+	protected static int recallAll(FactionAPI faction, MarketAPI world, java.util.Random random) {
+		if (faction == null || world == null) return 0;
+		String what = recallAllText(faction, world);
+		boolean hive = ThreatIncData.resolveColonyMarket(world.getId()) != null;
+		int n = 0;
+		for (ThreatFleetOrders.Order o : new ArrayList<ThreatFleetOrders.Order>(ThreatFleetOrders.all())) {
+			if (!faction.getId().equals(o.factionId) || o.fleet == null || !o.fleet.isAlive()) continue;
+			if (hive ? world.getId().equals(o.targetId) : world.getId().equals(o.baseMarketId)) {
+				ThreatFleetOrders.recall(o);
+				n++;
+			}
+		}
+		if (hive) {
+			if (ThreatConvoys.pullOutBlockReason(faction, world) == null
+					&& ThreatConvoys.pullOutFront(world, faction, random) != null) n++;
+		} else {
+			for (ThreatConvoys.Convoy c : new ArrayList<ThreatConvoys.Convoy>(ThreatConvoys.all())) {
+				if (faction.getId().equals(c.factionId) && world.getId().equals(c.fromMarketId)
+						&& c.fleet != null && c.fleet.isAlive() && !c.pickup) {
+					ThreatConvoys.returnHome(c);
+					n++;
+				}
+			}
+			for (Object g : new ArrayList<Object>(IncursionManager.getPurgeList())) {
+				if (!(g instanceof ThreatPurgeFGI)) continue;
+				ThreatPurgeFGI p = (ThreatPurgeFGI) g;
+				if (p.getFaction() == null || !faction.getId().equals(p.getFaction().getId())) continue;
+				if (p.isEnding() || p.isEnded()) continue;
+				MarketAPI base = p.sourceBase();
+				if (base != null && world.getId().equals(base.getId())) {
+					p.abort();
+					n++;
+				}
+			}
+			for (Object g : new ArrayList<Object>(IncursionManager.getResponseList())) {
+				if (!(g instanceof ThreatResponseIntel)) continue;
+				ThreatResponseIntel r = (ThreatResponseIntel) g;
+				if (r.getFaction() == null || !faction.getId().equals(r.getFaction().getId())) continue;
+				if (world.getName().equals(r.baseName) && !r.livingFleets().isEmpty()) {
+					r.standDown();
+					n++;
+				}
+			}
+		}
+		if (n > 0) {
+			ThreatNotice.titled("Recall Ordered").icon(faction).line(what).send();
+		} else {
+			ThreatNotice.titled("Nothing To Recall").bad().icon(faction).line("For %s", ThreatNotice.market(world)).send();
+		}
+		return n;
 	}
 
 	protected static boolean recall(String factionId, String key) {

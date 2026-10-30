@@ -985,8 +985,7 @@ public class ThreatWarBoard {
 		public boolean tierSelector;
 	}
 
-	/** The stance toggle's width: "Regroup" fits. */
-	protected static final float FRONT_STANCE_W = 66f;
+	protected static final float FRONT_STANCE_W = 56f;
 	protected static final float FRONT_DEFEND_W = 58f;
 
 	/** Every live front, the player's own first, then by world name. */
@@ -1592,12 +1591,13 @@ public class ThreatWarBoard {
 	 * The fronts table's Actions column (2026-10-30 evening, the user: "one button for push and
 	 * hold not two, and it toggles between them ... move the push/hold button to actions column
 	 * right most side"): one button a row, floated over the entry's last cell, added last and
-	 * anchored to the table (platform traps 1 and 2). The player's own landing: its stance as it
-	 * stands, pressed the other (BUTTON_PUSH / BUTTON_ENTRENCH, no strength gate). The player's own
-	 * colony under a Threat landing: the defenders' stance the same way (BUTTON_DEFEND_PUSH /
+	 * anchored to the table (platform traps 1 and 2). The player's own landing: the order it is not
+	 * under - Push while it holds or regroups, Hold while it pushes (the label is the action, not the
+	 * state: the user, 21:00; BUTTON_PUSH / BUTTON_ENTRENCH, no strength gate). The player's own
+	 * colony under a Threat landing: the defenders' order the same way (BUTTON_DEFEND_PUSH /
 	 * BUTTON_DEFEND_ENTRENCH). An ally's sieged world: Defend at the Fleet lever (BUTTON_AID_DEFEND).
 	 * Supply, Support, Defend and Pull out went: the Domain table's row for the attacked world holds
-	 * Deploy and Transfer (ThreatFactionView). The orders route through
+	 * Deploy, Transfer and Recall (ThreatFactionView). The orders route through
 	 * ThreatFactionView.executeOrder, one code path.
 	 */
 	public static void addFrontButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Fronts fronts) {
@@ -1610,12 +1610,13 @@ public class ThreatWarBoard {
 			float up = (fronts.rowCount - i) * ROW_H - (ROW_H - 20f) / 2f;
 			if (playerCanReinforce(r)) {
 				if (r.market.isPlayerOwned()) {
-					// the defenders' stance as it stands; pressed, the other (2026-10-30 evening, the user:
-					// "one button for push and hold not two, and it toggles between them")
+					// one button, its label the ORDER it gives - the stance the defenders are not in (the user,
+					// 2026-10-30 evening: "one button for push and hold not two, and it toggles between them";
+					// 21:00: "the label should indicate the action result not the current state")
 					boolean pushing = ThreatGroundFronts.defendersPush(r.front, r.market);
 					String dkey = Factions.PLAYER + ":" + r.market.getId();
 					com.fs.starfarer.api.ui.ButtonAPI stance = intel.addGenericButton(main, FRONT_STANCE_W,
-							pushing ? "Push" : "Hold",
+							pushing ? "Hold" : "Push",
 							(pushing ? ThreatFactionView.BUTTON_DEFEND_ENTRENCH : ThreatFactionView.BUTTON_DEFEND_PUSH) + dkey);
 					stance.getPosition().belowRight(fronts.table, -up).setXAlignOffset(-6f);
 					if (pushing) {
@@ -1648,16 +1649,15 @@ public class ThreatWarBoard {
 				continue;
 			}
 			if (!playerCanOrder(r)) continue;
-			// the player's own landing: its stance as it stands - Push, Hold, Regroup (a checkpoint) -
-			// and pressed, the other; no strength gate (the user, 2026-10-30 evening: "should use same
-			// mechanics as colony defence i can push and hold whenever i want"). Supply, Support, Defend
-			// and Pull out went the same evening: the Domain table's row for the world holds Deploy and
-			// Transfer (ThreatFactionView)
+			// the player's own landing: one button, its label the ORDER - Hold while it pushes, Push while
+			// it holds or regroups (the label is the action, not the state: the user, 2026-10-30 21:00);
+			// no strength gate (the user, that evening: "should use same mechanics as colony defence i can
+			// push and hold whenever i want"). Supply, Support, Defend and Pull out went the same evening:
+			// the Domain table's row for the world holds Deploy, Transfer and Recall (ThreatFactionView)
 			String key = Factions.PLAYER + ":" + r.market.getId();
 			boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(r.front.stance);
-			boolean regrouping = ThreatGroundFronts.STANCE_CONSOLIDATE.equals(r.front.stance);
 			com.fs.starfarer.api.ui.ButtonAPI stance = intel.addGenericButton(main,
-					FRONT_STANCE_W, pushing ? "Push" : regrouping ? "Regroup" : "Hold",
+					FRONT_STANCE_W, pushing ? "Hold" : "Push",
 					(pushing ? ThreatFactionView.BUTTON_ENTRENCH : ThreatFactionView.BUTTON_PUSH) + key);
 			stance.getPosition().belowRight(fronts.table, -up).setXAlignOffset(-6f);
 			if (pushing) {

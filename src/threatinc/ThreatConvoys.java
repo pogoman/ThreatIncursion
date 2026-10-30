@@ -1697,14 +1697,19 @@ public class ThreatConvoys {
 		// a link in the hive's own system is always nearest, and pickBase takes it
 		if (ThreatFrontlines.isOutpost(base)) base = colonyBase(faction, hive.getLocationInHyperspace(), base);
 		if (base != null && skip != null && skip.contains(base.getId())) base = null;
-		if (pickup || faction.isPlayerFaction() || hive.getStarSystem() == null) return ThreatBases.of(base);
-		// an NPC front loads where the most of what it wants is: the nearest base,
-		// or any of the faction's markets in reach of the hive (the siege pool,
-		// IncursionManager.siegeDonors). One base alone let Hegemony's Loka front
-		// go dry and fall with 15k marines banked elsewhere (run 9)
+		if (pickup || hive.getStarSystem() == null) return ThreatBases.of(base);
+		// a front loads where the most of what it wants is: the nearest base, or any of the faction's
+		// markets in reach of the hive (the siege pool, IncursionManager.siegeDonors) - the player's any
+		// colony of theirs at any range (2026-10-30 21:00: the Domain row's Transfer read "No base in
+		// reach has marines or heavy armaments above its floor" at the nearest base alone while other
+		// colonies had both; distance costs time, never permission). One base alone let Hegemony's Loka
+		// front go dry and fall with 15k marines banked elsewhere (run 9)
 		MarketAPI best = base;
 		float bestScore = base != null ? frontScore(base, wants) : -1f;
-		for (MarketAPI m : IncursionManager.factionMarketsInReach(faction, hive.getStarSystem())) {
+		java.util.List<MarketAPI> pool = faction.isPlayerFaction()
+				? ThreatReserves.marketsOf(faction.getId())
+				: IncursionManager.factionMarketsInReach(faction, hive.getStarSystem());
+		for (MarketAPI m : pool) {
 			if (m == base || ThreatFrontlines.isOutpost(m)) continue;
 			if (skip != null && skip.contains(m.getId())) continue;
 			float s = frontScore(m, wants);
@@ -1739,6 +1744,10 @@ public class ThreatConvoys {
 
 	/** How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share). */
 	protected static float frontScore(MarketAPI m, float[] wants) {
+		if (wants[0] <= 0f && wants[1] <= 0f) {
+			// a front that wants nothing: the levers still send - the colony with the most above its floor
+			return ThreatReserves.available(m, Commodities.MARINES) + ThreatReserves.available(m, Commodities.HAND_WEAPONS);
+		}
 		float marines = wants[0] > 0f
 				? Math.min(1f, ThreatReserves.available(m, Commodities.MARINES) / wants[0]) : 0f;
 		float arms = wants[1] > 0f
@@ -1927,7 +1936,9 @@ public class ThreatConvoys {
 		if (allNone(levers)) return "Marines and Arms are both at None.";
 		float[] asked = supplyAsk(front, hive, levers);
 		if (asked[0] < 1f && asked[1] < 1f) {
-			return "No base in reach has marines or heavy armaments above its floor to send.";
+			ThreatBases.Base base = pickFrontBase(faction, hive, false, frontWants(front, hive));
+			return base == null ? "No base in reach."
+					: base.name() + " has no marines or heavy armaments above its floor to send at the levers.";
 		}
 		return null;
 	}
