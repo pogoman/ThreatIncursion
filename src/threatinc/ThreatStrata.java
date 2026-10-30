@@ -216,7 +216,7 @@ public final class ThreatStrata {
 	}
 
 	/**
-	 * The size the strata say, stepped one at a time so each step's bookkeeping and notices run:
+	 * The size the strata say, stepped one at a time so each step's bookkeeping runs:
 	 * up by ThreatColonyManager.growColony at each size's strata reached, down by
 	 * ThreatRazing.reduceSize when the figure falls under the size's own. Strata bombed out from
 	 * under a front may leave it holding all there is: the front wins.
@@ -233,7 +233,7 @@ public final class ThreatStrata {
 			if (wants < size) {
 				ThreatRazing.reduceSize(market, what);
 				if (market.getSize() >= size) break;
-				announceShrink(market, size, razerFactionId, what);
+				// no notice: a hive's size change is never announced (the user, 2026-10-30)
 				ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
 				if (front != null && front.strataHeld >= market.getSize()) {
 					ThreatIncConfig.log("The strata under the front at " + market.getName() + " are gone: the front holds all there is");
@@ -244,29 +244,6 @@ public final class ThreatStrata {
 			}
 			break;
 		}
-	}
-
-	/** A size off: "Hive Starving" for hunger, "Hive Thins" for the hive's own spending, "Stratum Razed" under the razer's crest for a bombardment, "Stratum Bled" for a front's attrition ({@code what} starts "Bled"). */
-	protected static void announceShrink(MarketAPI market, int before, String razerFactionId, String what) {
-		if (razerFactionId == null) {
-			boolean spent = what != null && (what.startsWith("Budded") || what.startsWith("Absorbed") || what.startsWith("Shifted"));
-			ThreatColonyManager.announce(ThreatNotice.titled(spent ? "Hive Thins" : "Hive Starving").good()
-					.line("%s has shrunk to size %s", ThreatNotice.market(market), "" + market.getSize()));
-			return;
-		}
-		boolean bled = what != null && what.startsWith("Bled");
-		String deed = bled ? "front has bled" : "bombardment has razed";
-		FactionAPI razer = Global.getSector().getFaction(razerFactionId);
-		ThreatNotice n = ThreatNotice.titled(bled ? "Stratum Bled" : "Stratum Razed").good().icon(razer);
-		if (Factions.PLAYER.equals(razerFactionId)) {
-			n.line("Your " + deed + " a stratum of %s.", ThreatNotice.market(market));
-		} else if (razer != null) {
-			n.line("%s's " + deed + " a stratum of %s.", ThreatNotice.faction(razer), ThreatNotice.market(market));
-		} else {
-			n.line("The " + deed + " a stratum of %s.", ThreatNotice.market(market));
-		}
-		n.line("Size %s to %s.", "" + before, "" + market.getSize());
-		ThreatColonyManager.announce(n);
 	}
 
 	/**

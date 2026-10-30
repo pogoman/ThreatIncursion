@@ -3831,7 +3831,7 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * One growth step: size up, plan one industry, announce the milestones.
+	 * One growth step: size up, plan one industry.
 	 * The vitality engine's step, and the debug floor's (ThreatDebugWar.
 	 * pollFloor). @return whether the size actually rose.
 	 */
@@ -3848,14 +3848,8 @@ public class ThreatColonyManager {
 		// (its apply() reads market size on every econ recompute)
 		planHiveEconomy(market);
 
-		int newSize = market.getSize();
-		if (newSize == 4 || newSize == 6 || newSize >= cap) {
-			ThreatNotice notice = ThreatNotice.titled("Hive Grows").bad()
-					.line("%s has grown to size %s", ThreatNotice.market(market), newSize);
-			if (newSize >= cap) notice.line("Its growth has reached saturation");
-			announce(notice);
-		}
-		ThreatIncConfig.log("Colony grew to " + newSize + ": " + market.getName());
+		// no notice: a hive's size change is never announced (the user, 2026-10-30)
+		ThreatIncConfig.log("Colony grew to " + market.getSize() + ": " + market.getName());
 		return true;
 	}
 

@@ -649,8 +649,8 @@ from "move / build a fleet" to "bud / shift / absorb".
   and a colony of yours beside one reveals it (`revealNeighbours`, as built); every faction's
   finds are shared as built; your colonies' own patrol sweeps stand as any faction's (assumed,
   section 11).
-- **Notices:** as built ("Stratum Razed", "Stratum Bled", "Hive Starving", "Hive Razed", the
-  layer notices). New: none - budding, shifting and absorbing are visible on the map and the
+- **Notices:** as built ("Hive Razed", the layer notices; no size-change notice since 2026-10-30). The
+  rest: none - budding, shifting and absorbing are visible on the map and the
   board, not announced (the 2026-09-27 no-progress rule).
 - **Campaign map:** the falling glows for absorbing (as built), the rising glows for budding.
   Drawn only for a player in the system.
@@ -700,7 +700,7 @@ strata. Migration of the bank. Garrisons still stand in this phase.
 the span below it (76,800 at 8) so a fortress at its cap has a buffer before it desizes; a world's
 bank (`spareFP`, what it builds garrisons and foundings from) is its strata above the larger of its
 size's own and `shiftFloorStrata`, while a strike or a funded shift draws from everything above
-800 alone (`strikeSpareFP`) and takes a size with it ("Hive Thins"); the strike fund is that spare
+800 alone (`strikeSpareFP`) and takes a size with it; the strike fund is that spare
 hive-wide, less the posture's defence shortfall and the offensive's escrow (`addStrikeFund(-cost)`
 escrows, `(+cost)` releases), paid in proportion to what each world gives and STAGED at the staging
 colony as fleet points in flight (`KEY_STAGED_FP`) so a pooled bill never flickers that world's
@@ -714,7 +714,7 @@ no Spaceport (`foundColony` adds none, `ensureSpaceport` retires one; `portArms`
 until the Nexus goes (phase C); `ThreatColonyUpkeep` still runs its supplies ledger but drives no
 growth (phase B retires it). To verify in game: a hive fed in full grows 200 x size a month
 (Core tooltip "Growing N a month"); a far seed reads a low density, few shipping units and holds or
-starves; a strike thins its givers ("Hive Thins") and the density around them falls; the board's
+starves; a strike thins its givers and the density around them falls; the board's
 census reads strata and density; an old save logs the migration; no port on any hive. Proves: the hive still
 grows, strikes and founds on one figure; a far seed stalls; a thinned back line starves; the
 census reads strata and density.
