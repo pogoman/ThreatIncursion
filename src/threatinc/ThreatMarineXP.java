@@ -231,6 +231,23 @@ public class ThreatMarineXP {
 	}
 
 	/**
+	 * Recounts the player fleet's pool after the mod takes marines OUT of its cargo (a landing, a
+	 * reinforcement, aid handed over). Vanilla recounts only on its own events, and a market purchase
+	 * recounts with keepXP: a headcount lower than its last count is read as marines moved to storage,
+	 * and the pool is CLAMPED to the new headcount instead of scaled - so after a landing the next
+	 * purchase made every marine aboard Elite (the user, 2026-10-30). update() here scales the pool
+	 * in proportion, keeping the level. Not gated on marineFleetXpTransfer: the count is vanilla's.
+	 */
+	public static void fleetRecount() {
+		try {
+			PlayerFleetPersonnelTracker tracker = PlayerFleetPersonnelTracker.getInstance();
+			if (tracker != null) tracker.update();
+		} catch (Throwable t) {
+			// no tracker (a very old save): nothing to recount
+		}
+	}
+
+	/**
 	 * Writes a returning body of marines back into the player fleet's pool at
 	 * the level it earned in the field. The marines themselves must ALREADY be
 	 * in the fleet's cargo: vanilla clamps the pool to the headcount, so the

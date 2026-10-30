@@ -87,8 +87,10 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 	}
 
 	protected static void remove(CargoAPI cargo, String commodityId, int quantity) {
-		if (Commodities.MARINES.equals(commodityId)) cargo.removeMarines(quantity);
-		else if (Commodities.FUEL.equals(commodityId)) cargo.removeFuel(quantity);
+		if (Commodities.MARINES.equals(commodityId)) {
+			cargo.removeMarines(quantity);
+			ThreatMarineXP.fleetRecount(); // vanilla's pool must learn the heads are gone, or the next purchase reads them Elite
+		} else if (Commodities.FUEL.equals(commodityId)) cargo.removeFuel(quantity);
 		else if (Commodities.SUPPLIES.equals(commodityId)) cargo.removeSupplies(quantity);
 		else cargo.removeCommodity(commodityId, quantity);
 	}
