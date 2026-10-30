@@ -846,7 +846,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBountyIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :48
 - `ThreatBountyIntel.getIntelTags(SectorMapAPI map)` :53
 
-## ThreatBudding (858 lines)
+## ThreatBudding (886 lines)
 ### the flow
 - `ThreatBudding.flowPerDay(MarketAPI market)` :97 - Strata the world moves a day, either way:
 - `ThreatBudding.flowFP(MarketAPI market)` :103 - #flowPerDay in fleet points.
@@ -873,24 +873,25 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBudding.noteLoss(MarketAPI market, float strata)` :312 - Called by ThreatStrata.add:
 - `ThreatBudding.doomed(MarketAPI market, float wantFP, float poolFP)` :322 - Whether the world's defence should spawn short now:
 - `ThreatBudding.advance(MarketAPI market, MemoryAPI mem, float elapsedDays, boolean contested, Random random)` :331 - One poll of a budding order:
-- `ThreatBudding.take(MarketAPI market, float fp, boolean forDefence)` :384 - Takes fleet points off the world into its pool:
-- `ThreatBudding.receiverOf(MarketAPI market)` :402
-- `ThreatBudding.spawn(MarketAPI market, MemoryAPI mem, String kind, float poolFP, String why, Random random)` :409 - The pool becomes a fleet, whole, over the world:
+- `ThreatBudding.take(MarketAPI market, float fp, boolean forDefence)` :399 - Takes fleet points off the world into its pool:
+- `ThreatBudding.fuelAffordFP(MarketAPI from, MarketAPI to)` :422 - Fleet points whose one-way passage from from to to the hive's free fuel pays today (ThreatFuel.passage is linear in FP;
+- `ThreatBudding.receiverOf(MarketAPI market)` :429
+- `ThreatBudding.spawn(MarketAPI market, MemoryAPI mem, String kind, float poolFP, String why, Random random)` :436 - The pool becomes a fleet, whole, over the world:
 ### absorbing
-- `ThreatBudding.absorbLingering(MarketAPI market, MemoryAPI mem, float elapsedDays, boolean contested, float today)` :450 - A fleet over its own hive world with the orbit quiet for defendLingerDays (a shift at once) is absorbed at the flow rate, to the cap.
-- `ThreatBudding.absorbHulls(MarketAPI market, CampaignFleetAPI fleet, float fp, String label)` :478 - Absorbs up to fp of the fleet's hulls into the world's strata:
+- `ThreatBudding.absorbLingering(MarketAPI market, MemoryAPI mem, float elapsedDays, boolean contested, float today)` :477 - A fleet over its own hive world with the orbit quiet for defendLingerDays (a shift at once) is absorbed at the flow rate, to the cap.
+- `ThreatBudding.absorbHulls(MarketAPI market, CampaignFleetAPI fleet, float fp, String label)` :505 - Absorbs up to fp of the fleet's hulls into the world's strata:
 ### strikes
-- `ThreatBudding.advanceStrike(MarketAPI colony, MemoryAPI mem, float elapsedDays, float today)` :516 - One poll of a strike order:
-- `ThreatBudding.stageArrivals(MarketAPI colony)` :597 - A swarm flagged for the strike (FOR_STRIKE) seated over the staging colony with the orbit quiet is staged whole:
-- `ThreatBudding.strikeInbound(MarketAPI colony)` :617 - Fleet points on their way to the staging colony for its strike:
-- `ThreatBudding.strikeBound()` :638 - Fleet points already budded toward the hive's strikes:
+- `ThreatBudding.advanceStrike(MarketAPI colony, MemoryAPI mem, float elapsedDays, float today)` :543 - One poll of a strike order:
+- `ThreatBudding.stageArrivals(MarketAPI colony)` :624 - A swarm flagged for the strike (FOR_STRIKE) seated over the staging colony with the orbit quiet is staged whole:
+- `ThreatBudding.strikeInbound(MarketAPI colony)` :644 - Fleet points on their way to the staging colony for its strike:
+- `ThreatBudding.strikeBound()` :665 - Fleet points already budded toward the hive's strikes:
 ### the shift
-- `ThreatBudding.shift()` :662 - The hive's one lever, in place of the pressure pass (ThreatColonyManager.redistributeGarrisons):
+- `ThreatBudding.shift()` :689 - The hive's one lever, in place of the pressure pass (ThreatColonyManager.redistributeGarrisons):
 ### readouts
-- `ThreatBudding.flowText(MarketAPI market)` :804 - The board's flow cell for a world:
-- `ThreatBudding.days(float strata, float flow)` :835
-- `ThreatBudding.visual(MarketAPI market, String label, float fp, boolean rising)` :840 - The rising or falling glows over the world, for a player in the system:
-- `ThreatBudding.standingFP()` :848 - Fleets over hive worlds that are the strata in space:
+- `ThreatBudding.flowText(MarketAPI market)` :832 - The board's flow cell for a world:
+- `ThreatBudding.days(float strata, float flow)` :863
+- `ThreatBudding.visual(MarketAPI market, String label, float fp, boolean rising)` :868 - The rising or falling glows over the world, for a player in the system:
+- `ThreatBudding.standingFP()` :876 - Fleets over hive worlds that are the strata in space:
 
 ## ThreatBuildCost (121 lines)
 - `ThreatBuildCost.pricedAs(String industryId)` :26 - The hive's own structures, priced as the vanilla ones they stand in for.
@@ -3367,7 +3368,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatInfestation.canInstallAICores()` :107
 - `ThreatInfestation.getPatherInterest()` :112
 
-## ThreatIntel (660 lines)
+## ThreatIntel (706 lines)
 - `ThreatIntel.ThreatIntel()` :51 - FOG OF WAR ON THE SWARM (2026-10-01, user's call;
 - `ThreatIntel.worldFP(String marketId)` :91
 - `ThreatIntel.worldFleets(String marketId)` :96
@@ -3375,50 +3376,54 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIntel.worldSize(String marketId)` :108 - The world's size when seen, 0 in a report from before it was recorded.
 - `ThreatIntel.worldStaging(String marketId)` :114 - Fleet points massing at the world for a strike when seen (staged and flying in for it), 0 none or not recorded.
 - `ThreatIntel.worldMade(String marketId)` :120 - The world's producer industries when seen (industry ids), none when not recorded.
-- `ThreatIntel.strongestFP()` :126 - The swarms over the strongest world it saw.
-- `ThreatIntel.totalFP()` :132
-- `ThreatIntel.totalFleets()` :136
-- `ThreatIntel.age()` :140
-- `ThreatIntel.enabled()` :145
-- `ThreatIntel.today()` :163
-- `ThreatIntel.observerOf(FactionAPI faction)` :168 - The observer id a faction reports under:
-- `ThreatIntel.observers()` :174 - Who keeps reports:
+- `ThreatIntel.worldFed(String marketId)` :126 - The Core's state when seen (ThreatWarBoard.STARVING / HOLDING / GROWING), 0 when not recorded.
+- `ThreatIntel.strongestFP()` :132 - The swarms over the strongest world it saw.
+- `ThreatIntel.totalFP()` :138
+- `ThreatIntel.totalFleets()` :142
+- `ThreatIntel.age()` :146
+- `ThreatIntel.enabled()` :151
+- `ThreatIntel.today()` :169
+- `ThreatIntel.observerOf(FactionAPI faction)` :174 - The observer id a faction reports under:
+- `ThreatIntel.observers()` :180 - Who keeps reports:
 ### seeing
-- `ThreatIntel.swarmFleet(CampaignFleetAPI fleet)` :188 - A Threat fleet the contest would count:
-- `ThreatIntel.picture(StarSystemAPI system, String observer, String source)` :199 - The system as it stands now:
-- `ThreatIntel.see(String observer, StarSystemAPI system, String source)` :267 - Writes the observer's report of the system from what is there now.
-- `ThreatIntel.look(String observer, StarSystemAPI system, String source)` :273 - What the observer's party sees in the system now, not yet filed:
-- `ThreatIntel.file(String observer, StarSystemAPI system, Report r, String source)` :284 - Files a picture as the observer's report of the system - see's second half, and where a scout's carried picture lands when it is home;
-- `ThreatIntel.moved(Report old, Report now)` :315 - Whether any world's swarms moved by half or more either way since old;
-- `ThreatIntel.describe(Report r)` :333
-- `ThreatIntel.look(String observer, StarSystemAPI system)` :349 - A fleet, colony or army of the observer is in the system now:
-- `ThreatIntel.observerOf(MarketAPI market)` :357 - The observer id a market reports under.
-- `ThreatIntel.eyesIn(StarSystemAPI system)` :369 - The observers with eyes in the system:
-- `ThreatIntel.routesIn(StarSystemAPI system)` :399 - Factions with an unspawned vanilla route in the system now (an off-screen siege, patrol or convoy).
+- `ThreatIntel.swarmFleet(CampaignFleetAPI fleet)` :194 - A Threat fleet the contest would count:
+- `ThreatIntel.worldFigures(MarketAPI hive)` :210 - A world's figures in a report:
+- `ThreatIntel.madeOf(MarketAPI hive)` :216 - The world's producer industries (PRODUCERS), comma-joined, for Report.made.
+- `ThreatIntel.backfill()` :231 - Reports from before 2026-10-30 carry no strata, size, massing, producers or Core state (the "Top fuel plant, Top mine" cells of 16:10):
+- `ThreatIntel.picture(StarSystemAPI system, String observer, String source)` :253
+- `ThreatIntel.see(String observer, StarSystemAPI system, String source)` :312 - Writes the observer's report of the system from what is there now.
+- `ThreatIntel.look(String observer, StarSystemAPI system, String source)` :318 - What the observer's party sees in the system now, not yet filed:
+- `ThreatIntel.file(String observer, StarSystemAPI system, Report r, String source)` :329 - Files a picture as the observer's report of the system - see's second half, and where a scout's carried picture lands when it is home;
+- `ThreatIntel.moved(Report old, Report now)` :360 - Whether any world's swarms moved by half or more either way since old;
+- `ThreatIntel.describe(Report r)` :378
+- `ThreatIntel.look(String observer, StarSystemAPI system)` :394 - A fleet, colony or army of the observer is in the system now:
+- `ThreatIntel.observerOf(MarketAPI market)` :402 - The observer id a market reports under.
+- `ThreatIntel.eyesIn(StarSystemAPI system)` :414 - The observers with eyes in the system:
+- `ThreatIntel.routesIn(StarSystemAPI system)` :444 - Factions with an unspawned vanilla route in the system now (an off-screen siege, patrol or convoy).
 ### the day
-- `ThreatIntel.poll()` :424 - From the war poll:
-- `ThreatIntel.advanceDay()` :436 - Once a day:
-- `ThreatIntel.pruneDead()` :454 - Reports of systems with no hive left go:
-- `ThreatIntel.census()` :463 - Once a month, each observer's picture in one line per observer:
+- `ThreatIntel.poll()` :469 - From the war poll:
+- `ThreatIntel.advanceDay()` :481 - Once a day:
+- `ThreatIntel.pruneDead()` :499 - Reports of systems with no hive left go:
+- `ThreatIntel.census()` :508 - Once a month, each observer's picture in one line per observer:
 ### sharing
-- `ThreatIntel.sharersOf(String observer)` :494 - Whose reports the observer reads besides its own:
-- `ThreatIntel.partnersOf(String observer)` :510 - The NPC factions that pool reports with this one as they are made:
+- `ThreatIntel.sharersOf(String observer)` :539 - Whose reports the observer reads besides its own:
+- `ThreatIntel.partnersOf(String observer)` :555 - The NPC factions that pool reports with this one as they are made:
 ### reading
-- `ThreatIntel.report(String observer, String systemId)` :528 - The observer's freshest picture of the system - its own, or a sharer's newer one - or null when it has never been seen.
-- `ThreatIntel.markLost(String observer, String systemId)` :557 - A party of the observer's sent to the system was lost on the way (ThreatScouts):
-- `ThreatIntel.lostDay(String observer, String systemId)` :569 - The newest day a party of the observer's or a sharer's was lost on its way to the system, -1 never.
-- `ThreatIntel.report(String observer, StarSystemAPI system)` :583
-- `ThreatIntel.known(String observer, String systemId)` :587
-- `ThreatIntel.worldFP(String observer, MarketAPI hive)` :592 - Fleet points the observer last saw over the hive world (0 when never seen or none).
-- `ThreatIntel.worldFleets(String observer, MarketAPI hive)` :599 - Defense Swarm fleets the observer last saw over the hive world.
-- `ThreatIntel.systemFP(String observer, String systemId)` :606 - Every Threat fleet point the observer last saw in the system.
-- `ThreatIntel.age(String observer, String systemId)` :612 - Days since the observer's picture of the system was seen;
-- `ThreatIntel.trust(String observer, String systemId, float moreDays)` :618 - How far the picture is to be trusted after moreDays (travel, preparation):
-- `ThreatIntel.figure(Report r, float fp)` :625 - The board's figure for a report:
-- `ThreatIntel.when(Report r)` :633 - The age alone, for a line that prints its own figure:
-- `ThreatIntel.forget()` :640 - Called on load:
-- `ThreatIntel.reset()` :647 - A new campaign (ThreatColonyManager.resetIncursion):
-- `ThreatIntel.drop(String systemId)` :655 - A system left the war (ThreatIncData.clearSystem):
+- `ThreatIntel.report(String observer, String systemId)` :573 - The observer's freshest picture of the system - its own, or a sharer's newer one - or null when it has never been seen.
+- `ThreatIntel.markLost(String observer, String systemId)` :602 - A party of the observer's sent to the system was lost on the way (ThreatScouts):
+- `ThreatIntel.lostDay(String observer, String systemId)` :614 - The newest day a party of the observer's or a sharer's was lost on its way to the system, -1 never.
+- `ThreatIntel.report(String observer, StarSystemAPI system)` :628
+- `ThreatIntel.known(String observer, String systemId)` :632
+- `ThreatIntel.worldFP(String observer, MarketAPI hive)` :637 - Fleet points the observer last saw over the hive world (0 when never seen or none).
+- `ThreatIntel.worldFleets(String observer, MarketAPI hive)` :644 - Defense Swarm fleets the observer last saw over the hive world.
+- `ThreatIntel.systemFP(String observer, String systemId)` :651 - Every Threat fleet point the observer last saw in the system.
+- `ThreatIntel.age(String observer, String systemId)` :657 - Days since the observer's picture of the system was seen;
+- `ThreatIntel.trust(String observer, String systemId, float moreDays)` :663 - How far the picture is to be trusted after moreDays (travel, preparation):
+- `ThreatIntel.figure(Report r, float fp)` :670 - The board's figure for a report:
+- `ThreatIntel.when(Report r)` :678 - The age alone, for a line that prints its own figure:
+- `ThreatIntel.forget()` :685 - Called on load:
+- `ThreatIntel.reset()` :693 - A new campaign (ThreatColonyManager.resetIncursion):
+- `ThreatIntel.drop(String systemId)` :701 - A system left the war (ThreatIncData.clearSystem):
 
 ## ThreatMapFog (149 lines)
 - `ThreatMapFog.hidden(MarketAPI market)` :50 - market.isHidden() as the war reads it:
@@ -3434,7 +3439,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatMapFog.unveil(MarketAPI market)` :130
 - `ThreatMapFog.level(String name, SurveyLevel fallback)` :141
 
-## ThreatMarineXP (293 lines)
+## ThreatMarineXP (310 lines)
 ### the ramp
 - `ThreatMarineXP.level(float xp, float num)` :61 - Vanilla's PersonnelData.getXPLevel:
 - `ThreatMarineXP.rankName(float level)` :79 - Vanilla's own name for this level - Regular / Experienced / Veteran / Elite - for every pool, the swarm's included.
@@ -3460,8 +3465,9 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### the player fleet: vanilla's pool, read and written
 - `ThreatMarineXP.fleetLevel()` :216 - The player fleet's current marine level.
 - `ThreatMarineXP.fleetRank()` :229
-- `ThreatMarineXP.fleetReturn(float marines, float level)` :243 - Writes a returning body of marines back into the player fleet's pool at the level it earned in the field.
-- `ThreatMarineXP.playerGroundSkillMult()` :278 - Vanilla's ground-operations bonus for the player, as a multiplier - the Planetary Operations and Tactical Drills skills.
+- `ThreatMarineXP.fleetRecount()` :241 - Recounts the player fleet's pool after the mod takes marines OUT of its cargo (a landing, a reinforcement, aid handed over).
+- `ThreatMarineXP.fleetReturn(float marines, float level)` :260 - Writes a returning body of marines back into the player fleet's pool at the level it earned in the field.
+- `ThreatMarineXP.playerGroundSkillMult()` :295 - Vanilla's ground-operations bonus for the player, as a multiplier - the Planetary Operations and Tactical Drills skills.
 
 ## ThreatMissionFilter (162 lines)
 - `ThreatMissionFilter.createMissionIntel()` :49 - Analyze-entity missions, less the hive worlds'.
@@ -3658,23 +3664,16 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatObjectives (332 lines)
-- `ThreatObjectives.lines(ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all)` :74 - The system's notes, best first, from the player's report of it;
-- `ThreatObjectives.noteText(List<String> lines)` :116 - The cell:
-- `ThreatObjectives.allText(List<String> lines)` :122 - Every note, joined, for the tooltip.
-- `ThreatObjectives.made(String industry, int size)` :132 - "Size 8 fuel production" - a producer and the size the report saw it at (the size left off when unknown).
-- `ThreatObjectives.noteColor(List<String> lines, Color bright, Color h, Color gray, Color loss)` :138 - The cell's colour:
-- `ThreatObjectives.ageText(ThreatWarBoard.Entry e)` :146 - The Age cell:
-- `ThreatObjectives.addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all, float pad)` :156 - The row tooltip's lines:
-- `ThreatObjectives.sizeSeen(ThreatWarBoard.Entry e, MarketAPI world)` :182 - The world's size as the report saw it, 0 unknown.
-- `ThreatObjectives.bestMade(ThreatWarBoard.Entry e, Set<String> covered)` :188 - "Size 8 fuel production":
-- `ThreatObjectives.isolated(ThreatWarBoard.Entry e, List<ThreatWarBoard.Entry> all)` :211 - No other known hive system within ISOLATED_LY, among at least two others.
-- `ThreatObjectives.n(float v)` :222
-- `ThreatObjectives.rows(List<ThreatWarBoard.Entry> entries)` :227 - The rows, best first:
-- `ThreatObjectives.compare(MarketAPI a, MarketAPI b)` :268
-- `ThreatObjectives.compare(Row a, Row b)` :313
-- `ThreatObjectives.output(String industry, int size)` :321 - Units the broadcast gives from a producer of this size:
-- `ThreatObjectives.demand(String industry, MarketAPI m)` :327 - Units the world demands of the producer's good:
+## ThreatObjectives (153 lines)
+- `ThreatObjectives.cellText(ThreatWarBoard.Entry e)` :26 - The cell:
+- `ThreatObjectives.remark(ThreatWarBoard.Entry e)` :35 - The one remark, the most important first.
+- `ThreatObjectives.noteColor(ThreatWarBoard.Entry e, Color bright, Color h, Color gray, Color loss)` :58 - The cell's colour:
+- `ThreatObjectives.ageText(ThreatWarBoard.Entry e)` :67 - The Age cell:
+- `ThreatObjectives.addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, float pad)` :77 - The row tooltip's lines:
+- `ThreatObjectives.massSeen(ThreatWarBoard.Entry e)` :112 - Strata over the system's worlds as the report saw them, -1 when none recorded.
+- `ThreatObjectives.bestMade(ThreatWarBoard.Entry e)` :126 - "Size 8 Fuel Production":
+- `ThreatObjectives.what(String industry)` :146
+- `ThreatObjectives.n(float v)` :150
 
 ## ThreatOccupation (1186 lines)
 - `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :95 - XStream:
@@ -5135,7 +5134,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatUpkeep.charge(CampaignFleetAPI f, long now, Map<String, float[]> tally)` :243
 - `ThreatUpkeep.restockFleet(CampaignFleetAPI f, String factionId)` :316 - Fills a fleet's hold back to its launch load from its faction's bases in its system;
 
-## ThreatWarBoard (2995 lines)
+## ThreatWarBoard (2993 lines)
 - `ThreatWarBoard.isRelevant(String commodityId)` :103
 - `ThreatWarBoard.production(String id)` :121
 - `ThreatWarBoard.demand(String id)` :126
@@ -5210,56 +5209,56 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatWarBoard.positionChanged(PositionAPI position)` :2028
 - `ThreatWarBoard.render(float alphaMult)` :2029
 - `ThreatWarBoard.addLedger(final ThreatIncursionIntel intel, final IntelUIAPI ui, TooltipMakerAPI main, float width, float opad, List<Entry> entries, Entry selected)` :2104
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2157
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2158
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2159
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2236
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2237
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2238
-- `ThreatWarBoard.cell(List<Object> cells, Alignment align, Color color, String text)` :2263
-- `ThreatWarBoard.sizeDigits(Entry e, Cols c)` :2270 - "5 4 4 4 4 4", largest first, capped to what the column fits;
-- `ThreatWarBoard.rewardShort(int reward)` :2287
-- `ThreatWarBoard.missionCode(ThreatMissionIntel b)` :2296 - S/I for the board, then the offer's priority on it - or once the player holds it.
-- `ThreatWarBoard.render(float alphaMult)` :2322
-- `ThreatWarBoard.addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow)` :2386
-- `ThreatWarBoard.addDetailHeading(TooltipMakerAPI main, float opad, Entry e)` :2453 - The selected system's heading line;
-- `ThreatWarBoard.addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e, List<Object[]> cardsOut)` :2472 - The selected system's colony cards (or the seeding note), after its fronts.
-- `ThreatWarBoard.addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e)` :2482
-- `ThreatWarBoard.addCards(TooltipMakerAPI main, float width, final Entry e, List<Object[]> cardsOut)` :2499 - Cards three across on a wide panel, two on a narrow one;
-- `ThreatWarBoard.organsOf(MarketAPI market)` :2523 - The organ icons a card shows, in a fixed order;
-- `ThreatWarBoard.commodityIcon(String commodityId)` :2540
-- `ThreatWarBoard.iconRow(TooltipMakerAPI tm, List<String> ids, List<Integer> nums, List<IconRenderMode> modes)` :2553 - A vanilla icon group:
-- `ThreatWarBoard.buildCard(TooltipMakerAPI main, final MarketAPI market, float cardW, Entry e)` :2567 - Measured name widths from the last card build, so the Map button can sit right of the name.
-- `ThreatWarBoard.positionChanged(PositionAPI position)` :2581
-- `ThreatWarBoard.render(float alphaMult)` :2582
-- `ThreatWarBoard.industryTooltip(final MarketAPI market, final Industry ind)` :2682 - What vanilla's colony screen says about an industry tile:
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2684
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2685
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2686
-- `ThreatWarBoard.forecastParts(MarketAPI market, float health)` :2760 - The size line, right-aligned on the card:
-- `ThreatWarBoard.forecastShort(MarketAPI market, float health)` :2794 - Plain-text form of the size line for tooltips.
-- `ThreatWarBoard.roleLabel(MarketAPI market)` :2799
-- `ThreatWarBoard.commodityName(String commodityId)` :2816
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2155
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2156
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2157
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2234
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2235
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2236
+- `ThreatWarBoard.cell(List<Object> cells, Alignment align, Color color, String text)` :2261
+- `ThreatWarBoard.sizeDigits(Entry e, Cols c)` :2268 - "5 4 4 4 4 4", largest first, capped to what the column fits;
+- `ThreatWarBoard.rewardShort(int reward)` :2285
+- `ThreatWarBoard.missionCode(ThreatMissionIntel b)` :2294 - S/I for the board, then the offer's priority on it - or once the player holds it.
+- `ThreatWarBoard.render(float alphaMult)` :2320
+- `ThreatWarBoard.addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow)` :2384
+- `ThreatWarBoard.addDetailHeading(TooltipMakerAPI main, float opad, Entry e)` :2451 - The selected system's heading line;
+- `ThreatWarBoard.addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e, List<Object[]> cardsOut)` :2470 - The selected system's colony cards (or the seeding note), after its fronts.
+- `ThreatWarBoard.addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e)` :2480
+- `ThreatWarBoard.addCards(TooltipMakerAPI main, float width, final Entry e, List<Object[]> cardsOut)` :2497 - Cards three across on a wide panel, two on a narrow one;
+- `ThreatWarBoard.organsOf(MarketAPI market)` :2521 - The organ icons a card shows, in a fixed order;
+- `ThreatWarBoard.commodityIcon(String commodityId)` :2538
+- `ThreatWarBoard.iconRow(TooltipMakerAPI tm, List<String> ids, List<Integer> nums, List<IconRenderMode> modes)` :2551 - A vanilla icon group:
+- `ThreatWarBoard.buildCard(TooltipMakerAPI main, final MarketAPI market, float cardW, Entry e)` :2565 - Measured name widths from the last card build, so the Map button can sit right of the name.
+- `ThreatWarBoard.positionChanged(PositionAPI position)` :2579
+- `ThreatWarBoard.render(float alphaMult)` :2580
+- `ThreatWarBoard.industryTooltip(final MarketAPI market, final Industry ind)` :2680 - What vanilla's colony screen says about an industry tile:
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2682
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2683
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2684
+- `ThreatWarBoard.forecastParts(MarketAPI market, float health)` :2758 - The size line, right-aligned on the card:
+- `ThreatWarBoard.forecastShort(MarketAPI market, float health)` :2792 - Plain-text form of the size line for tooltips.
+- `ThreatWarBoard.roleLabel(MarketAPI market)` :2797
+- `ThreatWarBoard.commodityName(String commodityId)` :2814
 ### helpers
-- `ThreatWarBoard.needLine(ThreatGroundFronts.GroundFront f, MarketAPI m, boolean forLanding, float s, float band, float overrun, boolean pushing, boolean worldPushes, String unit)` :2836 - " Needs 520 troops to push." - the count that side needs for the next tier its way (losing:
-- `ThreatWarBoard.n(float v)` :2864 - A figure with digit grouping, rounded.
-- `ThreatWarBoard.f2(float v)` :2866 - Two decimals.
-- `ThreatWarBoard.f1(float v)` :2868 - One decimal.
-- `ThreatWarBoard.join(List<String> parts)` :2870
-- `ThreatWarBoard.healthColor(float health)` :2880
-- `ThreatWarBoard.fedState(MarketAPI market)` :2896 - A hive world's Fabrication Core state (2026-10-25), on the engine's own clocks:
-- `ThreatWarBoard.fedStateName(int state)` :2902
-- `ThreatWarBoard.stateColor(int state)` :2907 - A Core state in the reserve key's colours:
-- `ThreatWarBoard.fedColor(float fed)` :2918 - A share of the supplies upkeep paid in the reserve key's colours:
-- `ThreatWarBoard.pct(float share)` :2927 - A share as a whole percentage, rounded.
-- `ThreatWarBoard.seenOver(ThreatIntel.Report r, MarketAPI world)` :2936 - A report's view of one world (ThreatIntel):
-- `ThreatWarBoard.grounded(MarketAPI market)` :2941 - Billed reach:
-- `ThreatWarBoard.swarmSource(List<MarketAPI> markets, MarketAPI staging)` :2951 - The world a system's swarm is judged by for billed reach:
-- `ThreatWarBoard.reachText(boolean grounded, String facedFaction, float facedLY)` :2962 - Billed reach's figure:
-- `ThreatWarBoard.reachColor(boolean grounded, String facedFaction)` :2969 - Its colour:
-- `ThreatWarBoard.factionColor(String factionId)` :2975 - A faction's own colour;
-- `ThreatWarBoard.getSystem(String systemId)` :2980
-- `ThreatWarBoard.findMarker(String systemId)` :2988
+- `ThreatWarBoard.needLine(ThreatGroundFronts.GroundFront f, MarketAPI m, boolean forLanding, float s, float band, float overrun, boolean pushing, boolean worldPushes, String unit)` :2834 - " Needs 520 troops to push." - the count that side needs for the next tier its way (losing:
+- `ThreatWarBoard.n(float v)` :2862 - A figure with digit grouping, rounded.
+- `ThreatWarBoard.f2(float v)` :2864 - Two decimals.
+- `ThreatWarBoard.f1(float v)` :2866 - One decimal.
+- `ThreatWarBoard.join(List<String> parts)` :2868
+- `ThreatWarBoard.healthColor(float health)` :2878
+- `ThreatWarBoard.fedState(MarketAPI market)` :2894 - A hive world's Fabrication Core state (2026-10-25), on the engine's own clocks:
+- `ThreatWarBoard.fedStateName(int state)` :2900
+- `ThreatWarBoard.stateColor(int state)` :2905 - A Core state in the reserve key's colours:
+- `ThreatWarBoard.fedColor(float fed)` :2916 - A share of the supplies upkeep paid in the reserve key's colours:
+- `ThreatWarBoard.pct(float share)` :2925 - A share as a whole percentage, rounded.
+- `ThreatWarBoard.seenOver(ThreatIntel.Report r, MarketAPI world)` :2934 - A report's view of one world (ThreatIntel):
+- `ThreatWarBoard.grounded(MarketAPI market)` :2939 - Billed reach:
+- `ThreatWarBoard.swarmSource(List<MarketAPI> markets, MarketAPI staging)` :2949 - The world a system's swarm is judged by for billed reach:
+- `ThreatWarBoard.reachText(boolean grounded, String facedFaction, float facedLY)` :2960 - Billed reach's figure:
+- `ThreatWarBoard.reachColor(boolean grounded, String facedFaction)` :2967 - Its colour:
+- `ThreatWarBoard.factionColor(String factionId)` :2973 - A faction's own colour;
+- `ThreatWarBoard.getSystem(String systemId)` :2978
+- `ThreatWarBoard.findMarker(String systemId)` :2986
 
 ## ThreatWarCouncil (636 lines)
 - `ThreatWarCouncil.inReach()` :96
@@ -5322,18 +5321,18 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatWarState.hiveInReach(FactionAPI faction)` :288 - Whether any known live hive system lies within expedition range of one of the faction's military worlds.
 - `ThreatWarState.displayName(String factionId)` :308
 
-## ThreatincAidCMD (334 lines)
+## ThreatincAidCMD (336 lines)
 - `ThreatincAidCMD.execute(String ruleId, InteractionDialogAPI dialog, List<Misc.Token> params, Map<String, MemoryAPI> memoryMap)` :49
 - `ThreatincAidCMD.carried(CargoAPI cargo, String commodityId)` :82
 - `ThreatincAidCMD.remove(CargoAPI cargo, String commodityId, int quantity)` :89
-- `ThreatincAidCMD.colour(TextPanelAPI text, String s, MarketAPI market, String... figures)` :101 - Adds a dock line with its names in their colours (the user, 2026-10-24:
-- `ThreatincAidCMD.compare(Object[] a, Object[] b)` :115
-- `ThreatincAidCMD.mark(List<Object[]> marks, String s, String token, java.awt.Color c)` :133 - Every whole-word occurrence of the token in the line, as {index, token, colour}.
-- `ThreatincAidCMD.needLine(MarketAPI market, ThreatNeeds.Need n, int have)` :147 - The need's line at the dock:
-- `ThreatincAidCMD.option(InteractionDialogAPI dialog, MarketAPI market, Map<String, MemoryAPI> memoryMap)` :179 - Gates the hand-over option:
-- `ThreatincAidCMD.lockOptions(OptionPanelAPI panel, MarketAPI market)` :224 - Greys every dock action present with the one reason:
-- `ThreatincAidCMD.menu(InteractionDialogAPI dialog, MarketAPI market)` :237
-- `ThreatincAidCMD.deliver(InteractionDialogAPI dialog, MarketAPI market, String commodityId, int tier)` :303
+- `ThreatincAidCMD.colour(TextPanelAPI text, String s, MarketAPI market, String... figures)` :103 - Adds a dock line with its names in their colours (the user, 2026-10-24:
+- `ThreatincAidCMD.compare(Object[] a, Object[] b)` :117
+- `ThreatincAidCMD.mark(List<Object[]> marks, String s, String token, java.awt.Color c)` :135 - Every whole-word occurrence of the token in the line, as {index, token, colour}.
+- `ThreatincAidCMD.needLine(MarketAPI market, ThreatNeeds.Need n, int have)` :149 - The need's line at the dock:
+- `ThreatincAidCMD.option(InteractionDialogAPI dialog, MarketAPI market, Map<String, MemoryAPI> memoryMap)` :181 - Gates the hand-over option:
+- `ThreatincAidCMD.lockOptions(OptionPanelAPI panel, MarketAPI market)` :226 - Greys every dock action present with the one reason:
+- `ThreatincAidCMD.menu(InteractionDialogAPI dialog, MarketAPI market)` :239
+- `ThreatincAidCMD.deliver(InteractionDialogAPI dialog, MarketAPI market, String commodityId, int tier)` :305
 
 ## ThreatincMarketCMD (1195 lines)
 - `ThreatincMarketCMD.execute(String ruleId, com.fs.starfarer.api.campaign.InteractionDialogAPI dialog, List<com.fs.starfarer.api.util.Misc.Token> params, Map<String, com.fs.starfarer.api.campaign.rules.MemoryAPI> memoryMap)` :92 - Custom command dispatch.
