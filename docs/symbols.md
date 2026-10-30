@@ -846,7 +846,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBountyIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :48
 - `ThreatBountyIntel.getIntelTags(SectorMapAPI map)` :53
 
-## ThreatBudding (886 lines)
+## ThreatBudding (896 lines)
 ### the flow
 - `ThreatBudding.flowPerDay(MarketAPI market)` :97 - Strata the world moves a day, either way:
 - `ThreatBudding.flowFP(MarketAPI market)` :103 - #flowPerDay in fleet points.
@@ -873,25 +873,25 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBudding.noteLoss(MarketAPI market, float strata)` :312 - Called by ThreatStrata.add:
 - `ThreatBudding.doomed(MarketAPI market, float wantFP, float poolFP)` :322 - Whether the world's defence should spawn short now:
 - `ThreatBudding.advance(MarketAPI market, MemoryAPI mem, float elapsedDays, boolean contested, Random random)` :331 - One poll of a budding order:
-- `ThreatBudding.take(MarketAPI market, float fp, boolean forDefence)` :399 - Takes fleet points off the world into its pool:
-- `ThreatBudding.fuelAffordFP(MarketAPI from, MarketAPI to)` :422 - Fleet points whose one-way passage from from to to the hive's free fuel pays today (ThreatFuel.passage is linear in FP;
-- `ThreatBudding.receiverOf(MarketAPI market)` :429
-- `ThreatBudding.spawn(MarketAPI market, MemoryAPI mem, String kind, float poolFP, String why, Random random)` :436 - The pool becomes a fleet, whole, over the world:
+- `ThreatBudding.take(MarketAPI market, float fp, boolean forDefence)` :409 - Takes fleet points off the world into its pool:
+- `ThreatBudding.fuelAffordFP(MarketAPI from, MarketAPI to)` :432 - Fleet points whose one-way passage from from to to the hive's free fuel pays today (ThreatFuel.passage is linear in FP;
+- `ThreatBudding.receiverOf(MarketAPI market)` :439
+- `ThreatBudding.spawn(MarketAPI market, MemoryAPI mem, String kind, float poolFP, String why, Random random)` :446 - The pool becomes a fleet, whole, over the world:
 ### absorbing
-- `ThreatBudding.absorbLingering(MarketAPI market, MemoryAPI mem, float elapsedDays, boolean contested, float today)` :477 - A fleet over its own hive world with the orbit quiet for defendLingerDays (a shift at once) is absorbed at the flow rate, to the cap.
-- `ThreatBudding.absorbHulls(MarketAPI market, CampaignFleetAPI fleet, float fp, String label)` :505 - Absorbs up to fp of the fleet's hulls into the world's strata:
+- `ThreatBudding.absorbLingering(MarketAPI market, MemoryAPI mem, float elapsedDays, boolean contested, float today)` :487 - A fleet over its own hive world with the orbit quiet for defendLingerDays (a shift at once) is absorbed at the flow rate, to the cap.
+- `ThreatBudding.absorbHulls(MarketAPI market, CampaignFleetAPI fleet, float fp, String label)` :515 - Absorbs up to fp of the fleet's hulls into the world's strata:
 ### strikes
-- `ThreatBudding.advanceStrike(MarketAPI colony, MemoryAPI mem, float elapsedDays, float today)` :543 - One poll of a strike order:
-- `ThreatBudding.stageArrivals(MarketAPI colony)` :624 - A swarm flagged for the strike (FOR_STRIKE) seated over the staging colony with the orbit quiet is staged whole:
-- `ThreatBudding.strikeInbound(MarketAPI colony)` :644 - Fleet points on their way to the staging colony for its strike:
-- `ThreatBudding.strikeBound()` :665 - Fleet points already budded toward the hive's strikes:
+- `ThreatBudding.advanceStrike(MarketAPI colony, MemoryAPI mem, float elapsedDays, float today)` :553 - One poll of a strike order:
+- `ThreatBudding.stageArrivals(MarketAPI colony)` :634 - A swarm flagged for the strike (FOR_STRIKE) seated over the staging colony with the orbit quiet is staged whole:
+- `ThreatBudding.strikeInbound(MarketAPI colony)` :654 - Fleet points on their way to the staging colony for its strike:
+- `ThreatBudding.strikeBound()` :675 - Fleet points already budded toward the hive's strikes:
 ### the shift
-- `ThreatBudding.shift()` :689 - The hive's one lever, in place of the pressure pass (ThreatColonyManager.redistributeGarrisons):
+- `ThreatBudding.shift()` :699 - The hive's one lever, in place of the pressure pass (ThreatColonyManager.redistributeGarrisons):
 ### readouts
-- `ThreatBudding.flowText(MarketAPI market)` :832 - The board's flow cell for a world:
-- `ThreatBudding.days(float strata, float flow)` :863
-- `ThreatBudding.visual(MarketAPI market, String label, float fp, boolean rising)` :868 - The rising or falling glows over the world, for a player in the system:
-- `ThreatBudding.standingFP()` :876 - Fleets over hive worlds that are the strata in space:
+- `ThreatBudding.flowText(MarketAPI market)` :842 - The board's flow cell for a world:
+- `ThreatBudding.days(float strata, float flow)` :873
+- `ThreatBudding.visual(MarketAPI market, String label, float fp, boolean rising)` :878 - The rising or falling glows over the world, for a player in the system:
+- `ThreatBudding.standingFP()` :886 - Fleets over hive worlds that are the strata in space:
 
 ## ThreatBuildCost (121 lines)
 - `ThreatBuildCost.pricedAs(String industryId)` :26 - The hive's own structures, priced as the vanilla ones they stand in for.

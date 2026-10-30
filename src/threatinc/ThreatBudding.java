@@ -372,6 +372,16 @@ public class ThreatBudding {
 				want = afford;
 				mem.set(KEY_WANT, want);
 			}
+			// a pool budded while the fuel was high and spawned after the strikes drained it (hw324c: 800-1,300 FP spawned
+			// against 3.5-5.6k fuel) settles its excess first, so what spawns is what sails
+			if (pool > want + 0.5f) {
+				float back = pool - want;
+				ThreatStrata.add(market, ThreatStrata.strataOf(back), "Absorbed into", null);
+				pool = want;
+				mem.set(KEY_POOL, pool);
+				ThreatIncConfig.logQuiet("shiftback:" + market.getId(), "Budding: " + market.getName() + " settles " + (int) back
+						+ " FP of its shift to " + to.getName() + " back, the fuel pays the passage of " + (int) afford + " FP");
+			}
 		}
 		float short_ = want - pool;
 		float took = 0f;
@@ -423,7 +433,7 @@ public class ThreatBudding {
 		if (from == null || to == null || from.getStarSystem() == null || to.getStarSystem() == null) return Float.MAX_VALUE;
 		float perPoint = ThreatFuel.passage(1f, ThreatFuel.ly(from.getStarSystem(), to.getStarSystem()), false);
 		if (perPoint <= 0f) return Float.MAX_VALUE;
-		return Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL)) / perPoint;
+		return 0.95f * Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL)) / perPoint;
 	}
 
 	protected static MarketAPI receiverOf(MarketAPI market) {
