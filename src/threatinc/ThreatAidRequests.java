@@ -307,8 +307,9 @@ public class ThreatAidRequests {
 	/** Why the good cannot be called for at this target (a front takes marines and arms; an outpost has no hull pool), or null. */
 	public static String goodOffReason(ThreatBases.Base target, String good) {
 		String kind = kindOf(target);
+		if (ThreatNeeds.FLEETS.equals(good)) return null; // a defence fleet can be called over any of them (2026-10-31)
 		if (KIND_FRONT.equals(kind) && !Commodities.MARINES.equals(good) && !Commodities.HAND_WEAPONS.equals(good)) {
-			return "A front takes marines and heavy armaments.";
+			return "A front takes marines, heavy armaments and a defence fleet.";
 		}
 		if (KIND_OUTPOST.equals(kind) && Commodities.SHIPS.equals(good)) return "An outpost has no hull pool.";
 		if (ThreatAid.index(good) < 0) return "Not a good a convoy carries.";
@@ -543,6 +544,7 @@ public class ThreatAidRequests {
 			q.why = goodOffReason(target, c.good);
 			return q;
 		}
+		if (ThreatNeeds.FLEETS.equals(c.good)) return quoteFleet(q, helper, target);
 		List<MarketAPI> donors = donors(helper, target.hyperLoc(), c.good);
 		if (donors.isEmpty()) {
 			q.why = "no colony in reach holds a surplus of " + Misc.getWithDGS((int) minSpare(c.good)) + " or more";
@@ -573,6 +575,45 @@ public class ThreatAidRequests {
 		q.amount = amount;
 		q.price = priceOf(amount, per);
 		q.etaDays = eta(ThreatBases.of(donor), target);
+		return q;
+	}
+
+	/**
+	 * A faction's quote on a call for a DEFENCE FLEET (the user, 2026-10-31: "extra request toggle for
+	 * fleet, which is a request for defence fleet"): a guard from its base in reach of the target
+	 * (ThreatFleetOrders.pickBase) of the fleet points its navy has free (ThreatHulls.freeFP; with
+	 * hulls off, what threatens the target, ThreatFleetOrders.guardNeed), no more than the base's depot
+	 * provisions for the passage (sortiePayableFP), at least a fleet (ThreatDeploy.minPoints), cut to
+	 * the standing budget at the Max rate of aidRepGuardArrived a point.
+	 */
+	protected static Quote quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target) {
+		MarketAPI base = ThreatFleetOrders.pickBase(helper, target.hyperLoc());
+		if (base == null) {
+			q.why = "no base in reach";
+			return q;
+		}
+		float spare = ThreatHulls.enabled() ? ThreatHulls.freeFP(helper.getId()) : ThreatFleetOrders.guardNeed(target.market);
+		float payable = ThreatFleetOrders.sortiePayableFP(base, target.hyperLoc());
+		float fp = (float) Math.floor(Math.min(spare, payable));
+		float min = (float) Math.ceil(ThreatDeploy.minPoints());
+		if (fp < min) {
+			q.why = "the " + Misc.getWithDGS((int) spare) + " fleet points its navy has free (" + base.getName() + " provisions "
+					+ Misc.getWithDGS((int) payable) + ") is under a fleet's " + Misc.getWithDGS((int) min);
+			return q;
+		}
+		float budget = (float) Math.floor(budget(helper));
+		float per = pricePerUnit(priceMarket(target), ThreatNeeds.FLEETS, 2);
+		if (priceOf(fp, per) > budget) {
+			fp = per > 0f ? (float) Math.floor(budget / per) : fp;
+			if (fp < min) {
+				q.why = "would take you below Favourable";
+				return q;
+			}
+		}
+		q.donor = base;
+		q.amount = fp;
+		q.price = priceOf(fp, per);
+		q.etaDays = eta(ThreatBases.of(base), target);
 		return q;
 	}
 
@@ -625,7 +666,19 @@ public class ThreatAidRequests {
 				int idx = ThreatAid.index(o.good);
 				float carried = 0f;
 				MarketAPI donor = q.donor;
-				if (KIND_FRONT.equals(kindOf(target))) {
+				if (o.isFleets()) {
+					// a defence fleet: the helper's guard of the quoted points, carrying the offer's id for
+					// onGuardArrived (ThreatFleetOrders.poll); what sailed is the amount
+					float before = ThreatFleetOrders.guardPointsFor(target.id());
+					ThreatFleetOrders.Order ord = ThreatFleetOrders.dispatchGuardPoints(helper, target, donor, o.amount);
+					if (ord == null) why = "no fleet could be raised at " + donor.getName();
+					else {
+						ord.requestId = o.id;
+						carried = Math.max(0f, ThreatFleetOrders.guardPointsFor(target.id()) - before);
+						if (carried <= 0f && ord.fleet != null) carried = ord.fleet.getFleetPoints();
+						if (carried <= 0f) carried = o.amount;
+					}
+				} else if (KIND_FRONT.equals(kindOf(target))) {
 					float[] load = { Commodities.MARINES.equals(o.good) ? o.amount : 0f,
 							Commodities.HAND_WEAPONS.equals(o.good) ? o.amount : 0f };
 					ThreatConvoys.Convoy run = ThreatConvoys.aidFrontRun(ThreatBases.of(donor), target.market, helper,
@@ -729,10 +782,15 @@ public class ThreatAidRequests {
 		return Math.max(0f, o.etaDays - Global.getSector().getClock().getElapsedDaysSince(o.acceptedAt));
 	}
 
-	/** "320 marines" / "900 fleet points" - the offer's amount. */
+	/** "defence fleet" for the fleets call, else the good's label (never "fleet points" - the user, 2026-10-31). */
+	public static String goodLabel(String good) {
+		return ThreatNeeds.FLEETS.equals(good) ? "defence fleet" : ThreatReserves.label(good);
+	}
+
+	/** "320 marines" / "a defence fleet of 900 FP" - the offer's amount. */
 	public static String amountText(Offer o) {
 		if (o == null) return "";
-		if (o.isFleets()) return Misc.getWithDGS(Math.round(o.amount)) + " fleet points";
+		if (o.isFleets()) return "a defence fleet of " + Misc.getWithDGS(Math.round(o.amount)) + " FP";
 		return Misc.getWithDGS(ThreatHulls.shown(o.good, o.amount)) + " " + ThreatReserves.label(o.good);
 	}
 

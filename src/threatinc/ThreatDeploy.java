@@ -17,7 +17,7 @@ import com.fs.starfarer.api.util.Misc;
  * 22:00: "it should never redeploy/reprovision, just let the player deploy new instances. if they
  * want to amend one already deployed they can recall etc. so the redeploy logic was an
  * overcomplicaiton"): the Domain table's Deploy button. Every press raises a NEW fleet over the
- * row from a colony's free hulls, sized by the Hulls lever - None / Med / Max = nothing / half / all
+ * row from a colony's free hulls, sized by the Fleet lever - None / Med / Max = nothing / half / all
  * of the hulls free, at most the lever's share of the fleet cap (ThreatIncConfig.fleetMaxFP) - and
  * loaded from that colony's reserve at the other four levers: marines and heavy armaments as cargo
  * (as many as its berths and holds take), fuel and supplies as figures the fleet carries
@@ -45,13 +45,13 @@ public class ThreatDeploy {
 		public ThreatBases.Base target;
 		/** Whose hulls and reserve it is built and loaded from: the colony itself, or the nearest colony that can. */
 		public MarketAPI source;
-		/** Whole-fleet points the new fleet is built to at the Hulls lever. */
+		/** Whole-fleet points the new fleet is built to at the Fleet lever. */
 		public float targetPts;
 		/** The source's own free hulls, whole-fleet points. */
 		public float ownFree;
 		/** The load at the levers: marines, heavy armaments, fuel, supplies (ThreatReserves.COMMODITIES order). */
 		public float[] load = new float[4];
-		/** The Hulls lever asked for more than its share of one fleet (ThreatIncConfig.fleetMaxFP): targetPts is the cap, the rest stays as hulls. */
+		/** The Fleet lever asked for more than its share of one fleet (ThreatIncConfig.fleetMaxFP): targetPts is the cap, the rest stays as hulls. */
 		public boolean capped;
 		/** Why not, one fact per line; null when the order would go. */
 		public ThreatNotice.Reason reason;
@@ -68,14 +68,16 @@ public class ThreatDeploy {
 		return ThreatAidCapacity.taskForcePoints(ThreatIncConfig.aidGuardMinFP());
 	}
 
-	/** The Hulls lever's tier of a colonies-table lever set (ThreatIncursionIntel.colonyLevers), 0 when it has none. */
+	/** The Fleet lever's tier of a colonies-table lever set (ThreatIncursionIntel.colonyLevers, the sixth entry), 0 when it has none. */
 	protected static int hullsTier(int[] levers) {
-		return levers != null && levers.length > 4 ? levers[4] : 0;
+		// the sixth lever since 2026-10-31 (the user: "add the fleet as an extra toggle ... it deploys the fleet via
+		// transfer button"); the Hulls lever (the fifth) is the convoy's hull cargo
+		return levers != null && levers.length > 5 ? levers[5] : 0;
 	}
 
 	/**
 	 * The plan for a Deploy at the target at the levers: a NEW fleet every time, whatever is deployed
-	 * there already. The source: the row's colony while its own free hulls at the Hulls lever make
+	 * there already. The source: the row's colony while its own free hulls at the Fleet lever make
 	 * {@link #minPoints}, else the nearest colony that can ({@link #nearestSource}; the user,
 	 * 2026-10-30: "cant deploy to arkoman despite having 5k+ hulls at haven"); an outpost's or a
 	 * hive's the nearest. The hulls: the lever's share of the source's free hulls, at most the
@@ -87,7 +89,7 @@ public class ThreatDeploy {
 	public static Plan plan(ThreatBases.Base target, int[] levers) {
 		Plan p = new Plan();
 		p.target = target;
-		p.levers = levers != null ? levers : new int[] { 1, 1, 1, 1, 1 };
+		p.levers = levers != null ? levers : new int[] { 1, 1, 1, 1, 1, 1 };
 		if (target == null || target.entity() == null) {
 			p.reason = ThreatNotice.Reason.of("No target");
 			return p;
@@ -98,7 +100,7 @@ public class ThreatDeploy {
 		}
 		int hulls = hullsTier(levers);
 		if (hulls <= 0) {
-			p.reason = ThreatNotice.Reason.of("The Hulls lever is at None")
+			p.reason = ThreatNotice.Reason.of("The Fleet lever is at None")
 					.line("Med or Max deploys half or all of the hulls free");
 			return p;
 		}
@@ -116,8 +118,8 @@ public class ThreatDeploy {
 			p.reason = colony != null
 					? ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(colony),
 							Misc.getWithDGS((int) colonyFree))
-							.line("No colony of yours can field a fleet for it at the Hulls lever")
-					: ThreatNotice.Reason.of("No colony of yours can field a fleet for %s at the Hulls lever",
+							.line("No colony of yours can field a fleet for it at the Fleet lever")
+					: ThreatNotice.Reason.of("No colony of yours can field a fleet for %s at the Fleet lever",
 							target.name());
 			p.reason.line("A fleet needs at least %s fleet points", Misc.getWithDGS((int) Math.ceil(minPoints())));
 			return p;
@@ -136,7 +138,7 @@ public class ThreatDeploy {
 		if (p.targetPts < minPoints() - 0.5f) {
 			p.reason = ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(p.source),
 					Misc.getWithDGS((int) p.ownFree))
-					.line("The Hulls lever makes a fleet of %s", Misc.getWithDGS((int) p.targetPts))
+					.line("The Fleet lever makes a fleet of %s", Misc.getWithDGS((int) p.targetPts))
 					.line("A fleet needs at least %s", Misc.getWithDGS((int) Math.ceil(minPoints())));
 			return p;
 		}
@@ -150,7 +152,7 @@ public class ThreatDeploy {
 	/**
 	 * The colony of the player's a Deploy builds at when the target has no hulls of its own (an
 	 * outpost, a hive, a colony short of them): the nearest, {@code not} excepted, whose own free
-	 * hulls at the Hulls lever's share make at least {@link #minPoints}, or null.
+	 * hulls at the Fleet lever's share make at least {@link #minPoints}, or null.
 	 */
 	protected static MarketAPI nearestSource(ThreatBases.Base target, int[] levers, MarketAPI not) {
 		if (target == null || target.hyperLoc() == null) return null;

@@ -100,7 +100,8 @@ public class ThreatNeeds {
 		}
 
 		public String goodLabel() {
-			return isFleets() ? "fleet points" : ThreatReserves.label(good);
+			// "defence fleet", never "fleet points" (the user, 2026-10-31)
+			return isFleets() ? "defence fleet" : ThreatReserves.label(good);
 		}
 
 		public Color color() {

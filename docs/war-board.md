@@ -175,8 +175,13 @@ it; a Front row's lifts the front (`ThreatConvoys.pullOutFront`) and recalls the
 
 **Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
 fleet sized based on hulls modifier ... then the attack button is available assuming the staged
-fleet has enough supplies and fuel"; `ThreatDeploy`). A colony row of the player's holds **Deploy**
-(was Fleet) and **Transfer** (was Supplies). Every press of Deploy raises a NEW fleet over the row
+fleet has enough supplies and fuel"; `ThreatDeploy`). A colony row of the player's held **Deploy** (was Fleet) and **Transfer** (was
+Supplies) until 2026-10-31 evening, when Deploy went (the user: "get rid of deploy button and just add
+the fleet as an extra toggle"): the Domain's sixth lever, **Fleet** (`ThreatIncursionIntel.LEVER_DOMAIN_FLEET`,
+None by default), makes **Transfer** the Deploy when set - on a colony, an outpost or a hive row alike
+(`ThreatFactionView.fleetLeverSet`; the prompt and the order run `ThreatDeploy` instead of the convoy or
+supply run) - and `ThreatDeploy.plan` is sized by it, the Hulls lever being the convoy's hull cargo only;
+the Actions column holds Recall and Transfer. Every press of Deploy (now Transfer at the Fleet lever) raises a NEW fleet over the row
 from a colony's free hulls at the Hulls lever (None / half / all of its free points, at most the
 lever's share of one fleet, `fleetMaxFP`; greyed at None) and loads it at the other four levers -
 marines to its berths and arms to its holds, fuel and supplies as figures aboard
@@ -205,7 +210,9 @@ aid** heading of the player's tab sits a toggle row (`ThreatFactionView.addReque
 into the row reserved under the heading) - **Colony** reads the Domain entry the toggles are for
 and cycles the next (the player's colonies, then the hive worlds their landings attack, then their
 outposts, `requestTargets`; `ThreatIncursionIntel.requestTarget`), then **Fuel / Supplies / Marines /
-Arms / Hulls**, each a button reading On or Off for that entry (`BUTTON_REQ_TOGGLE` ->
+Arms / Hulls / Fleet** (Fleet since 2026-10-31 evening: a call for a defence fleet, `ThreatNeeds.FLEETS` -
+a faction's guard of the points its navy has free, `ThreatAidRequests.quoteFleet`, sailed by
+`ThreatFleetOrders.dispatchGuardPoints` on Accept), each a button reading On or Off for that entry (`BUTTON_REQ_TOGGLE` ->
 `ThreatAidRequests.toggle`, no Confirm; a front's Fuel, Supplies and Hulls and an outpost's Hulls are
 off with the reason, `goodOffReason`). On is a standing call (`Call`): "Distress Call - {World}
 calls for marines"; off withdraws it and drops its open offers. Every faction at Favourable or

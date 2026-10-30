@@ -946,6 +946,37 @@ public class ThreatAid {
 	}
 
 	/**
+	 * Standing points a delivery of the load (AID_COMMODITIES order; hull units in the fifth slot or
+	 * {@code hullUnits}) would earn at the market, as {@link #onDelivered} charges it: the goods' value
+	 * over aidRepPerCredits weighted by the purpose served, capped at aidRepMaxPerDelivery. The NPC
+	 * tabs' Standing column (the user, 2026-10-31: "show exact amount requested, standing reward and
+	 * estimated eta").
+	 */
+	public static float rewardEstimate(MarketAPI market, float[] load, int hullUnits) {
+		if (market == null) return 0f;
+		float[] qty = new float[ThreatReserves.AID_COMMODITIES.length];
+		for (int i = 0; i < qty.length; i++) qty[i] = load != null && i < load.length ? Math.max(0f, load[i]) : 0f;
+		if (hullUnits > 0) qty[qty.length - 1] += hullUnits;
+		float[] weights = ThreatNeeds.purposeWeights(market, qty);
+		float weighted = 0f;
+		for (int i = 0; i < qty.length; i++) {
+			if (qty[i] <= 0f) continue;
+			float w = weights != null && i < weights.length ? weights[i] : ThreatIncConfig.aidRepWeightSurplus();
+			weighted += valueAt(market, ThreatReserves.AID_COMMODITIES[i], qty[i]) * w;
+		}
+		return Math.min(ThreatIncConfig.aidRepMaxPerDelivery(), weighted / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+	}
+
+	/** As above for an amount of one good. */
+	public static float rewardEstimate(MarketAPI market, String good, float amount) {
+		int idx = index(good);
+		if (idx < 0 || amount <= 0f) return 0f;
+		float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
+		load[idx] = amount;
+		return rewardEstimate(market, load, 0);
+	}
+
+	/**
 	 * Goods landed at another faction's colony, by convoy or by hand. Standing follows the goods'
 	 * value at the receiving market over aidRepPerCredits, each good weighted by the purpose it
 	 * serves (docs/war-effort-rework.md section 4: { weights} in AID_COMMODITIES order, read
@@ -975,7 +1006,8 @@ public class ThreatAid {
 			ThreatNotice.titled("Aid Landed").icon(Global.getSector().getPlayerFaction())
 					.line("%s at %s", ThreatFactionView.cargoText(marines, armaments, fuel, supplies, ships),
 							ThreatNotice.market(base))
-					.line("For the %s", faction != null ? ThreatNotice.faction(faction) : recipientFactionId)
+					.line("Standing with %s %s", faction != null ? ThreatNotice.faction(faction) : recipientFactionId,
+							ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
 					.send();
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
@@ -984,20 +1016,32 @@ public class ThreatAid {
 				+ ", rep +" + points);
 	}
 
+	/**
+	 * The player's guard reached the colony it defends: aidRepGuardArrived standing points, the figure in
+	 * the notice (the user, 2026-10-31, of a guard over Nomios: "i dont think i got any rep" - it was
+	 * credited silently). Once credited the guard serves its term: the fleets table's Recall is off.
+	 */
 	public static void onGuardArrived(ThreatFleetOrders.Order o) {
 		if (o == null || o.recipientFactionId == null) return;
-		rep(o.recipientFactionId, ThreatIncConfig.aidRepGuardArrived(), null);
+		FactionAPI faction = Global.getSector().getFaction(o.recipientFactionId);
+		float points = ThreatIncConfig.aidRepGuardArrived();
+		rep(o.recipientFactionId, points, null);
+		ThreatIncConfig.log("Guard on station over " + o.targetName + " for " + o.recipientFactionId + ": rep +" + points);
 		ThreatNotice.titled("Task Force On Station").icon(Global.getSector().getPlayerFaction())
 				.line("Over %s", target(o))
-				.line("For the %s", ThreatNotice.faction(Global.getSector().getFaction(o.recipientFactionId)))
+				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
 				.send();
 	}
 
 	public static void onGuardCompleted(ThreatFleetOrders.Order o) {
 		if (o == null || o.recipientFactionId == null) return;
-		rep(o.recipientFactionId, ThreatIncConfig.aidRepGuardCompleted(), null);
+		FactionAPI faction = Global.getSector().getFaction(o.recipientFactionId);
+		float points = ThreatIncConfig.aidRepGuardCompleted();
+		rep(o.recipientFactionId, points, null);
+		ThreatIncConfig.log("Guard term served over " + o.targetName + " for " + o.recipientFactionId + ": rep +" + points);
 		ThreatNotice.titled("Task Force Returning").icon(Global.getSector().getPlayerFaction())
 				.line("Term served over %s", target(o))
+				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
 				.send();
 	}
 

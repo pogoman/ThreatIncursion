@@ -259,6 +259,8 @@ public class ThreatFactionView {
 		StarSystemAPI huntSystem;
 		/** A player aid fleet shown in another faction's view: the player may recall it. */
 		boolean playerAid;
+		/** A player aid guard credited on arrival: it serves its term, no Recall (the user, 2026-10-31). */
+		boolean paid;
 	}
 
 	/** Renders the whole faction view, floating buttons included; returns nothing more to add. */
@@ -403,9 +405,10 @@ public class ThreatFactionView {
 			// three buttons (Request + Supplies + Fleet = 186 px with gaps), an ally's two
 			// the user (2026-10-30): Hulls, and Fleet - the points deployed over the colony - after Status;
 			// the Convoys column went (its staging route is in the row tooltip); the buttons column holds
-			// two buttons now (Deploy + Transfer = 136 px with gaps), so it narrows and Status widens
+			// Recall + Transfer since 2026-10-31 (Deploy went: the Fleet lever makes Transfer deploy), so it
+			// narrows and Status widens
 			float[] frac = own
-					? new float[] {.11f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .04f, .12f, .07f, .18f}
+					? new float[] {.11f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .04f, .17f, .07f, .13f}
 					: new float[] {.13f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .05f, .17f, .07f, .10f};
 			// the user (2026-10-11): under the hull pool the column is the hulls available, nothing else
 			String[] names = {"Colony", "Size", "Military", "Def", ThreatHulls.enabled() ? "Hulls" : "Free",
@@ -672,22 +675,25 @@ public class ThreatFactionView {
 				ThreatWarBoard.FrontRow fr = attacked.get(j);
 				MarketAPI hm = fr.market;
 				float up = (tableRows - (rows.size() + j)) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
+				// since 2026-10-31 (the user: "get rid of deploy button and just add the fleet as an extra toggle"):
+				// with the Fleet lever set, Transfer deploys a fleet over the hive (ThreatDeploy); else the supply run
 				ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(hm), levers);
-				ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, "Deploy",
-						BUTTON_GUARD + factionId + ":" + hm.getId());
-				guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
+				boolean deploy = fleetLeverSet(levers);
 				ButtonAPI supply = intel.addGenericButton(main, TRANSFER_W, "Transfer",
 						BUTTON_SUPPLY + factionId + ":" + hm.getId());
-				supply.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f - DEPLOY_W - 4f);
-				disableWith(main, guard, mayOrder && d.ok(), blocked != null ? blocked : ThreatDeploy.offReason(d),
-						"A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
-								+ (d.ok() ? d.source.getName() : "the nearest colony") + "'s hulls holds the orbit of "
-								+ hm.getName() + " with the front, carrying " + ThreatDeploy.loadText(d.load) + ".");
-				String supplyWhy = ThreatConvoys.supplyBlockReason(faction, hm, fl);
-				float[] asked = ThreatConvoys.supplyAsk(fr.front, hm, fl);
-				disableWith(main, supply, mayOrder && supplyWhy == null, blocked != null ? blocked : supplyWhy,
-						"A convoy runs " + Misc.getWithDGS((int) asked[0]) + " marines and "
-						+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your colony with the most to give to the front.");
+				supply.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
+				if (deploy) {
+					disableWith(main, supply, mayOrder && d.ok(), blocked != null ? blocked : ThreatDeploy.offReason(d),
+							"A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
+									+ (d.ok() ? d.source.getName() : "the nearest colony") + "'s hulls holds the orbit of "
+									+ hm.getName() + " with the front, carrying " + ThreatDeploy.loadText(d.load) + ".");
+				} else {
+					String supplyWhy = ThreatConvoys.supplyBlockReason(faction, hm, fl);
+					float[] asked = ThreatConvoys.supplyAsk(fr.front, hm, fl);
+					disableWith(main, supply, mayOrder && supplyWhy == null, blocked != null ? blocked : supplyWhy,
+							"A convoy runs " + Misc.getWithDGS((int) asked[0]) + " marines and "
+							+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your colony with the most to give to the front.");
+				}
 				addRecallAllButton(intel, main, colonyTable, up, faction, hm, mayOrder, blocked);
 			}
 			// the purged worlds' Outpost
@@ -712,28 +718,27 @@ public class ThreatFactionView {
 				if (b == null) continue;
 				float up = (tableRows - (rows.size() + attacked.size() + purged.size() + j)) * ThreatWarBoard.ROW_H
 						- (ThreatWarBoard.ROW_H - 20f) / 2f;
-				ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, "Deploy",
-						BUTTON_GUARD + factionId + ":" + b.id());
-				guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
+				ThreatDeploy.Plan d = ThreatDeploy.plan(b, levers);
+				boolean deploy = fleetLeverSet(levers);
 				ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
 						BUTTON_STAGE + factionId + ":" + b.id());
-				stage.getPosition().belowRight(colonyTable, -up)
-						.setXAlignOffset(-6f - DEPLOY_W - 4f);
-				ThreatDeploy.Plan d = ThreatDeploy.plan(b, levers);
-				MarketAPI donor = ThreatConvoys.stageDonor(b, faction, levers);
+				stage.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
+				MarketAPI donor = deploy ? null : ThreatConvoys.stageDonor(b, faction, levers);
 				float[] load = donor != null ? ThreatConvoys.stageLoad(donor, b, levers) : null;
-				disableWith(main, guard, mayOrder && d.ok(),
-						blocked != null ? blocked : ThreatDeploy.offReason(d),
-						"A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
-						+ (d.ok() ? d.source.getName() : "the nearest colony") + "'s hulls holds this "
-						+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
-						+ ", carrying " + ThreatDeploy.loadText(d.load) + ".");
-				disableWith(main, stage, mayOrder && donor != null, blocked != null ? blocked
-						: !ThreatIncConfig.convoyEnabled() ? "Convoys are disabled in the mod settings."
-						: "No colony of yours can spare anything right now.",
-						"A convoy from " + (donor != null ? donor.getName() : "the nearest colony")
-						+ " brings " + (load != null ? cargoText(load[0], load[1], load[2], load[3])
-								: "what can be spared") + " to the station's storage.");
+				if (deploy) {
+					disableWith(main, stage, mayOrder && d.ok(), blocked != null ? blocked : ThreatDeploy.offReason(d),
+							"A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
+							+ (d.ok() ? d.source.getName() : "the nearest colony") + "'s hulls holds this "
+							+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
+							+ ", carrying " + ThreatDeploy.loadText(d.load) + ".");
+				} else {
+					disableWith(main, stage, mayOrder && donor != null, blocked != null ? blocked
+							: !ThreatIncConfig.convoyEnabled() ? "Convoys are disabled in the mod settings."
+							: "No colony of yours can spare anything right now.",
+							"A convoy from " + (donor != null ? donor.getName() : "the nearest colony")
+							+ " brings " + (load != null ? cargoText(load[0], load[1], load[2], load[3])
+									: "what can be spared") + " to the station's storage.");
+				}
 			}
 		}
 		if (colonyTable != null) {
@@ -748,31 +753,27 @@ public class ThreatFactionView {
 					// the levers - "Deploy", a new fleet every press (ThreatDeploy; Redeploy resized the fleet up
 					// to 2026-10-30 22:00); a convoy between colonies is "Transfer" ("Fleet" / "Supplies" from
 					// 2026-09-05 to then)
+					// since 2026-10-31 the Deploy button is gone: with the Fleet lever set, Transfer IS the Deploy - a
+					// new fleet of the source's free hulls carrying the goods (ThreatDeploy); at None, a convoy
 					ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(r.market), levers);
-					ButtonAPI guard = intel.addGenericButton(main, DEPLOY_W, "Deploy",
-							BUTTON_GUARD + factionId + ":" + r.market.getId());
-					guard.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
+					boolean deploy = fleetLeverSet(levers);
 					ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
 							BUTTON_STAGE + factionId + ":" + r.market.getId());
-					stage.getPosition().belowRight(colonyTable, -up)
-							.setXAlignOffset(-6f - DEPLOY_W - 4f);
-					// (the call for aid a shortfall used to add here went on 2026-10-31: the Requests toggles ask)
-					boolean guardOk = mayOrder && d.ok();
+					stage.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
 					// the order fails after Confirm otherwise: the gate is on the button
-					MarketAPI donor = ThreatConvoys.stageDonor(r.market, faction, levers);
+					MarketAPI donor = deploy ? null : ThreatConvoys.stageDonor(r.market, faction, levers);
 					float[] load = donor != null ? ThreatConvoys.stageLoad(donor, r.market, levers) : null;
-					boolean stageOk = mayOrder && donor != null;
+					boolean stageOk = mayOrder && (deploy ? d.ok() : donor != null);
 					String deployHelp = d.ok() ? "A fleet of " + Misc.getWithDGS((int) d.targetPts) + " fleet points from "
 									+ (d.source == r.market ? "this colony's" : d.source.getName() + "'s")
 									+ " hulls holds its orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
 									+ ", carrying " + ThreatDeploy.loadText(d.load) + ". Attack sails it."
 							: "Nothing to deploy: " + ThreatDeploy.offReason(d);
-					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatDeploy.offReason(d), deployHelp);
-					String stageHelp = donor != null ? "A convoy from " + donor.getName() + " brings "
+					String stageHelp = deploy ? deployHelp : donor != null ? "A convoy from " + donor.getName() + " brings "
 							+ (load != null ? cargoText(load[0], load[1], load[2], load[3], ThreatConvoys.hullsIn(load))
 									: "what the levers allow") + "."
 							: "Nothing to send: " + ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours");
-					disableWith(main, stage, stageOk, blocked != null ? blocked
+					disableWith(main, stage, stageOk, blocked != null ? blocked : deploy ? ThreatDeploy.offReason(d)
 							: ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours"), stageHelp);
 					addRecallAllButton(intel, main, colonyTable, up, faction, r.market, mayOrder, blocked);
 				}
@@ -792,7 +793,8 @@ public class ThreatFactionView {
 					ButtonAPI recall = intel.addGenericButton(main, SMALL_BUTTON_W + 8f, "Recall",
 							BUTTON_RECALL + factionId + ":" + f.recallKey);
 					recall.getPosition().belowRight(fleetTable, -up).setXAlignOffset(right);
-					disableWith(main, recall, mayOrder || f.playerAid, blocked,
+					disableWith(main, recall, (mayOrder || f.playerAid) && !f.paid,
+							f.paid ? "Standing was earned on arrival: the task force serves its term." : blocked,
 							"This fleet breaks off and returns to base. A convoy brings its cargo "
 							+ "home; the rest of an expedition or task force fights on.");
 					right -= (SMALL_BUTTON_W + 8f) + 4f;
@@ -852,6 +854,15 @@ public class ThreatFactionView {
 		addLever(intel, main, anchor, "Marines", ThreatIncursionIntel.LEVER_COLONY_MARINES, "marines", 2);
 		addLever(intel, main, anchor, "Arms", ThreatIncursionIntel.LEVER_COLONY_ARMS, "heavy armaments", 3);
 		addLever(intel, main, anchor, "Hulls", ThreatIncursionIntel.LEVER_COLONY_HULLS, "ship hulls", 4);
+		// the Fleet lever (the user, 2026-10-31: "get rid of deploy button and just add the fleet as an extra toggle
+		// as well, when that is set it deploys the fleet via transfer button"): None, Transfer is a convoy; Med /
+		// Max, Transfer is the Deploy - a fleet of half / all the source's free hulls carrying the goods
+		String[] fleetTips = { "No fleet: Transfer sends a convoy.",
+				"Transfer deploys a fleet of half the source's free hulls, carrying the goods at the levers.",
+				"Transfer deploys a fleet of all the source's free hulls, carrying the goods at the levers." };
+		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
+				BUTTON_LEVER + ThreatIncursionIntel.LEVER_DOMAIN_FLEET + ":", intel.lever(ThreatIncursionIntel.LEVER_DOMAIN_FLEET),
+				fleetTips, 5 * LEVER_PITCH, LEVER_LABELS, LEVER_BUTTON_W);
 	}
 
 	/** One lever: its label and None / Med / Max at the {@code slot}th pitch along the reserved row. */
@@ -960,9 +971,9 @@ public class ThreatFactionView {
 	/** The Colony button of the Requests toggles: the entry's name. */
 	protected static final float TARGET_BUTTON_W = 120f;
 	/** The five goods a call can ask for, in the toggle row's order. */
-	protected static final String[] CALL_LABELS = {"Fuel", "Supplies", "Marines", "Arms", "Hulls"};
+	protected static final String[] CALL_LABELS = {"Fuel", "Supplies", "Marines", "Arms", "Hulls", "Fleet"};
 	protected static final String[] CALL_GOODS = {Commodities.FUEL, Commodities.SUPPLIES, Commodities.MARINES,
-			Commodities.HAND_WEAPONS, Commodities.SHIPS};
+			Commodities.HAND_WEAPONS, Commodities.SHIPS, ThreatNeeds.FLEETS};
 
 	/**
 	 * THE REQUESTS TABLE (the user, 2026-10-31: "buttons below Requests table header for each type
@@ -1047,7 +1058,7 @@ public class ThreatFactionView {
 		List<Object> cells = new ArrayList<Object>();
 		ThreatWarBoard.cell(cells, Alignment.LMID, text, main.shortenString(base.name(), (float) Math.floor(tw * frac[0]) - 10f));
 		ThreatWarBoard.cell(cells, Alignment.LMID, text,
-				main.shortenString(ThreatReserves.label(good), (float) Math.floor(tw * frac[1]) - 10f));
+				main.shortenString(ThreatAidRequests.goodLabel(good), (float) Math.floor(tw * frac[1]) - 10f));
 		ThreatWarBoard.cell(cells, Alignment.MID, text, days + " d");
 		FactionAPI helper = o != null ? Global.getSector().getFaction(o.factionId) : null;
 		String answer = o == null ? "waiting" : ThreatAidRequests.offerText(o);
@@ -1071,7 +1082,7 @@ public class ThreatFactionView {
 			public float getTooltipWidth(Object tooltipParam) { return 460f; }
 			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 				Color tx = Misc.getTextColor();
-				tooltip.addPara(base.name() + (c != null ? " calls for " : " called for ") + ThreatReserves.label(good) + ".", tx, 0f);
+				tooltip.addPara(base.name() + (c != null ? " calls for " : " called for ") + callWord(good) + ".", tx, 0f);
 				if (o != null) {
 					tooltip.addPara(ThreatWarState.displayName(o.factionId) + ": " + ThreatAidRequests.amountText(o) + " from "
 							+ o.fromName + (o.accepted() ? ", sailing, due in " + (int) Math.ceil(ThreatAidRequests.etaLeft(o)) + " d."
@@ -1136,10 +1147,12 @@ public class ThreatFactionView {
 	 * it does say waiting"): the faction's calls are its colonies' needs on the ledger (ThreatNeeds.of
 	 * - what the allies' goods pass, ThreatCoalition.allyAid, and the player's dock hand-over answer),
 	 * one row a world and good (the most urgent need of the good), in the player's table's columns -
-	 * World, Commodity, Age (how long the shortage has stood, ThreatAidRequests.shortageSince; a dash
-	 * for a battle's need), Answer (the convoy at sea with the good and whose it is, a task force bound
-	 * for a fleets need, else waiting), Standing (NPC-to-NPC aid charges no standing - the user, 2026-10-31), ETA
-	 * (`convoyEta`) and **Send** (BUTTON_AID_NEED: a convoy of that good alone at the colonies table's
+	 * World, Commodity (the full ask: "1,200 marines", "defence fleet of 900 FP"), Age (how long the
+	 * shortage has stood, ThreatAidRequests.shortageSince; a dash for a battle's need), Answer (the
+	 * convoy at sea with the good and whose it is, a task force bound for a fleets need, else waiting),
+	 * Standing (what Send would earn when it lands, ThreatAid.rewardEstimate / aidRepGuardArrived -
+	 * the user, 2026-10-31: "show exact amount requested, standing reward and estimated eta"), ETA
+	 * (the convoy's `convoyEta`; the Send quote's passage while waiting) and **Send** (BUTTON_AID_NEED: a convoy of that good alone at the colonies table's
 	 * lever for it, Med when the lever is at None, from the player's colony sparing the most,
 	 * ThreatAid.quoteAid; a fleets need sends Defend at the fronts' Fleet lever, as BUTTON_AID_DEFEND).
 	 * A need that clears leaves the table - the call withdraws itself. Nothing drawn with no need.
@@ -1187,17 +1200,36 @@ public class ThreatFactionView {
 		main.addTableHeaderTooltip(1, "What the world calls for; the row tooltip has the purpose and the figures.");
 		main.addTableHeaderTooltip(2, "Days the shortage has stood.");
 		main.addTableHeaderTooltip(3, "What sails to answer it; waiting until something does.");
-		main.addTableHeaderTooltip(4, "Standing with the sender, charged when it lands.");
-		main.addTableHeaderTooltip(5, "Days until it lands.");
+		main.addTableHeaderTooltip(4, "Standing earned when what you send lands.");
+		main.addTableHeaderTooltip(5, "Days until it lands; while waiting, the passage from your colony.");
 		int rowIndex = 0;
 		for (Object[] row : rows) {
 			final MarketAPI m = (MarketAPI) row[0];
 			final ThreatNeeds.Need n = (ThreatNeeds.Need) row[1];
+			// the Send quote first: its figures feed the Standing and ETA cells
+			String off = blocked != null ? ThreatNotice.text(blocked) : null;
+			String help;
+			ThreatAid.Quote q;
+			float reward;
+			if (n.isFleets()) {
+				q = ThreatAid.quoteDefend(m, frontLevers.length > 2 ? frontLevers[2] : 0);
+				reward = ThreatIncConfig.aidRepGuardArrived();
+				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
+						+ q.source.getName() + " to take the orbit, at the Fleet lever." : "Sends a task force to take the orbit.";
+			} else {
+				q = ThreatAid.quoteAid(m, needLevers(n.good, levers));
+				reward = q.ok() ? ThreatAid.rewardEstimate(m, q.load, q.hullUnits) : ThreatAid.rewardEstimate(m, n.good, n.max);
+				help = q.ok() ? "Sends " + aidCargo(q) + " from " + q.source.getName() + ", at the " + ThreatReserves.label(n.good)
+						+ " lever." : "Sends a convoy of " + ThreatReserves.label(n.good) + ".";
+			}
+			if (off == null && !q.ok()) off = ThreatNotice.text(q.reason);
 			List<Object> cells = new ArrayList<Object>();
 			ThreatWarBoard.cell(cells, Alignment.LMID, text,
 					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
+			// the full ask (the user, 2026-10-31: "exact amount requested")
+			String asked = n.isFleets() ? "defence fleet of " + n.shown(n.max) : n.shown(n.max) + " " + n.goodLabel();
 			ThreatWarBoard.cell(cells, Alignment.LMID, n.color(),
-					main.shortenString(n.goodLabel() + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
+					main.shortenString(asked + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
 			Long since = n.isFleets() ? null : ThreatAidRequests.shortageSince().get(m.getId() + ":" + n.good);
 			ThreatWarBoard.cell(cells, Alignment.MID, since != null ? text : gray, since != null
 					? (int) Global.getSector().getClock().getElapsedDaysSince(since) + " d" : "-");
@@ -1223,27 +1255,19 @@ public class ThreatFactionView {
 				eta = left <= 0f ? "due" : (int) Math.ceil(left) + " d";
 				etaColor = h;
 			}
+			// while waiting, the passage your Send would take (the user, 2026-10-31: "estimated eta")
+			if ("-".equals(eta) && q.ok() && q.source != null) {
+				eta = (int) Math.ceil(ThreatAidRequests.eta(q.source, m)) + " d";
+				etaColor = text;
+			}
 			ThreatWarBoard.cell(cells, Alignment.LMID, answerColor,
 					main.shortenString(answer, (float) Math.floor(tw * frac[3]) - 10f));
-			ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
+			ThreatWarBoard.cell(cells, Alignment.MID, reward > 0f ? ThreatNotice.goodColor() : gray,
+					reward > 0f ? "+" + Misc.getRoundedValueMaxOneAfterDecimal(reward) : "-");
 			ThreatWarBoard.cell(cells, Alignment.MID, etaColor, eta);
 			ThreatWarBoard.cell(cells, Alignment.MID, gray, ""); // Send sits here
 			main.addRow(cells.toArray());
 			main.setIdForAddedRow(ROW_MARKET + m.getId());
-			// the Send button's state: the gate on the button, the reason as its tooltip while off
-			String off = blocked != null ? ThreatNotice.text(blocked) : null;
-			String help;
-			if (n.isFleets()) {
-				ThreatAid.Quote q = ThreatAid.quoteDefend(m, frontLevers.length > 2 ? frontLevers[2] : 0);
-				if (off == null && !q.ok()) off = ThreatNotice.text(q.reason);
-				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
-						+ q.source.getName() + " to take the orbit, at the Fleet lever." : "Sends a task force to take the orbit.";
-			} else {
-				ThreatAid.Quote q = ThreatAid.quoteAid(m, needLevers(n.good, levers));
-				if (off == null && !q.ok()) off = ThreatNotice.text(q.reason);
-				help = q.ok() ? "Sends " + aidCargo(q) + " from " + q.source.getName() + ", at the " + ThreatReserves.label(n.good)
-						+ " lever." : "Sends a convoy of " + ThreatReserves.label(n.good) + ".";
-			}
 			out.marketIds.add(m.getId());
 			out.goods.add(n.good);
 			out.firstRows.add(rowIndex);
@@ -1421,9 +1445,19 @@ public class ThreatFactionView {
 			b.getPosition().belowLeft(requests.anchor, -SELECTOR_ROW_H + 4f).setXAlignOffset(x + LEVER_LABEL_W);
 			String why = off != null ? off : ThreatAidRequests.goodOffReason(t, good);
 			disableWith(main, b, why == null || on, why,
-					on ? "Withdraws " + t.name() + "'s call for " + ThreatReserves.label(good) + "."
-							: "Asks the sector for " + ThreatReserves.label(good) + " for " + t.name() + ".");
+					on ? "Withdraws " + t.name() + "'s call for " + callWord(good) + "."
+							: "Asks the sector for " + callWord(good) + " for " + t.name() + ".");
 		}
+	}
+
+	/** Whether the Domain's Fleet lever (the sixth of ThreatIncursionIntel.colonyLevers) is at Med or Max: Transfer deploys a fleet. */
+	protected static boolean fleetLeverSet(int[] levers) {
+		return levers != null && levers.length > 5 && levers[5] > 0;
+	}
+
+	/** "a defence fleet" for the fleets call, else the good's label - a call's wording. */
+	protected static String callWord(String good) {
+		return ThreatNeeds.FLEETS.equals(good) ? "a defence fleet" : ThreatReserves.label(good);
 	}
 
 	/** A Withdraw button's "marketId:good" - the market id, then the good (null when the id carries none). */
@@ -2063,6 +2097,7 @@ public class ThreatFactionView {
 				f.rowId = o.fleet;
 				f.recallKey = "aidorder:" + i;
 				f.playerAid = true;
+				f.paid = o.credited;
 				rows.add(f);
 			}
 			for (int i = 0; i < convoys.size(); i++) {
@@ -2288,6 +2323,9 @@ public class ThreatFactionView {
 			// DEPLOY (ThreatDeploy, 2026-10-29): a colony, the player's outpost or a hive its landing attacks - a new fleet every press
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			addDeployPrompt(prompt, ThreatDeploy.plan(target, levers));
+		} else if (BUTTON_STAGE.equals(parts[0]) && fleetLeverSet(levers) && faction != null && faction.isPlayerFaction()) {
+			// Transfer at the Fleet lever is the Deploy (2026-10-31)
+			addDeployPrompt(prompt, ThreatDeploy.plan(ThreatBases.of(parts[2]), levers));
 		} else if (BUTTON_STAGE.equals(parts[0])) {
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			MarketAPI donor = ThreatConvoys.stageDonor(target, faction, levers);
@@ -2530,6 +2568,9 @@ public class ThreatFactionView {
 						String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()),
 						"" + (front.strataHeld + 1));
 			}
+		} else if (BUTTON_SUPPLY.equals(parts[0]) && fleetLeverSet(levers) && faction != null && faction.isPlayerFaction()) {
+			// Transfer at the Fleet lever deploys a fleet over the hive (2026-10-31)
+			addDeployPrompt(prompt, ThreatDeploy.plan(ThreatBases.of(ThreatIncData.resolveColonyMarket(parts[2])), levers));
 		} else if (BUTTON_SUPPLY.equals(parts[0]) || BUTTON_PULLOUT.equals(parts[0])) {
 			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
 			ThreatGroundFronts.GroundFront front = hive != null
@@ -2746,6 +2787,8 @@ public class ThreatFactionView {
 		if (BUTTON_STAGE.equals(parts[0])) {
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			if (target == null) return null;
+			// Transfer at the Fleet lever is the Deploy (2026-10-31)
+			if (fleetLeverSet(levers) && faction.isPlayerFaction()) return ThreatDeploy.execute(ThreatDeploy.plan(target, levers), faction);
 			ThreatConvoys.Convoy c = ThreatConvoys.stageTo(target, faction, levers, random);
 			if (c == null) {
 				ThreatNotice n = ThreatNotice.titled("Stage Refused").bad().icon(faction);
@@ -2953,6 +2996,10 @@ public class ThreatFactionView {
 			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
 			if (hive == null) return null;
 			boolean pull = BUTTON_PULLOUT.equals(parts[0]);
+			// Transfer at the Fleet lever deploys a fleet over the hive (2026-10-31)
+			if (!pull && fleetLeverSet(levers) && faction.isPlayerFaction()) {
+				return ThreatDeploy.execute(ThreatDeploy.plan(ThreatBases.of(hive), levers), faction);
+			}
 			String title = pull ? "Evacuation Refused" : "Supply Run Refused";
 			String refused = ThreatConvoys.canRunTo(faction, hive);
 			if (refused != null) {
@@ -2984,7 +3031,7 @@ public class ThreatFactionView {
 			float up, FactionAPI faction, MarketAPI world, boolean mayOrder, String blocked) {
 		ButtonAPI recall = intel.addGenericButton(main, RECALL_W, "Recall",
 				BUTTON_RECALL_ALL + faction.getId() + ":" + world.getId());
-		recall.getPosition().belowRight(table, -up).setXAlignOffset(-6f - DEPLOY_W - 4f - TRANSFER_W - 4f);
+		recall.getPosition().belowRight(table, -up).setXAlignOffset(-6f - TRANSFER_W - 4f);
 		int[] n = recallAllCount(faction, world);
 		boolean any = n[0] + n[1] + n[2] > 0;
 		disableWith(main, recall, mayOrder && any, blocked != null ? blocked : recallAllText(faction, world),
@@ -3287,6 +3334,7 @@ public class ThreatFactionView {
 			if (index < 0 || index >= list.size()) return false;
 			ThreatFleetOrders.Order o = list.get(index);
 			if (!o.aid || !factionId.equals(o.recipientFactionId)) return false;
+			if (o.credited) return false; // the standing is paid: it serves its term (2026-10-31)
 			ThreatFleetOrders.recall(o);
 			return true;
 		}

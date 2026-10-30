@@ -87,10 +87,10 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
 			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6,
-			LEVER_FRONT_FLEET = 7;
-	protected static final int LEVER_COUNT = 8;
-	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max. */
-	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2 };
+			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8;
+	protected static final int LEVER_COUNT = 9;
+	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max, the Domain's Fleet (2026-10-31: Transfer deploys a fleet with it set) None. */
+	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2, 0 };
 
 	public int lever(int which) {
 		if (levers == null || levers.length < LEVER_COUNT) {
@@ -116,10 +116,14 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_FRONT_FLEET) };
 	}
 
-	/** The colonies table's levers in ThreatReserves.AID_COMMODITIES order: marines, arms, fuel, supplies, hulls. */
+	/**
+	 * The colonies table's levers in ThreatReserves.AID_COMMODITIES order - marines, arms, fuel, supplies,
+	 * hulls - then the Fleet lever (2026-10-31: None, Transfer sends a convoy; Med / Max, Transfer deploys a
+	 * fleet of half / all the source's free hulls carrying the goods, ThreatDeploy).
+	 */
 	public int[] colonyLevers() {
 		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_COLONY_FUEL),
-				lever(LEVER_COLONY_SUPPLIES), lever(LEVER_COLONY_HULLS) };
+				lever(LEVER_COLONY_SUPPLIES), lever(LEVER_COLONY_HULLS), lever(LEVER_DOMAIN_FLEET) };
 	}
 
 	public int getSiegeTier() {
