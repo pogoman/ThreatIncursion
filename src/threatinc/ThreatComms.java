@@ -216,7 +216,20 @@ public class ThreatComms {
 
 	/** 6.1: a need appears (or escalates to overrun / exhausted). */
 	public static void appears(FactionAPI faction, MarketAPI m, ThreatNeeds.Need n) {
+		if (unspoken(n.purpose)) {
+			ThreatIncConfig.log("Comms (quiet): " + notice(tableFor(n), faction, m, n).plain());
+			return;
+		}
 		notice(tableFor(n), faction, m, n).send();
+	}
+
+	/**
+	 * A navy's hulls and an expedition's provisions are never announced, short or met (the user,
+	 * 2026-10-30, of "Short Of Hulls" and "Expedition Sails": "get rid of these"); the board shows them.
+	 */
+	protected static boolean unspoken(String purpose) {
+		return ThreatNeeds.NAVY.equals(purpose) || ThreatNeeds.FLEET.equals(purpose)
+				|| ThreatNeeds.EXPEDITION.equals(purpose);
 	}
 
 	/**
@@ -228,6 +241,7 @@ public class ThreatComms {
 	 */
 	public static boolean met(FactionAPI faction, MarketAPI m, String purpose, String good, List<ThreatNeeds.Need> now) {
 		if (m == null || faction == null) return false;
+		if (unspoken(purpose)) return false;
 		boolean army = ThreatAidRequests.underArmy(m);
 		if (ThreatNeeds.HOLD.equals(purpose) || ThreatNeeds.PUSH_BACK.equals(purpose) || ThreatNeeds.ARM.equals(purpose)) {
 			if (!army) {
