@@ -1905,3 +1905,30 @@ saving to launch shortens; the launched FP per campaign up (bills budding at eve
 drawn down by the richest-donor shifts without the sole largest producer of metals / fuel / ore losing a
 size; the shift not stacking swarms over a staging; hives at or above the band; 0 exceptions on saves
 from the older jar.
+
+**hw322 END (17:45, set A from the hw321 pre-opening snapshots; hw321 cut at the same war day in
+brackets - the same saves on the keep-progress jar; a ran its 2,900 days, b / c met the 70-minute cap):**
+
+| game | war day | hives | campaigns launched | wait saving -> launch (d) | mean campaign FP | strikes | parallel staging lines | shift swarms spawned / stuck | "Shifted from" size drops | starved levels | claims | consumed | lift-offs | retaken | dig-ins | grand sails | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw322a | 3,807 | 296 (273) | 60 (59) | 76 (69) | 67.7k (80.2k) | 127 (111) | 3,307 (0) | 5,511 / 23 (3,217 / 0) | 81 (710) | 4 (21) | 314 (311) | 246 (186) | 100 (73) | 63 (100) | 62 (56) | 23 (22) | 0 |
+| hw322b | 3,255 | 227 (227) | 45 (55) | 85 (102) | 74.9k (102.5k) | 108 (79) | 3,276 (0) | 5,518 / 8 (1,794 / 0) | 209 (555) | 4 (9) | 326 (303) | 228 (144) | 75 (48) | 84 (107) | 54 (88) | 31 (17) | 0 |
+| hw322c | 3,417 | 303 (294) | 54 (56) | 51 (80) | 73.8k (58.1k) | 92 (91) | 4,133 (0) | 6,099 / 10 (1,346 / 0) | 121 (470) | 7 (7) | 245 (295) | 148 (172) | 57 (58) | 70 (99) | 45 (54) | 20 (12) | 0 |
+
+- **The parallel path fires and the front is fed:** 3,276-4,133 "stages N FP of Shifting Swarm for its
+  strike" lines a game (the old jar: none - every bill budded at the staging alone), shift swarms spawned
+  3-4x the old jar's. Campaigns launched and their mean FP about the old jar's (a 60 / 67.7k against 59 /
+  80.2k; b fewer and smaller, 45 / 74.9k against 55 / 102.5k; c 54 / 73.8k against 56 / 58.1k); the wait
+  from "saving for" to the launch 51-85 days against 69-102. Strikes sailed 127 / 108 / 92 against 111 /
+  79 / 91.
+- **The back line keeps its size:** "Shifted from X: size n -> n-1" 81 / 209 / 121 against 710 / 555 /
+  470, "Starved a level" 4 / 4 / 7 against 21 / 9 / 7 - the richest-quiet-donor + keepStrata floor draws
+  mass without desizing the givers. Hives 296 / 227 / 303 against 273 / 227 / 294.
+- **The ground war:** consumed 246 / 228 / 148 against 186 / 144 / 172, lift-offs 100 / 75 / 57 against
+  73 / 48 / 58, retaken by the defenders 63 / 84 / 70 against 100 / 107 / 99, dig-ins unchanged.
+- **Wrinkle (open):** stuck shift swarms 23 / 8 / 10 (old jar 0): the richest donor buds one swarm of the
+  whole amount - hw322a's Beta Blost Dantalion II / IV-A spawned 5,375 and 5,392 FP (320-333 ships) whose
+  passage `ThreatFuel.canPay` refused ("a reinforcement from X held, 29,750 fuel ... in stock") - so it
+  stands as a Defend fleet over the donor until absorbed. Count flat from w2,219 on a, so a nuisance, not
+  a drain; the fix would size the shift to the fuel the passage can pay (`ThreatBudding.shift` /
+  `spawn`). 0 exceptions on the three saves from the older jar. hw323 (set B) follows.
