@@ -211,23 +211,35 @@ off with the reason, `goodOffReason`). On is a standing call (`Call`): "Distress
 calls for marines"; off withdraws it and drops its open offers. Every faction at Favourable or
 better looks once a day on its own clock and puts an **offer** on the table (`Offer`, `quote`: all
 that its colony sparing the most in reach spares, at least `aidRequestMinSpare`, cut to the standing
-the player can spend with it; "Aid Offered" notice with the ETA and the price). The table
+the player can spend with it; "Aid Offered" notice with the ETA and the price). Since 2026-10-31
+evening (the user: "factions should only make offers from surplus colonies ... the speed in which a
+faction responds to offer should be determined by how preoccupied they are with the war") a colony
+offers only with its reserve of the good in the white state - no deficit, no cover, not exhausted
+(`holdsSurplus`) - and offers what it holds above its own keep, `offerSpare` (monthsBasis x
+donorKeepFraction, the garrison floor, a forward base's feeding credit for supplies; not the staging
+bank `ThreatConvoys.spare` keeps, which had Ilm with 4,721 marines offering 216 from Ailmar); an
+offer the faction can no longer make is withdrawn ("Offer Withdrawn"); a beset faction looks less
+often - its check days x (1 + besetness x `aidRequestBesetDelay`). The table
 (`addRequests` / `addOfferRow`): World, Commodity, Age (days the call has stood), Answer ("Hegemony:
-1,568 marines from Ilm" in the faction's colour; "waiting" on a call nobody has answered),
-Standing (charged on receipt), ETA (once accepted) and **Actions**: **Accept** and **Reject** on an
-offer, **Cancel** on one at sea. Accept (`BUTTON_REQ_ACCEPT`, a Confirm with the figures) quotes it
+1,568 marines from Ilm" in the faction's colour; no row at all for a call nobody has answered - the
+toggles say what is asked), Standing (charged on receipt), ETA (the quoted passage on an open offer,
+the time left once accepted) and **Actions**: **Accept** and **Dismiss** on an offer, **Cancel** on
+one at sea. The Colony button clears every call as it moves on (`clearCalls`). Accept (`BUTTON_REQ_ACCEPT`, a Confirm with the figures) quotes it
 afresh and sails it now - a convoy to a colony or outpost (`ThreatConvoys.dispatch` with the base),
 a supply run to a front (`ThreatConvoys.aidFrontRun`, the player's own cover opening its door) -
-carrying the offer's id; Reject (`BUTTON_REQ_REJECT`, no Confirm) clears it and the faction offers
+carrying the offer's id; Dismiss (`BUTTON_REQ_REJECT`, no Confirm) clears it and the faction offers
 nothing more on that call until it is toggled again (`Call.declined`); Cancel (`BUTTON_REQ_CANCEL`)
 turns the convoy home, nothing charged. A landed offer leaves the table ("Aid Landed", the standing
 charged); with the call still on the faction may offer again - several offers of one good stand
 together, from different factions or in turn. An offer whose call was toggled off still sails and
 keeps its Cancel (`strays`). Since 2026-10-30 (the user: "each factions requests table should only
-show their requests") an NPC faction's tab lists its own needs instead: its colonies' needs on the
-ledger (`ThreatNeeds.of`, `addFactionNeeds`) - World, Asked (purpose and good), Answer (the convoy
-at sea with the good and whose it is, `convoysWith`; a task force bound for a fleets need; else
-waiting), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
+show their requests"; the same table as the player's since 2026-10-31, "other human faction request
+boards should have the same table as player one") an NPC faction's tab lists its own needs instead:
+its colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`), one row a world x good (the
+most urgent need of the good) - World, Commodity, Age (days the shortage has stood,
+`ThreatAidRequests.shortageSince`), Answer (the convoy at sea with the good and whose it is,
+`convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - nothing
+changes hands between NPC factions yet), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
 alone at its lever, Med when None, from the player's colony sparing the most - `ThreatAid.quoteAid`
 through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever). Until 2026-10-31 a
 request was logged from a Transfer or Deploy short of the colony's needs in the order's own confirm

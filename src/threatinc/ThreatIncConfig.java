@@ -1080,6 +1080,8 @@ public class ThreatIncConfig {
 	public static float aidRequestCheckDays()  { return f("threatinc_aidRequestCheckDays"); }
 	/** How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) gates its answer: it answers nothing while besetness x this outweighs the player's standing (ThreatAidRequests.willingness; 0 always answers). */
 	public static float aidRequestBesetWeight() { return f("threatinc_aidRequestBesetWeight"); }
+	/** How a faction's besetness stretches the days between its looks at a call (2026-10-31): x (1 + besetness x this). */
+	public static float aidRequestBesetDelay() { return f("threatinc_aidRequestBesetDelay"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }

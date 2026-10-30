@@ -409,6 +409,8 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		// THE REQUESTS TOGGLES (2026-10-31): the Colony button sets the entry, a good's button flips its call,
 		// Reject clears an offer - none with a Confirm, each a re-render in place
 		if (id.startsWith(ThreatFactionView.BUTTON_REQ_TARGET)) {
+			// the calls are the one entry's: moving on withdraws them all (the user, 2026-10-31)
+			ThreatAidRequests.clearCalls();
 			requestTarget = id.substring(ThreatFactionView.BUTTON_REQ_TARGET.length());
 			rerenderInPlace(ui);
 			return;

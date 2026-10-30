@@ -95,7 +95,7 @@ public class ThreatFactionView {
 	public static final String BUTTON_REQ_TOGGLE = "threatinc_board_reqtoggle:";
 	/** Accepts an offer of aid (payload player:offerId): the convoy sails now. */
 	public static final String BUTTON_REQ_ACCEPT = "threatinc_board_reqaccept:";
-	/** Rejects an offer of aid (payload offerId): cleared, the faction offers nothing more on that call; no Confirm. */
+	/** Dismisses an offer of aid (payload offerId; the button reads Dismiss, 2026-10-31): cleared, the faction offers nothing more on that call; no Confirm. */
 	public static final String BUTTON_REQ_REJECT = "threatinc_board_reqreject:";
 	/** Cancels an accepted offer at sea (payload player:offerId): the convoy turns home, nothing charged. */
 	public static final String BUTTON_REQ_CANCEL = "threatinc_board_reqcancel:";
@@ -978,7 +978,7 @@ public class ThreatFactionView {
 	 * for that entry (ThreatAidRequests.toggle) - and a table of the offers the standing calls drew
 	 * (ThreatAidRequests.offersFor): World, Commodity, Age (of the call), Answer (who offers what from
 	 * where; "waiting" on a call nobody has answered), Standing (charged on receipt), ETA (once
-	 * accepted) and Actions (Accept / Reject on an offer, Cancel on one at sea). On the player's tab
+	 * accepted) and Actions (Accept / Dismiss on an offer, Cancel on one at sea). On the player's tab
 	 * only: an NPC faction's tab lists its own needs, {@link #addFactionNeeds}. Nothing drawn while
 	 * the player has no colony.
 	 */
@@ -1012,17 +1012,14 @@ public class ThreatFactionView {
 		main.addTableHeaderTooltip(2, "Days the call has stood.");
 		main.addTableHeaderTooltip(3, "Who offers what, from where; waiting until someone does.");
 		main.addTableHeaderTooltip(4, "Standing with the sender, charged when it lands.");
-		main.addTableHeaderTooltip(5, "Days until it lands, once accepted.");
+		main.addTableHeaderTooltip(5, "Days until it lands; the passage quoted until then.");
 		int rowIndex = 0;
 		for (final ThreatAidRequests.Call c : ThreatAidRequests.open()) {
 			final ThreatBases.Base base = ThreatAidRequests.resolveTarget(c.targetId);
 			if (base == null) continue;
-			List<ThreatAidRequests.Offer> offers = ThreatAidRequests.offersFor(c);
-			if (offers.isEmpty()) {
-				addOfferRow(main, out, c, base, null, rowIndex++, tw, frac, text, gray, h, neg);
-				continue;
-			}
-			for (ThreatAidRequests.Offer o : offers) {
+			// a row an offer, none for a call nobody has answered (the user, 2026-10-31: "should have no waiting
+			// entry its just on or off dependent on any toggles being on")
+			for (ThreatAidRequests.Offer o : ThreatAidRequests.offersFor(c)) {
 				addOfferRow(main, out, c, base, o, rowIndex++, tw, frac, text, gray, h, neg);
 			}
 		}
@@ -1055,12 +1052,15 @@ public class ThreatFactionView {
 		Color answerColor = o == null ? gray : helper != null ? helper.getBaseUIColor() : text;
 		ThreatWarBoard.cell(cells, Alignment.LMID, answerColor, main.shortenString(answer, (float) Math.floor(tw * frac[3]) - 10f));
 		ThreatWarBoard.cell(cells, Alignment.MID, o == null ? gray : neg, o == null ? "-" : "-" + o.price);
+		// the passage on an open offer too (the user, 2026-10-31: "show eta column even if not accepted to give an idea of transit time")
 		String eta = "-";
 		if (o != null && o.accepted()) {
 			float left = ThreatAidRequests.etaLeft(o);
 			eta = left <= 0f ? "due" : (int) Math.ceil(left) + " d";
+		} else if (o != null) {
+			eta = (int) Math.ceil(o.etaDays) + " d";
 		}
-		ThreatWarBoard.cell(cells, Alignment.MID, o != null && o.accepted() ? h : gray, eta);
+		ThreatWarBoard.cell(cells, Alignment.MID, o != null && o.accepted() ? h : o != null ? text : gray, eta);
 		ThreatWarBoard.cell(cells, Alignment.MID, gray, ""); // the buttons sit here
 		main.addRow(cells.toArray());
 		if (base.market != null && base.market.isPlayerOwned()) main.setIdForAddedRow(ROW_MARKET + base.market.getId());
@@ -1129,22 +1129,35 @@ public class ThreatFactionView {
 	}
 
 	/**
-	 * AN NPC FACTION'S CALLS (the user, 2026-10-30: "each factions requests table should only show
-	 * their requests. i assume other factions are requesting as well?"): a faction's calls are its
-	 * colonies' needs on the ledger (ThreatNeeds.of - what the allies' goods pass and the player's
-	 * dock hand-over answer), a row a need - World, Asked (the purpose and the good), Answer (the
-	 * convoy at sea with the good and whose it is, a task force bound for a fleets need, else
-	 * waiting), ETA, and a Send button (the user, 2026-10-30: "i see no way to send aid for the
-	 * need?" - BUTTON_AID_NEED: a convoy of that good alone at the colonies table's lever for it,
-	 * Med when the lever is at None, from the player's colony sparing the most, ThreatAid.quoteAid;
-	 * a fleets need sends Defend at the fronts' Fleet lever, as BUTTON_AID_DEFEND). The row tooltip
-	 * is the need's figures and every convoy sailing. Nothing drawn with no need.
+	 * AN NPC FACTION'S CALLS (the user, 2026-10-31: "other human faction request boards should have
+	 * the same table as player one ... they only have one entry per commodity and if no answer yet
+	 * it does say waiting"): the faction's calls are its colonies' needs on the ledger (ThreatNeeds.of
+	 * - what the allies' goods pass, ThreatCoalition.allyAid, and the player's dock hand-over answer),
+	 * one row a world and good (the most urgent need of the good), in the player's table's columns -
+	 * World, Commodity, Age (how long the shortage has stood, ThreatAidRequests.shortageSince; a dash
+	 * for a battle's need), Answer (the convoy at sea with the good and whose it is, a task force bound
+	 * for a fleets need, else waiting), Standing (nothing changes hands between NPC factions yet), ETA
+	 * (`convoyEta`) and **Send** (BUTTON_AID_NEED: a convoy of that good alone at the colonies table's
+	 * lever for it, Med when the lever is at None, from the player's colony sparing the most,
+	 * ThreatAid.quoteAid; a fleets need sends Defend at the fronts' Fleet lever, as BUTTON_AID_DEFEND).
+	 * A need that clears leaves the table - the call withdraws itself. Nothing drawn with no need.
 	 */
 	protected static Requests addFactionNeeds(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
 			float opad, final FactionAPI faction) {
 		List<Object[]> rows = new ArrayList<Object[]>();
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
-			for (ThreatNeeds.Need n : ThreatNeeds.of(m)) rows.add(new Object[] { m, n });
+			// one entry a good: the most urgent need of it, the largest ask on a tie
+			List<ThreatNeeds.Need> kept = new ArrayList<ThreatNeeds.Need>();
+			for (ThreatNeeds.Need n : ThreatNeeds.of(m)) {
+				ThreatNeeds.Need same = null;
+				for (ThreatNeeds.Need k : kept) if (k.good != null && k.good.equals(n.good)) same = k;
+				if (same == null) {
+					kept.add(n);
+				} else if (n.urgency > same.urgency || (n.urgency == same.urgency && n.max > same.max)) {
+					kept.set(kept.indexOf(same), n);
+				}
+			}
+			for (ThreatNeeds.Need n : kept) rows.add(new Object[] { m, n });
 		}
 		if (rows.isEmpty()) return null;
 		int[] levers = intel.colonyLevers();
@@ -1160,8 +1173,8 @@ public class ThreatFactionView {
 		Color text = Misc.getTextColor();
 		main.addSectionHeading("Requests for aid", bright, dark, Alignment.MID, opad);
 		float tw = width - 24f;
-		String[] names = {"World", "Asked", "Answer", "ETA", ""};
-		float[] frac = {.16f, .32f, .36f, .07f, .09f};
+		String[] names = {"World", "Commodity", "Age", "Answer", "Standing", "ETA", "Actions"};
+		float[] frac = {.13f, .13f, .06f, .30f, .08f, .07f, .23f};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < names.length; i++) {
 			columns.add(names[i]);
@@ -1169,9 +1182,11 @@ public class ThreatFactionView {
 		}
 		out.table = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(1, "What the world calls for, by purpose.");
-		main.addTableHeaderTooltip(2, "What sails to answer it; waiting until something does.");
-		main.addTableHeaderTooltip(3, "Days until it lands.");
+		main.addTableHeaderTooltip(1, "What the world calls for; the row tooltip has the purpose and the figures.");
+		main.addTableHeaderTooltip(2, "Days the shortage has stood.");
+		main.addTableHeaderTooltip(3, "What sails to answer it; waiting until something does.");
+		main.addTableHeaderTooltip(4, "Standing with the sender, charged when it lands.");
+		main.addTableHeaderTooltip(5, "Days until it lands.");
 		int rowIndex = 0;
 		for (Object[] row : rows) {
 			final MarketAPI m = (MarketAPI) row[0];
@@ -1179,9 +1194,11 @@ public class ThreatFactionView {
 			List<Object> cells = new ArrayList<Object>();
 			ThreatWarBoard.cell(cells, Alignment.LMID, text,
 					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
-			String asked = n.purpose + " - " + n.goodLabel() + (n.suspended ? " - blockaded" : "");
 			ThreatWarBoard.cell(cells, Alignment.LMID, n.color(),
-					main.shortenString(asked, (float) Math.floor(tw * frac[1]) - 10f));
+					main.shortenString(n.goodLabel() + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
+			Long since = n.isFleets() ? null : ThreatAidRequests.shortageSince().get(m.getId() + ":" + n.good);
+			ThreatWarBoard.cell(cells, Alignment.MID, since != null ? text : gray, since != null
+					? (int) Global.getSector().getClock().getElapsedDaysSince(since) + " d" : "-");
 			final List<ThreatConvoys.Convoy> sailing = n.isFleets() ? new ArrayList<ThreatConvoys.Convoy>()
 					: convoysWith(m, n.good);
 			String answer = "waiting";
@@ -1205,7 +1222,8 @@ public class ThreatFactionView {
 				etaColor = h;
 			}
 			ThreatWarBoard.cell(cells, Alignment.LMID, answerColor,
-					main.shortenString(answer, (float) Math.floor(tw * frac[2]) - 10f));
+					main.shortenString(answer, (float) Math.floor(tw * frac[3]) - 10f));
+			ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
 			ThreatWarBoard.cell(cells, Alignment.MID, etaColor, eta);
 			ThreatWarBoard.cell(cells, Alignment.MID, gray, ""); // Send sits here
 			main.addRow(cells.toArray());
@@ -1329,7 +1347,7 @@ public class ThreatFactionView {
 	 * The Requests table's buttons, floated in last (platform traps 1 and 2): on the player's tab the
 	 * toggle row under the heading (Colony, then a good a button reading On / Off for that entry -
 	 * BUTTON_REQ_TARGET / BUTTON_REQ_TOGGLE, no Confirm, handled in ThreatIncursionIntel) and, on
-	 * each offer's row, Accept and Reject - Cancel once it sails; on an NPC faction's needs table,
+	 * each offer's row, Accept and Dismiss - Cancel once it sails; on an NPC faction's needs table,
 	 * Send on each row (BUTTON_AID_NEED), off with its reason as the tooltip.
 	 */
 	protected static void addRequestButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Requests requests) {
@@ -1359,10 +1377,10 @@ public class ThreatFactionView {
 				disableWith(main, cancel, true, null, "Turns the convoy home. Nothing is charged.");
 				continue;
 			}
-			ButtonAPI reject = intel.addGenericButton(main, OFFER_BUTTON_W, "Reject",
+			ButtonAPI reject = intel.addGenericButton(main, OFFER_BUTTON_W, "Dismiss",
 					BUTTON_REQ_REJECT + offerId);
 			reject.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f);
-			disableWith(main, reject, true, null, "Clears the offer. The faction offers nothing more on this call until it is toggled again.");
+			disableWith(main, reject, true, null, "Dismisses the offer. The faction offers nothing more on this call until it is toggled again.");
 			ButtonAPI accept = intel.addGenericButton(main, OFFER_BUTTON_W, "Accept",
 					BUTTON_REQ_ACCEPT + Factions.PLAYER + ":" + offerId);
 			accept.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f - OFFER_BUTTON_W - 4f);
@@ -1383,7 +1401,7 @@ public class ThreatFactionView {
 			public boolean isTooltipExpandable(Object p) { return false; }
 			public float getTooltipWidth(Object p) { return 300f; }
 			public void createTooltip(TooltipMakerAPI tt, boolean ex, Object p) {
-				tt.addPara("The calls shown are " + t.name() + "'s. Next: " + next.name() + ".", 0f);
+				tt.addPara("The calls are " + t.name() + "'s. Next: " + next.name() + "; switching withdraws every call.", 0f);
 			}
 		}, pick, TooltipLocation.BELOW);
 		String off = ThreatAidRequests.requestOffReason(t);

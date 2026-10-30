@@ -106,6 +106,9 @@ public class ThreatAid {
 			return ThreatNotice.Reason.of("%s is at war with you", ThreatNotice.faction(faction))
 					.line("Its patrols would fire on anything you sent");
 		}
+		// any faction not at war with the player takes aid (the user, 2026-10-31: "player should be able to send aid
+		// to unfavourable factions to increase rep, they just wont send back unless favourable"); aidMinRelation
+		// stays a knob, -1 by default
 		if (faction.getRelToPlayer().getRel() < ThreatIncConfig.aidMinRelation()) {
 			return ThreatNotice.Reason.of("%s will not accept your help at this standing",
 					ThreatNotice.faction(faction));

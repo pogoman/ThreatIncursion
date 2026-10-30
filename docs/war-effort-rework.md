@@ -102,8 +102,23 @@ tier any more); the player **accepts** (the convoy sails now - to a colony or ou
 convoy, to a front as a supply run, `ThreatConvoys.aidFrontRun`), **rejects** (the faction is
 declined on that call until it is toggled again) or **cancels** an accepted one at sea (home,
 nothing charged). Charged on receipt as before; a delivered offer leaves the table and the faction
-may offer again while the call stands. The war board section in docs/war-board.md "The calls and the
-offers" has the table. The paragraphs below are the earlier flows the rest still follows.
+may offer again while the call stands. The same evening (the user: "factions should only make offers
+from surplus colonies ... if they suddenly need those marines they should recall the offer ... the
+speed in which a faction responds to offer should be determined by how preoccupied they are with the
+war ... player should be able to send aid to unfavourable factions to increase rep, they just wont
+send back unless favourable"; BUILT jar 17:56:40, untested): a colony offers only with its reserve
+of the good in the white state (`holdsSurplus`) and offers what it holds above its own keep
+(`offerSpare` - the staging bank `ThreatConvoys.spare` holds back is not kept: an accepted offer is
+the faction's choice to spend it); an offer it can no longer make is withdrawn ("Offer Withdrawn");
+its looks come `aidRequestCheckDays` x (1 + besetness x `aidRequestBesetDelay`) days apart
+(`checkDays(helper)`); the table draws no row for an unanswered call, Reject reads Dismiss, ETA shows
+the quoted passage before acceptance, and the Colony button clears every call (`clearCalls`). The
+player may send aid to any faction not at war with them (`threatinc_aidMinRelation` -1); an NPC
+faction answers the player's calls only from Favourable (`willingness`), and NPC-to-NPC aid
+(`ThreatCoalition.allyAid`) still changes no standing - nothing in vanilla or the mod ever restores
+an NPC-to-NPC standing, so a charge there waits on the user's decision. The war board section in
+docs/war-board.md "The calls and the offers" has the table. The paragraphs below are the earlier
+flows the rest still follows.
 
 **From 2026-10-29 evening to 2026-10-31 (the user: "i want to rework the request and aid system"; BUILT jar
 19:43:00, untested):** no Request button. A request is logged from a **Transfer or Deploy that

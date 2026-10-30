@@ -370,6 +370,11 @@ public class ThreatAidRequests {
 		return true;
 	}
 
+	/** Every call goes (the Colony button moved on, 2026-10-31: "changing colony toggle resets all to off"); accepted offers sail on. */
+	public static void clearCalls() {
+		for (Call c : new ArrayList<Call>(calls())) dropCall(c);
+	}
+
 	/** The call and every open offer under it go; accepted offers sail on. */
 	protected static void dropCall(Call c) {
 		calls().remove(c);
@@ -431,12 +436,22 @@ public class ThreatAidRequests {
 		return Math.max(0.5f, ThreatIncConfig.aidRequestCheckDays());
 	}
 
+	/**
+	 * Days between THIS faction's looks: the check days, stretched by how beset it is (the user,
+	 * 2026-10-31: "the speed in which a faction responds to offer should be determined by how preoccupied
+	 * they are with the war") - x (1 + besetness x aidRequestBesetDelay): at 3, a faction with half its
+	 * worlds under the Threat looks every 2.5 days instead of 1.
+	 */
+	public static float checkDays(FactionAPI helper) {
+		return checkDays() * (1f + besetness(helper) * Math.max(0f, ThreatIncConfig.aidRequestBesetDelay()));
+	}
+
 	/** Days until the faction looks at the call again; 0 when it has never looked. */
 	public static float nextCheckIn(Call c, FactionAPI helper) {
 		if (c == null || helper == null) return 0f;
 		Long last = c.checkedAt().get(helper.getId());
 		if (last == null) return 0f;
-		return Math.max(0f, checkDays() - Global.getSector().getClock().getElapsedDaysSince(last));
+		return Math.max(0f, checkDays(helper) - Global.getSector().getClock().getElapsedDaysSince(last));
 	}
 
 	/**
@@ -449,7 +464,7 @@ public class ThreatAidRequests {
 		long now = Global.getSector().getClock().getTimestamp();
 		for (FactionAPI helper : candidates()) {
 			Long last = c.checkedAt().get(helper.getId());
-			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last) < checkDays()) continue;
+			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last) < checkDays(helper)) continue;
 			c.checkedAt().put(helper.getId(), now);
 			if (c.declined().contains(helper.getId())) continue;
 			Offer have = offerBy(c, helper.getId());
@@ -457,9 +472,14 @@ public class ThreatAidRequests {
 			Quote q = quote(helper, c, target);
 			if (q == null || !q.ok()) {
 				if (have != null) {
+					// the faction needs it itself now (the user, 2026-10-31: "if they suddenly need those marines they should recall the offer")
 					offers().remove(have);
 					ThreatIncConfig.log("Aid offer withdrawn: " + helper.getId() + " " + c.good + " for " + target.name()
 							+ " - " + (q != null ? q.why : "no quote"));
+					ThreatNotice.titled("Offer Withdrawn").icon(helper)
+							.line("%s withdraws its offer of %s to %s", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(have)),
+									targetNotice(target))
+							.send();
 				} else if (q != null) {
 					// the reason is the log's and debug mode's, never the player's (an SOS, 2026-10-29 night)
 					ThreatIncConfig.log("Aid call: " + helper.getId() + " cannot offer " + c.good + " for "
@@ -525,14 +545,19 @@ public class ThreatAidRequests {
 		}
 		List<MarketAPI> donors = donors(helper, target.hyperLoc(), c.good);
 		if (donors.isEmpty()) {
-			q.why = "no colony in reach spares " + Misc.getWithDGS((int) minSpare(c.good)) + " or more";
+			q.why = "no colony in reach holds a surplus of " + Misc.getWithDGS((int) minSpare(c.good)) + " or more";
 			return q;
 		}
 		MarketAPI donor = donors.get(0);
-		float amount = (float) Math.floor(ThreatConvoys.spare(donor, c.good));
+		float amount = (float) Math.floor(offerSpare(donor, c.good));
+		if (ThreatIncConfig.debugMode()) {
+			StringBuilder sb = new StringBuilder();
+			for (MarketAPI d : donors) sb.append(sb.length() > 0 ? ", " : "").append(d.getName()).append(" ").append((int) offerSpare(d, c.good));
+			ThreatIncConfig.log("Aid quote donors for " + c.good + " (" + helper.getId() + "): " + sb);
+		}
 		if (amount < minSpare(c.good)) {
 			q.why = "the " + Misc.getWithDGS(ThreatHulls.shown(c.good, amount)) + " " + donor.getName()
-					+ " spares is under " + Misc.getWithDGS((int) minSpare(c.good));
+					+ " holds above its keep is under " + Misc.getWithDGS((int) minSpare(c.good));
 			return q;
 		}
 		float budget = (float) Math.floor(budget(helper));
@@ -969,9 +994,11 @@ public class ThreatAidRequests {
 	}
 
 	/**
-	 * The helper's colonies in reach of the target that spare {@link #minSpare} or more
-	 * of the good, most spare first. An NPC helper reaches as far as its colony's fuel pays
-	 * (ThreatConvoys.stockReachLY).
+	 * The helper's colonies in reach of the target holding a SURPLUS of the good (the user, 2026-10-31:
+	 * "factions should only make offers from surplus colonies ... if they are short on the requested
+	 * commodity they dont respond at all"): its reserve of the good in the white state - no deficit, no
+	 * shortage cover, not exhausted - and offerSpare of minSpare or more; the most
+	 * spare first. An NPC helper reaches as far as its colony's fuel pays (ThreatConvoys.stockReachLY).
 	 */
 	protected static List<MarketAPI> donors(FactionAPI helper, Vector2f at, String good) {
 		List<MarketAPI> out = new ArrayList<MarketAPI>();
@@ -980,14 +1007,43 @@ public class ThreatAidRequests {
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
 			if (Misc.getDistanceLY(donor.getLocationInHyperspace(), at) > ThreatConvoys.stockReachLY(donor)) continue;
-			if (ThreatConvoys.spare(donor, good) >= minSpare(good)) out.add(donor);
+			if (!holdsSurplus(donor, good)) continue;
+			if (offerSpare(donor, good) >= minSpare(good)) out.add(donor);
 		}
 		Collections.sort(out, new Comparator<MarketAPI>() {
 			public int compare(MarketAPI a, MarketAPI b) {
-				return Float.compare(ThreatConvoys.spare(b, g), ThreatConvoys.spare(a, g));
+				return Float.compare(offerSpare(b, g), offerSpare(a, g));
 			}
 		});
 		return out;
+	}
+
+	/** Whether the colony's reserve of the good reads as a surplus - the white state of the reserve key (no deficit, no cover, not exhausted); hulls always. */
+	public static boolean holdsSurplus(MarketAPI donor, String good) {
+		if (Commodities.SHIPS.equals(good)) return true;
+		ThreatReserves.CommodityStatus st = ThreatReserves.status(donor, good);
+		if (st == null) return ThreatReserves.stock(donor.getId(), good) > 0f;
+		return !st.exhausted && !st.stockpilesOff && !st.covering && st.deficit <= 0;
+	}
+
+	/**
+	 * What a colony can OFFER of a good: its stock above its own keep (ThreatReserves.monthsBasis x
+	 * donorKeepFraction, never under the garrison's floor; a forward base's feeding credit for
+	 * supplies; a world under a front what ThreatConvoys.frontWorldSpare allows; hulls the port's
+	 * spare units). The siege it may be staging for is NOT held back (ThreatConvoys.spare holds the
+	 * staging bank and target, which left Ilm with 4,721 marines offering 216 from Ailmar - the user,
+	 * 2026-10-31: "why on earth would they send from a colony with no marines when they have one with
+	 * 5k"): an offer the player accepts is the faction's choice to spend it.
+	 */
+	public static float offerSpare(MarketAPI donor, String good) {
+		if (donor == null || good == null) return 0f;
+		if (Commodities.SHIPS.equals(good)) return ThreatHulls.spareUnits(donor);
+		if (ThreatGroundFronts.hasFront(donor)) return ThreatConvoys.frontWorldSpare(donor, good);
+		float keep = ThreatReserves.monthsBasis(donor, good) * ThreatIncConfig.donorKeepFraction();
+		ThreatReserves.CommodityStatus st = ThreatReserves.status(donor, good);
+		if (st != null) keep = Math.max(keep, st.floor);
+		if (Commodities.SUPPLIES.equals(good)) keep += ThreatFeeding.credit(donor);
+		return Math.max(0f, ThreatReserves.stock(donor.getId(), good) - keep);
 	}
 
 	/** An older save's request read as parts: one good at a tier (2026-10-23), or levers and a Fleet lever (2026-10-28 / 29). */
