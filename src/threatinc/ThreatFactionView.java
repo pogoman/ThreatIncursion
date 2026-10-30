@@ -739,7 +739,7 @@ public class ThreatFactionView {
 									+ ", carrying " + ThreatDeploy.loadText(d.load) + ". Attack sails it."
 							: "Nothing to deploy: " + ThreatDeploy.offReason(d);
 					if (!deployShort.isEmpty()) {
-						deployHelp += " Short of " + ThreatAidRequests.shortText(deployShort) + ": asks whether to call for aid.";
+						deployHelp += " Short of " + ThreatAidRequests.shortText(deployShort) + ": Confirm also calls for aid.";
 					}
 					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatDeploy.offReason(d), deployHelp);
 					String stageHelp = donor != null ? "A convoy from " + donor.getName() + " brings "
@@ -747,7 +747,7 @@ public class ThreatFactionView {
 									: "what the levers allow") + "."
 							: "Nothing to send: " + ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours");
 					if (!stageShort.isEmpty()) {
-						stageHelp += " Short of " + ThreatAidRequests.shortText(stageShort) + ": asks whether to call for aid.";
+						stageHelp += " Short of " + ThreatAidRequests.shortText(stageShort) + ": Confirm also calls for aid.";
 					}
 					disableWith(main, stage, stageOk, blocked != null ? blocked
 							: ThreatConvoys.stageOffReason(ThreatBases.of(r.market), levers, "yours"), stageHelp);
@@ -961,7 +961,7 @@ public class ThreatFactionView {
 				donor != null ? ThreatConvoys.stageLoad(donor, market, levers) : null);
 	}
 
-	/** Whether the Transfer or Deploy would send nothing at the levers yet leaves the colony short: the button opens the call-for-aid prompt alone, with no Confirm. */
+	/** Whether the Transfer or Deploy would send nothing at the levers yet leaves the colony short: the button's Confirm is the call for aid alone. */
 	public static boolean promptOnly(String id, ThreatIncursionIntel intel) {
 		MarketAPI market = shortfallMarket(id);
 		if (market == null || intel == null) return false;
@@ -1975,6 +1975,29 @@ public class ThreatFactionView {
 	public static void addOrderPrompt(TooltipMakerAPI prompt, String id, ThreatIncursionIntel intel) {
 		String[] parts = parse(id);
 		if (parts == null) return;
+		// THE CALL FOR AID (2026-10-30, the intel confirm box - the kind the user wants, "not the full
+		// screen one"): a Transfer or Deploy short of the colony's needs says so in its Confirm, which
+		// sails the order and logs the call; one that would send nothing confirms the call alone. An
+		// SOS: the goods and the tier's words, nothing of who answers or how (2026-10-29 night)
+		List<ThreatAidRequests.Part> shorts = BUTTON_GUARD.equals(parts[0]) || BUTTON_STAGE.equals(parts[0])
+				? shortfallFor(id, intel) : new ArrayList<ThreatAidRequests.Part>();
+		MarketAPI shortMarket = shorts.isEmpty() ? null : shortfallMarket(id);
+		boolean call = shortMarket != null && ThreatAidRequests.requestOffReason(shortMarket) == null;
+		if (call && promptOnly(id, intel)) {
+			prompt.addPara(shortMarket.getName() + " is short of %s.", 0f, Misc.getHighlightColor(),
+					ThreatAidRequests.shortText(shorts));
+			prompt.addPara("Call for " + ThreatAidRequests.askText(shorts) + "?", 10f);
+			return;
+		}
+		addOrderPromptBody(prompt, id, parts, intel);
+		if (call) {
+			prompt.addPara("Short of %s: Confirm also calls for " + ThreatAidRequests.askText(shorts) + ".", 10f,
+					Misc.getHighlightColor(), ThreatAidRequests.shortText(shorts));
+		}
+	}
+
+	/** The order's own confirm text, by button. */
+	protected static void addOrderPromptBody(TooltipMakerAPI prompt, String id, String[] parts, ThreatIncursionIntel intel) {
 		int siegeTier = intel != null ? intel.getSiegeTier() : 0;
 		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0, 0};
 		int[] levers = intel != null ? intel.colonyLevers() : new int[ThreatReserves.AID_COMMODITIES.length];

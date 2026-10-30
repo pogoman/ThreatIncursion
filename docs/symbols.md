@@ -1651,7 +1651,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.aided(String f, String c)` :559 - Notes that allies sailed the faction a convoy of the stock.
 - `ThreatFactionStock.describe(String f)` :564 - One line of the faction's plan for the log:
 
-## ThreatFactionView (2874 lines)
+## ThreatFactionView (2897 lines)
 ### selector row (both views)
 - `ThreatFactionView.selectorIds()` :120 - The factions the selector offers:
 - `ThreatFactionView.reserveSelectorRow(TooltipMakerAPI main)` :143 - Reserves the selector row's space in the flow, right after the strip.
@@ -1742,18 +1742,19 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.isOrderButton(String id)` :1938 - Whether this button id is one of the faction view's order buttons.
 - `ThreatFactionView.parse(String id)` :1956 - Splits "prefix" + "factionId:target" into [prefix, factionId, target].
 - `ThreatFactionView.addOrderPrompt(TooltipMakerAPI prompt, String id, ThreatIncursionIntel intel)` :1975 - The confirm-dialog text for an order button.
-- `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :2275 - The Bombard order's confirm:
-- `ThreatFactionView.addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d)` :2329 - The Deploy / Redeploy order's confirmation:
-- `ThreatFactionView.addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a)` :2357 - The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8):
-- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :2400 - Executes an order button.
-- `ThreatFactionView.purgedInReach(FactionAPI faction)` :2676 - Purged worlds within expedition reach of one of the faction's military worlds.
-- `ThreatFactionView.group(String key)` :2687 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
-- `ThreatFactionView.groupFleet(String key)` :2704 - The fleet of a group key, while it still lives with its group.
-- `ThreatFactionView.groupTargetSystem(String key)` :2719 - The hive system a group key's fleet is sent against.
-- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :2746 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
-- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :2755 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
-- `ThreatFactionView.recall(String factionId, String key)` :2796
-- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2872 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
+- `ThreatFactionView.addOrderPromptBody(TooltipMakerAPI prompt, String id, String[] parts, ThreatIncursionIntel intel)` :2000 - The order's own confirm text, by button.
+- `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :2298 - The Bombard order's confirm:
+- `ThreatFactionView.addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d)` :2352 - The Deploy / Redeploy order's confirmation:
+- `ThreatFactionView.addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a)` :2380 - The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8):
+- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :2423 - Executes an order button.
+- `ThreatFactionView.purgedInReach(FactionAPI faction)` :2699 - Purged worlds within expedition reach of one of the faction's military worlds.
+- `ThreatFactionView.group(String key)` :2710 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
+- `ThreatFactionView.groupFleet(String key)` :2727 - The fleet of a group key, while it still lives with its group.
+- `ThreatFactionView.groupTargetSystem(String key)` :2742 - The hive system a group key's fleet is sent against.
+- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :2769 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
+- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :2778 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
+- `ThreatFactionView.recall(String factionId, String key)` :2819
+- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2895 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
 
 ## ThreatFeeding (397 lines)
 - `ThreatFeeding.enabled()` :61 - Fleet memory:
@@ -3292,7 +3293,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncModPlugin.onGameLoad(boolean newGame)` :61
 - `ThreatIncModPlugin.migrateExistingShields()` :179 - Rebuilds any Planetary Shield still on the vanilla plugin class so it uses ThreatPlanetaryShield, carrying over AI core, improvement, special item and disruption state.
 
-## ThreatIncursionIntel (521 lines)
+## ThreatIncursionIntel (490 lines)
 - `ThreatIncursionIntel.getSelectedSystemId()` :32 - The system whose drill-down the war board shows;
 - `ThreatIncursionIntel.setSelectedSystemId(String systemId)` :36
 - `ThreatIncursionIntel.getSelectedFactionId()` :43 - The board's faction view (docs/strategy-layer.md);
@@ -3300,36 +3301,33 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncursionIntel.lever(int which)` :88 - The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max.
 - `ThreatIncursionIntel.setLever(int which, int tier)` :98
 - `ThreatIncursionIntel.frontLevers()` :108 - The fronts table's levers as {marines, arms, fleet}:
-- `ThreatIncursionIntel.refreshBoard()` :116 - Redraws the board where it stands once a request for aid has been logged from the confirm box over it;
-- `ThreatIncursionIntel.colonyLevers()` :126 - The colonies table's levers in ThreatReserves.AID_COMMODITIES order:
-- `ThreatIncursionIntel.getSiegeTier()` :131
-- `ThreatIncursionIntel.setSiegeTier(int tier)` :135
-- `ThreatIncursionIntel.getFuelTier()` :139
-- `ThreatIncursionIntel.getMarineTier()` :143
-- `ThreatIncursionIntel.tierOf(String id, String prefix)` :148 - The tier index a ladder button's id carries, or 0 if it carries nothing readable.
-- `ThreatIncursionIntel.get()` :156
-- `ThreatIncursionIntel.ensureAdded()` :160
-- `ThreatIncursionIntel.isEradicated()` :174 - The incursion is over:
-- `ThreatIncursionIntel.checkEradicated()` :183 - Retires the board once the swarm is gone;
-- `ThreatIncursionIntel.isHidden()` :194 - Off the intel list until the player knows of at least one hive system.
-- `ThreatIncursionIntel.getName()` :199
-- `ThreatIncursionIntel.getIcon()` :204
-- `ThreatIncursionIntel.getIntelTags(SectorMapAPI map)` :215 - A major event, and only that:
-- `ThreatIncursionIntel.knownInfestedSystemIds()` :228 - The systems the player actually knows are infested:
-- `ThreatIncursionIntel.getSystemById(String systemId)` :236
-- `ThreatIncursionIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :244
+- `ThreatIncursionIntel.colonyLevers()` :113 - The colonies table's levers in ThreatReserves.AID_COMMODITIES order:
+- `ThreatIncursionIntel.getSiegeTier()` :118
+- `ThreatIncursionIntel.setSiegeTier(int tier)` :122
+- `ThreatIncursionIntel.getFuelTier()` :126
+- `ThreatIncursionIntel.getMarineTier()` :130
+- `ThreatIncursionIntel.tierOf(String id, String prefix)` :135 - The tier index a ladder button's id carries, or 0 if it carries nothing readable.
+- `ThreatIncursionIntel.get()` :143
+- `ThreatIncursionIntel.ensureAdded()` :147
+- `ThreatIncursionIntel.isEradicated()` :161 - The incursion is over:
+- `ThreatIncursionIntel.checkEradicated()` :170 - Retires the board once the swarm is gone;
+- `ThreatIncursionIntel.isHidden()` :181 - Off the intel list until the player knows of at least one hive system.
+- `ThreatIncursionIntel.getName()` :186
+- `ThreatIncursionIntel.getIcon()` :191
+- `ThreatIncursionIntel.getIntelTags(SectorMapAPI map)` :202 - A major event, and only that:
+- `ThreatIncursionIntel.knownInfestedSystemIds()` :215 - The systems the player actually knows are infested:
+- `ThreatIncursionIntel.getSystemById(String systemId)` :223
+- `ThreatIncursionIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :231
 ### The Abyssal War - the full-width board (see ThreatWarBoard)
-- `ThreatIncursionIntel.hasSmallDescription()` :258
-- `ThreatIncursionIntel.hasLargeDescription()` :263
-- `ThreatIncursionIntel.createLargeDescription(com.fs.starfarer.api.ui.CustomPanelAPI panel, float width, float height)` :268
-- `ThreatIncursionIntel.rerenderInPlace(com.fs.starfarer.api.ui.IntelUIAPI ui)` :297 - Re-renders the board where the player is reading it:
-- `ThreatIncursionIntel.tableRowClicked(com.fs.starfarer.api.ui.IntelUIAPI ui, TableRowClickData data)` :311 - Ledger rows carry a system id:
-- `ThreatIncursionIntel.doesButtonHaveConfirmDialog(Object buttonId)` :359
-- `ThreatIncursionIntel.createConfirmationPrompt(Object buttonId, TooltipMakerAPI prompt)` :370
-- `ThreatIncursionIntel.buttonPressConfirmed(Object buttonId, com.fs.starfarer.api.ui.IntelUIAPI ui)` :379
-- `ThreatIncursionIntel.run()` :443
-- `ThreatIncursionIntel.run()` :449
-- `ThreatIncursionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :484
+- `ThreatIncursionIntel.hasSmallDescription()` :245
+- `ThreatIncursionIntel.hasLargeDescription()` :250
+- `ThreatIncursionIntel.createLargeDescription(com.fs.starfarer.api.ui.CustomPanelAPI panel, float width, float height)` :255
+- `ThreatIncursionIntel.rerenderInPlace(com.fs.starfarer.api.ui.IntelUIAPI ui)` :284 - Re-renders the board where the player is reading it:
+- `ThreatIncursionIntel.tableRowClicked(com.fs.starfarer.api.ui.IntelUIAPI ui, TableRowClickData data)` :298 - Ledger rows carry a system id:
+- `ThreatIncursionIntel.doesButtonHaveConfirmDialog(Object buttonId)` :346
+- `ThreatIncursionIntel.createConfirmationPrompt(Object buttonId, TooltipMakerAPI prompt)` :356
+- `ThreatIncursionIntel.buttonPressConfirmed(Object buttonId, com.fs.starfarer.api.ui.IntelUIAPI ui)` :365
+- `ThreatIncursionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :453
 
 ## ThreatInfestation (120 lines)
 - `ThreatInfestation.apply()` :26

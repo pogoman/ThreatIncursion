@@ -129,10 +129,12 @@ dont need to see that table at all").
 `ThreatAidRequests`, docs/war-effort-rework.md 3).** No Request button anywhere. A Transfer or
 Deploy whose load at the levers is under what the colony needs (a good's convoy load under the
 colony's need at the lever's tier, `ThreatAidRequests.transferShortfall`; a Deploy's fleet under
-the fleets need, `deployShortfall` - "deploy would be for a relief task force") sails, then the small
-confirm box an order's Confirm uses (`CampaignUIAPI.showConfirmDialog`, from
-`ThreatIncursionIntel.buttonPressConfirmed`; the user, 2026-10-30: "use this kind of dialog not the
-full screen one") names the shortfall and asks "Call the sector for aid?" - Call for aid / Not now;
+the fleets need, `deployShortfall` - "deploy would be for a relief task force") says so in its own
+intel confirm box (`ThreatFactionView.addOrderPrompt`; the user, 2026-10-30: "use this kind of dialog
+not the full screen one"; vanilla's `CampaignUIAPI.showConfirmDialog` draws nothing over the intel
+screen): "Short of marines: Confirm also calls for any marines that can be spared", and Confirm sails
+the order and logs the call; a button that would send nothing confirms the call alone ("{World} is
+short of marines. / Call for any marines that can be spared?");
 a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
 alone. The request is one a world, a part a good, each part its own call (2026-10-30, so different
 factions can answer each) standing until it lands or is withdrawn; the confirm box and the notice
