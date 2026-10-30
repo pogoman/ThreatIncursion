@@ -25,7 +25,7 @@ import com.fs.starfarer.api.impl.campaign.ids.Factions;
  *
  * <p>So the veil goes on only while a core tab is open - the game is paused
  * and the economy is not stepping: every Threat market (found or not since
- * 2026-10-30, debug mode included: the map must never show a hive's size) is
+ * 2026-10-30: the map must never show a hive's size; debug mode shows all) is
  * hidden, turned back into a condition-only planet at the survey level the
  * player had before the hive, and its planet made neutral. It comes off the
  * frame the tab closes. The mod's own reads go through {@link #hidden} and
@@ -86,6 +86,8 @@ public class ThreatMapFog implements EveryFrameScript, CoreUITabListener {
 	protected static void veil() {
 		if (active) return;
 		active = true;
+		// debug mode shows the player everything (the user, 2026-10-30 15:40: "no debug mode should show")
+		if (ThreatIncConfig.debugMode()) return;
 		SectorEntityToken player = Global.getSector().getPlayerFleet();
 		for (String systemId : ThreatIncData.colonyMarkets().keySet()) {
 			// found systems too (the user, 2026-10-30: hovering a system on the map showed the hives' sizes):
