@@ -584,6 +584,16 @@ from "move / build a fleet" to "bud / shift / absorb".
   With self-weight 0 a shift lifts the receiver's SIBLINGS' accessibility, not its own, so the
   pass shifts into systems, not worlds: the receiver is the front system's worlds in proportion
   to their room.
+  **Forward staging (BUILT 2026-10-30, the user: "i thought they would be staging strata at
+  frontline worlds in order to do big strikes, but all the strata is just sitting idle").** While
+  the offensive saves for a campaign (`ThreatOffensive.savingStagings`: its prongs' staging
+  colonies and their bills, kept while the saving line logs and while a launch found nothing
+  staged yet, cleared when it launches or prices nothing) the shift's idle branch, whatever the
+  stance, fills the staging system most short of its bill - the system's spare strata, staged
+  points, inbound and pending counted as held - at its world with the most room; a campaign's
+  staging systems never donate. Before it, under CONSOLIDATE (16 of 30 systems threatened in
+  the user's game) the shift sent spare strata to the DENSEST system, so backwards, and only an
+  attacked world drew any forward.
 - **Offensive** (`ThreatOffensive`): the fund is the strata the worlds in reach of the staging
   system can spare - all above what the posture keeps, the rally want against forces seen
   nearby plus the 800 floor (DECIDED round 7: a quiet fortress can send 10,000 FP) - read as
@@ -592,6 +602,18 @@ from "move / build a fleet" to "bud / shift / absorb".
   world (same-system sailing is free); the preparation time is the budding time. `strikeCapFP`
   and the launch hold as built. A strike that comes home is absorbed; a strike that lands is
   strata on the enemy's ground.
+  **Parallel budding (BUILT 2026-10-30).** As first built the whole bill budded at the STAGING
+  system's flow (`max(400, 0.02 x its strata)` a day), taken from every giver in proportion:
+  400 strata a day at a frontier staging, 95 days for a 7,549-FP relief strike at Ogre, years
+  for an eight-prong 170k-FP campaign - the mass at the back made the front's pipe small. Now
+  `ThreatBudding.advanceStrike` buds the bill at every giver at its own flow: the staging
+  system's worlds straight into the staged points, every other giver by a shift order flagged
+  for the strike (`KEY_FOR_STRIKE` -> the fleet's `FOR_STRIKE`), a whole swarm of at least a
+  seed's worth each, whose swarm flies to the staging and is staged whole on arrival
+  (`stageArrivals`, never absorbed at the staging's flow). The offensive reads its means as the
+  fund plus `strikeBound` (staged at every colony with a strike order plus what flies to it),
+  and the launch's bank counts `strikeInbound`, so a campaign whose bill is budding keeps
+  refreshing its orders instead of reading itself poorer each pass and lapsing at 60 days.
 - **Stance** (`ThreatStance`): feed shares go (nothing is fed by the stance); the stance still
   sets the strike stock, the spread's lean and the shift's direction.
 - **Spread** (`trySpread`, `launchColonizationWave`): a wave is budded at `seedStrata` plus its

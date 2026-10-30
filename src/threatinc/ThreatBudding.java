@@ -2,8 +2,11 @@ package threatinc;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
@@ -29,9 +32,14 @@ import com.fs.starfarer.api.impl.campaign.ids.Factions;
  * defendLingerDays (a shift on arrival at once) is absorbed at the flow rate, smallest hulls first,
  * up to the world's cap ({@link ThreatStrata#room}); what the cap cannot take stands.</li>
  * <li><b>Strikes.</b> A strike's bill is budded into the staging colony's staged points
- * ({@link ThreatColonyManager#staged}) at the staging system's flow, from the strike fund or the hive's
- * banks ({@link #orderStrike}); the offensive launches it once staged
- * (IncursionManager.launchStrike). The preparation is the budding.</li>
+ * ({@link ThreatColonyManager#staged}) at EVERY giver in parallel, each at its own flow (the user,
+ * 2026-10-30, "all the strata is just sitting idle"): the staging system's worlds straight into the
+ * staged points, every other giver by a shift order flagged for the strike whose swarm flies in and
+ * is staged whole on arrival ({@link #advanceStrike}, {@link #stageArrivals}); the offensive launches
+ * it once staged (IncursionManager.launchStrike). The preparation is the budding.</li>
+ * <li><b>Forward staging.</b> While the offensive saves for a campaign, the shift fills its prongs'
+ * staging systems with the campaign's bill whatever the stance ({@link #shift},
+ * ThreatOffensive.savingStagings), so the front holds the mass before the launch.</li>
  * </ul>
  * Triggers (section 6): any hostile weight holding ORBIT_HOLD_RANGE over a hive world
  * (ThreatGroundFronts.hostilePointsNear) - a bomber, a blockade, a landing's cover - calls the
@@ -71,6 +79,10 @@ public class ThreatBudding {
 	public static final String ABSORB_KEY = "$threatinc_absorbBank";
 	/** Fleet memory: a shift's fleet is absorbed the moment it is seated, no linger. */
 	public static final String ABSORB_ON_ARRIVAL = "$threatinc_absorbOnArrival";
+	/** Market memory: a shift order budding a strike's share - the staging colony's market id. */
+	public static final String KEY_FOR_STRIKE = "$threatinc_budForStrike";
+	/** Fleet memory: a shift's fleet flying a strike's share - the staging colony's market id; staged whole on arrival. */
+	public static final String FOR_STRIKE = "$threatinc_forStrike";
 
 	public static final String DEFEND = "defend", SHIFT = "shift";
 
@@ -179,6 +191,7 @@ public class ThreatBudding {
 		mem.unset(KEY_TARGET);
 		mem.unset(KEY_SINCE);
 		mem.unset(KEY_POOL);
+		mem.unset(KEY_FOR_STRIKE);
 	}
 
 	/**
@@ -394,6 +407,7 @@ public class ThreatBudding {
 	/** The pool becomes a fleet, whole, over the world: its Defend fleet, or a shift sent on its way. */
 	protected static void spawn(MarketAPI market, MemoryAPI mem, String kind, float poolFP, String why, Random random) {
 		MarketAPI to = SHIFT.equals(kind) ? receiverOf(market) : null;
+		String forStrike = to != null ? mem.getString(KEY_FOR_STRIKE) : null;
 		clear(market);
 		if (poolFP <= 0.5f) return;
 		CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, poolFP, random);
@@ -416,6 +430,7 @@ public class ThreatBudding {
 				+ why + "; " + fleet.getFleetData().getNumMembers() + " ships; strata " + (int) ThreatStrata.of(market) + ", size " + market.getSize() + ")");
 		if (to != null) {
 			fm.set(ABSORB_ON_ARRIVAL, true);
+			if (forStrike != null) fm.set(FOR_STRIKE, forStrike);
 			if (!ThreatColonyManager.sendReinforcement(market, to, fleet)) {
 				// the passage unpaid: it stands as a Defend fleet, absorbed when the orbit is quiet
 				fm.unset(ABSORB_ON_ARRIVAL);
@@ -485,7 +500,18 @@ public class ThreatBudding {
 	// strikes
 	// ------------------------------------------------------------------
 
-	/** One poll of a strike order: the bill buds into the staging colony's staged points at the system's flow. */
+	/**
+	 * One poll of a strike order: the bill buds at EVERY giver in parallel, each at its own flow (the
+	 * user, 2026-10-30: "i thought they would be staging strata at frontline worlds in order to do big
+	 * strikes, but all the strata is just sitting idle"). The staging system's worlds bud their share
+	 * straight into the staged points (a same-system move is free); every other giver gets a shift
+	 * order for its share of what is still open, flagged for the strike, and its swarm flies to the
+	 * staging and is staged whole when it arrives ({@link #stageArrivals}). Shares are by
+	 * ThreatColonyManager.strikeGivable (above the floor, less the defence's shortfall). Before: the whole
+	 * bill at the STAGING system's flow - 400 strata a day at a frontier staging, so 95 days for a
+	 * 7,549-FP relief strike at Ogre and years for an eight-prong campaign, with the mass at the back
+	 * making the front's pipe small. With the hive banks (strikeFundShare 0) the old path stands.
+	 */
 	protected static void advanceStrike(MarketAPI colony, MemoryAPI mem, float elapsedDays, float today) {
 		if (!mem.contains(KEY_STRIKE_WANT)) return;
 		float want = mem.getFloat(KEY_STRIKE_WANT);
@@ -494,18 +520,127 @@ public class ThreatBudding {
 			clearStrike(colony);
 			return;
 		}
+		stageArrivals(colony);
 		float staged = ThreatColonyManager.staged(colony.getId());
 		if (staged >= want - 0.5f) return;
-		float bite = Math.min(want - staged, ThreatStrata.fpOf(flowPerDay(colony.getStarSystem()) * elapsedDays));
-		if (bite <= 0.5f) return;
-		boolean ok;
-		if (ThreatIncConfig.strikeFundShare() > 0f) {
-			bite = Math.min(bite, ThreatColonyManager.strikeFund());
-			ok = bite > 0.5f && ThreatColonyManager.spendStrikeFund(colony, bite);
-		} else {
-			ok = ThreatColonyManager.poolHiveBanks(colony, bite, "Strike");
+		if (ThreatIncConfig.strikeFundShare() <= 0f) {
+			float bite = Math.min(want - staged, ThreatStrata.fpOf(flowPerDay(colony.getStarSystem()) * elapsedDays));
+			if (bite > 0.5f && ThreatColonyManager.poolHiveBanks(colony, bite, "Strike")) visual(colony, "Swarm rising", bite, true);
+			return;
 		}
-		if (ok) visual(colony, "Swarm rising", bite, true);
+		float inbound = strikeInbound(colony);
+		float open = want - staged - inbound;
+		if (open <= 0.5f) return;
+		// the givers: the staging system's worlds bud in place, the rest fly; a far giver's share is a
+		// whole swarm of at least a seed's worth (shiftFloorStrata), no drip of tiny fleets across the sector
+		float farMin = ThreatStrata.fpOf(Math.max(ThreatStrata.sizeAt(1), ThreatIncConfig.shiftFloorStrata()));
+		List<MarketAPI> near = new ArrayList<MarketAPI>(), far = new ArrayList<MarketAPI>();
+		float can = 0f;
+		for (MarketAPI g : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (g.getPrimaryEntity() == null || g.getStarSystem() == null) continue;
+			float give = ThreatColonyManager.strikeGivable(g);
+			if (give <= 0f) continue;
+			if (g.getStarSystem() == colony.getStarSystem()) {
+				near.add(g);
+			} else {
+				if (hasOrder(g) || ThreatPosture.underAttack(g.getStarSystem())
+						|| ThreatGroundFronts.hostilePointsNear(Factions.THREAT, g) > 0f) continue;
+				far.add(g);
+			}
+			can += give;
+		}
+		if (can <= 0f) return;
+		// a far giver whose share would be under a swarm's worth drops out, and the rest share what it leaves
+		for (MarketAPI g : new ArrayList<MarketAPI>(far)) {
+			if (open * ThreatColonyManager.strikeGivable(g) / can < farMin) {
+				far.remove(g);
+				can -= ThreatColonyManager.strikeGivable(g);
+			}
+		}
+		if (can <= 0f) return;
+		float took = 0f;
+		for (MarketAPI g : near) {
+			float give = ThreatColonyManager.strikeGivable(g);
+			float bite = Math.min(open * give / can, flowFP(g) * elapsedDays);
+			if (bite <= 0.5f) continue;
+			float got = ThreatColonyManager.takeStrikeFP(g, bite);
+			if (got <= 0f) continue;
+			ThreatColonyManager.stage(colony, got);
+			took += got;
+			visual(g, "Swarm rising", got, true);
+		}
+		int orders = 0;
+		float ordered = 0f;
+		for (MarketAPI g : far) {
+			float give = ThreatColonyManager.strikeGivable(g);
+			float share = Math.min(open * give / can, give);
+			if (share < farMin) continue;
+			g.getMemoryWithoutUpdate().set(KEY_FOR_STRIKE, colony.getId());
+			order(g, SHIFT, share, colony, "the strike staging at " + colony.getName());
+			orders++;
+			ordered += share;
+		}
+		if (took > 0.5f || orders > 0) {
+			ThreatIncConfig.logQuiet("strikebud:" + colony.getId(), "Budding: the strike at " + colony.getName() + " (" + (int) want
+					+ " FP) buds at " + near.size() + " world(s) of its system and " + orders + " beyond: " + (int) took
+					+ " FP staged this poll, " + (int) ordered + " FP ordered to fly in; " + (int) (staged + took) + " staged, "
+					+ (int) (inbound + ordered) + " on the way");
+		}
+	}
+
+	/**
+	 * A swarm flagged for the strike (FOR_STRIKE) seated over the staging colony with the orbit quiet is
+	 * staged whole: its fleet points join the staged points and the fleet goes - never absorbed into the
+	 * strata at the staging's flow, which would put the pipe back. Returns the fleet points staged.
+	 */
+	protected static float stageArrivals(MarketAPI colony) {
+		float got = 0f;
+		for (CampaignFleetAPI f : new ArrayList<CampaignFleetAPI>(ThreatIncData.garrisonsFor(colony.getId()))) {
+			if (f == null || !f.isAlive() || f.isExpired() || f.getBattle() != null) continue;
+			if (!colony.getId().equals(f.getMemoryWithoutUpdate().getString(FOR_STRIKE))) continue;
+			if (!ThreatGroundFronts.nearWorld(f, colony)) continue;
+			float fp = f.getFleetPoints();
+			ThreatIncData.garrisonsFor(colony.getId()).remove(f);
+			ThreatSwarmDefend.release(f);
+			f.despawn();
+			ThreatColonyManager.stage(colony, fp);
+			got += fp;
+			visual(colony, "Swarm staged", fp, false);
+			ThreatIncConfig.log("Budding: " + colony.getName() + " stages " + (int) fp + " FP of " + f.getName() + " for its strike; "
+					+ (int) ThreatColonyManager.staged(colony.getId()) + " FP staged");
+		}
+		return got;
+	}
+
+	/** Fleet points on their way to the staging colony for its strike: shift orders flagged for it (their whole want) and flagged swarms in flight. */
+	public static float strikeInbound(MarketAPI colony) {
+		if (colony == null) return 0f;
+		float fp = 0f;
+		for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (c == colony || !SHIFT.equals(kind(c))) continue;
+			if (colony.getId().equals(c.getMemoryWithoutUpdate().getString(KEY_FOR_STRIKE))) fp += want(c);
+		}
+		for (CampaignFleetAPI f : ThreatIncData.reinforcementFleets().values()) {
+			if (f == null || !f.isAlive()) continue;
+			if (colony.getId().equals(f.getMemoryWithoutUpdate().getString(FOR_STRIKE))) fp += f.getFleetPoints();
+		}
+		return fp;
+	}
+
+	/**
+	 * Fleet points already budded toward the hive's strikes: the staged points at every colony with a
+	 * strike order and what is on its way to each (strikeInbound). Out of the strata, so out of the
+	 * strike fund, yet the campaign's: the offensive reads its means as the fund plus this, else a
+	 * campaign whose bill is budding reads itself poorer every pass and never asks again (its orders
+	 * lapse at STRIKE_ORDER_DAYS with the bill half staged).
+	 */
+	public static float strikeBound() {
+		float fp = 0f;
+		for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (!hasStrikeOrder(c)) continue;
+			fp += ThreatColonyManager.staged(c.getId()) + strikeInbound(c);
+		}
+		return fp;
 	}
 
 	// ------------------------------------------------------------------
@@ -515,11 +650,13 @@ public class ThreatBudding {
 	/**
 	 * The hive's one lever, in place of the pressure pass (ThreatColonyManager.redistributeGarrisons):
 	 * one shift order a poll. The receiver: an attacked world its system could not answer (the
-	 * posture's forceOver less what stands and buds for it), else under PRESS the front system - the
-	 * hive system nearest a human world the swarm has seen - and under CONSOLIDATE the densest
-	 * system (the most strata); under EXPAND nothing moves. The receiving world is the system's with
-	 * the most room. The donor: the nearest quiet world of another system holding a stratum above
-	 * shiftFloorStrata, giving what it has above the floor up to the receiver's room.
+	 * posture's forceOver less what stands and buds for it); else, while the offensive saves for a
+	 * campaign, the staging system of its prongs most short of its bill (forward staging, the user
+	 * 2026-10-30); else under PRESS the front system - the hive system nearest a human world the swarm
+	 * has seen - and under CONSOLIDATE the densest system (the most strata); under EXPAND nothing
+	 * moves. The receiving world is the system's with the most room. The donor: the nearest quiet world
+	 * of another system (never a campaign's staging system) holding a stratum above shiftFloorStrata,
+	 * giving what it has above the floor up to the receiver's room.
 	 */
 	public static void shift() {
 		if (!ThreatIncConfig.reinforceEnabled()) return;
@@ -543,6 +680,46 @@ public class ThreatBudding {
 				receiver = c;
 				amount = Math.min(short_, room);
 				why = (int) force + " FP over it, " + (int) short_ + " FP short";
+			}
+		}
+		// FORWARD STAGING (the user, 2026-10-30: "i thought they would be staging strata at frontline worlds in
+		// order to do big strikes"): while the offensive saves for a campaign, the shift fills its prongs' staging
+		// systems with the campaign's bill whatever the stance - the staging most short first, its world with the
+		// most room - so the front holds the mass before the launch and its own flow and defence rise with it;
+		// the staging systems never donate
+		Set<String> stagingSystems = new HashSet<String>();
+		if (receiver == null) {
+			Map<String, Float> saving = ThreatOffensive.savingStagings();
+			float worst = 0f;
+			MarketAPI stagingShort = null;
+			for (Map.Entry<String, Float> e : saving.entrySet()) {
+				MarketAPI s = ThreatIncData.resolveColonyMarket(e.getKey());
+				if (s == null || s.getStarSystem() == null) continue;
+				stagingSystems.add(s.getStarSystem().getId());
+				float held = 0f;
+				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(s.getStarSystem().getId())) {
+					held += ThreatColonyManager.strikeSpareFP(c) + ThreatColonyManager.staged(c.getId())
+							+ ThreatPosture.inboundFP(c.getId()) + pendingFP(c);
+				}
+				float short_ = e.getValue() - held;
+				if (short_ > worst) {
+					worst = short_;
+					stagingShort = s;
+				}
+			}
+			if (stagingShort != null) {
+				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(stagingShort.getStarSystem().getId())) {
+					if (c.getPrimaryEntity() == null) continue;
+					float room = ThreatStrata.fpOf(ThreatStrata.room(c)) - ThreatPosture.inboundFP(c.getId()) - pendingFP(c);
+					if (room > amount) {
+						receiver = c;
+						amount = room;
+					}
+				}
+				if (receiver != null) {
+					amount = Math.min(amount, worst);
+					why = "staging for the campaign at " + stagingShort.getName() + ", " + (int) worst + " FP short";
+				}
 			}
 		}
 		if (receiver == null) {
@@ -589,6 +766,7 @@ public class ThreatBudding {
 		for (MarketAPI c : colonies) {
 			if (c == receiver || c.getPrimaryEntity() == null || c.getStarSystem() == null) continue;
 			if (c.getStarSystem() == receiver.getStarSystem() || hasOrder(c)) continue;
+			if (stagingSystems.contains(c.getStarSystem().getId())) continue;
 			if (ThreatPosture.underAttack(c.getStarSystem()) || ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
 			if (buddableFP(c, false) < ThreatStrata.fpOf(ThreatStrata.sizeAt(1))) continue;
 			float ly = ThreatFuel.ly(c.getStarSystem(), receiver.getStarSystem());

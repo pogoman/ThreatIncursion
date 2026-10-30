@@ -287,7 +287,10 @@ public class ThreatOffensive {
 		for (Prong p : bySystem.values()) p.approach = approaches.contains(p.target.getStarSystem().getId());
 
 		// the means by the deadline, and the campaign they pay
-		float fund = ThreatColonyManager.strikeFund();
+		// the means: the spare strata plus what is already budded toward the strikes (ThreatBudding.strikeBound) -
+		// a bill budding at the stagings left the fund but is the campaign's; read as the fund alone the campaign
+		// read itself poorer every pass of its own budding and never refreshed its orders (2026-10-30)
+		float fund = ThreatColonyManager.strikeFund() + ThreatBudding.strikeBound();
 		float perMonth = ThreatColonyManager.strikeFundPerMonth();
 		float fullHorizon = ThreatIncConfig.offensiveHorizonMonths();
 		float horizon = Math.max(1f, fullHorizon - (fullHorizon - ThreatIncConfig.offensiveLosingMonths()) * pressure);
@@ -517,6 +520,7 @@ public class ThreatOffensive {
 					+ (int) monthsLeft + " month(s) left" + (firstOut != null ? "; the best prong, "
 					+ firstOut.target.getName() + " (" + (int) firstOut.fp + " FP), is out on " + firstWhy : ""));
 			if (day >= deadline) setStartDay(day);
+			clearSaving();
 			return;
 		}
 		boolean sustained = away <= ThreatReach.sustainableFP(longest);
@@ -525,6 +529,7 @@ public class ThreatOffensive {
 			if (!sustained && supplies > suppliesStock) ThreatFuel.noteDemand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, supplies - suppliesStock);
 			// the fuel it waits on is demand on the stock: the planner builds the plants (ThreatFuel.heldShort)
 			if (fuelStock < fuel && ThreatIncConfig.strikeWaitBooksFuel()) ThreatFuel.heldShort("the offensive", fuel);
+			setSaving(campaign);
 			ThreatIncConfig.log("Offensive: saving for " + campaign.size() + " of " + prongs.size() + " target(s) " + where
 					+ ", " + (int) cost + " FP from the fund with " + (int) spare + " FP of spare swarms, " + (int) fuel + " fuel and " + (int) supplies + " supplies (" + (!sustained ? "not yet kept, " : "") + (int) suppliesStock + " free, +" + (int) suppliesFlow + "/mo spare); fund " + (int) fund + " FP (+" + (int) perMonth
 					+ "/mo), fuel " + (int) fuelStock + " (+" + (int) ThreatFuel.perMonth() + "/mo), launch in "
@@ -547,7 +552,7 @@ public class ThreatOffensive {
 			}
 		});
 		List<Prong> go = new ArrayList<Prong>();
-		float fundLeft = ThreatColonyManager.strikeFund(), fuelLeft = ThreatFuel.stock();
+		float fundLeft = ThreatColonyManager.strikeFund() + ThreatBudding.strikeBound(), fuelLeft = ThreatFuel.stock();
 		for (Prong p : bySail) {
 			if (p.cost > fundLeft + 0.5f || p.fuel > fuelLeft + 0.5f) continue;
 			if (IncursionManager.isActiveStrikeTarget(p.target)) continue;
@@ -615,13 +620,17 @@ public class ThreatOffensive {
 			heldBefore = -1;
 		}
 		if (sent + held == 0) {
-			// nothing sailed (each prong's own launch says why): the campaign stands, saved for, until its deadline
+			// nothing sailed (each prong's own launch says why): the campaign stands, saved for, until its deadline;
+			// its bills are budding at the stagings (launchStrike's orderStrike), so the shift keeps filling them
 			if (day >= deadline) setStartDay(day);
+			setSaving(campaign);
 			ThreatIncConfig.log("Offensive: none of " + campaign.size() + " planned prong(s) could sail today (" + where
-					+ "); fund " + (int) ThreatColonyManager.strikeFund() + " FP; first " + names(campaign, 4));
+					+ "); fund " + (int) ThreatColonyManager.strikeFund() + " FP, " + (int) ThreatBudding.strikeBound()
+					+ " budded toward the strikes; first " + names(campaign, 4));
 			return;
 		}
 		setStartDay(day);
+		clearSaving();
 		ThreatIncConfig.log("Offensive launched: " + sent + " strike(s) now and " + held + " to follow, of " + campaign.size()
 				+ " planned, " + (int) sentFP + " FP (" + (int) sentSpare + " of spare swarms), arriving together in ~"
 				+ (int) arriveIn + " days (" + where
@@ -895,6 +904,50 @@ public class ThreatOffensive {
 	/** Days from launch to the target: the muster and the crossing at the board's estimated speed. */
 	protected static float arrival(float ly) {
 		return ThreatReach.STRIKE_PREP_DAYS + ThreatReach.days(ly);
+	}
+
+	// ------------------------------------------------------------------
+	// the prongs held back to arrive with the farthest
+	// ------------------------------------------------------------------
+
+	// ------------------------------------------------------------------
+	// what the campaign is saving for - the shift stages the front ahead of it (ThreatBudding.shift)
+	// ------------------------------------------------------------------
+
+	protected static final String KEY_SAVING = "threatinc_offensiveSaving";
+
+	/** Records the campaign's stagings and their bills ("stagingId|costFP", one a staging) while it is saved for or budding. */
+	protected static void setSaving(List<Prong> campaign) {
+		Map<String, Float> bills = new HashMap<String, Float>();
+		for (Prong p : campaign) {
+			if (p.staging == null) continue;
+			Float had = bills.get(p.staging.getId());
+			bills.put(p.staging.getId(), (had != null ? had : 0f) + p.cost);
+		}
+		List<String> list = new ArrayList<String>();
+		for (Map.Entry<String, Float> e : bills.entrySet()) list.add(e.getKey() + "|" + e.getValue());
+		Global.getSector().getPersistentData().put(KEY_SAVING, list);
+	}
+
+	protected static void clearSaving() {
+		Global.getSector().getPersistentData().remove(KEY_SAVING);
+	}
+
+	/** The staging colony's market id -> fleet points of the campaign's bill it stages, while the offensive saves for one; empty else. */
+	@SuppressWarnings("unchecked")
+	public static Map<String, Float> savingStagings() {
+		Map<String, Float> out = new HashMap<String, Float>();
+		Object v = Global.getSector().getPersistentData().get(KEY_SAVING);
+		if (!(v instanceof List)) return out;
+		for (String e : (List<String>) v) {
+			int bar = e.indexOf('|');
+			if (bar <= 0) continue;
+			try {
+				out.put(e.substring(0, bar), Float.parseFloat(e.substring(bar + 1)));
+			} catch (NumberFormatException ignored) {
+			}
+		}
+		return out;
 	}
 
 	// ------------------------------------------------------------------

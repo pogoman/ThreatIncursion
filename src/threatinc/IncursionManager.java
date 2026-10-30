@@ -5982,8 +5982,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// one is sized to its defence and sails the pass the fund pays it, whoever has mobilised
 		boolean playerTarget = target.isPlayerOwned();
 		float minFP = funded && !playerTarget && !ThreatWarState.npcAtWar() ? ThreatIncConfig.strikeStagedMinFP() : 0f;
+		// (the strata flying to the staging for its strike count, else the plan shrinks while its bill is on the way - ThreatBudding.strikeInbound)
 		float bank = !Float.isNaN(bankLimit) ? bankLimit
-				: funded ? ThreatColonyManager.strikeFund() + ThreatColonyManager.staged(staging.getId()) : ThreatColonyManager.hivePoolableFP(staging);
+				: funded ? ThreatColonyManager.strikeFund() + ThreatColonyManager.staged(staging.getId()) + ThreatBudding.strikeInbound(staging)
+				: ThreatColonyManager.hivePoolableFP(staging);
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
 		// does the swarm win on the size of its strikes or on the growth before the war opens?). Attacked
 		// first means open now (the user, 2026-10-10): once an NPC faction has mobilised or struck at the hive
