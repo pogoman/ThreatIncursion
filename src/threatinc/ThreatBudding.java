@@ -114,11 +114,12 @@ public class ThreatBudding {
 
 	/**
 	 * Fleet points the world can bud: its staged points and its strata above the floor - a stratum
-	 * (sizeAt(1)) for its own defence, shiftFloorStrata for a shift or a strike.
+	 * (sizeAt(1)) for its own defence, keepStrata (shiftFloorStrata, a critical producer's size) for
+	 * a shift or a strike.
 	 */
 	public static float buddableFP(MarketAPI market, boolean forDefence) {
 		if (market == null || market.getPrimaryEntity() == null) return 0f;
-		float floor = forDefence ? ThreatStrata.sizeAt(1) : Math.max(0f, ThreatIncConfig.shiftFloorStrata());
+		float floor = forDefence ? ThreatStrata.sizeAt(1) : ThreatColonyManager.keepStrata(market);
 		return ThreatColonyManager.staged(market.getId()) + ThreatStrata.fpOf(Math.max(0f, ThreatStrata.of(market) - floor));
 	}
 
@@ -698,10 +699,13 @@ public class ThreatBudding {
 				MarketAPI s = ThreatIncData.resolveColonyMarket(e.getKey());
 				if (s == null || s.getStarSystem() == null) continue;
 				stagingSystems.add(s.getStarSystem().getId());
+				// held: the system's spare strata, staged points, the swarms standing over its worlds or flying to
+				// them (ownedFleetFP - a shifted swarm waits in orbit to be absorbed at the flow, and the launch
+				// takes standing swarms first), and the orders budding toward them
 				float held = 0f;
 				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(s.getStarSystem().getId())) {
 					held += ThreatColonyManager.strikeSpareFP(c) + ThreatColonyManager.staged(c.getId())
-							+ ThreatPosture.inboundFP(c.getId()) + pendingFP(c);
+							+ ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId())) + pendingFP(c);
 				}
 				float short_ = e.getValue() - held;
 				if (short_ > worst) {

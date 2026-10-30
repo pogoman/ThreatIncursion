@@ -599,6 +599,20 @@ from "move / build a fleet" to "bud / shift / absorb".
   size-8 worlds are drawn down first; a defence shift keeps nearest-first and a stratum's
   minimum for speed. A system under attack never donates - the player's fleet over a hive world
   reads as a blockade, rallies shifts INTO its system and keeps it from giving.
+  **Decided 14:30 (over a neighbour-to-neighbour chain, see facts.md):** shifts stay direct. A
+  hop would cost absorb plus re-bud at the world's flow (a 5,000-FP swarm through a size-6 world
+  is 62 + 62 days, a 30-ly flight a few days), the doubling table makes "one size" at the top a
+  whole size-7 world, and diffusion levels where a strike needs mass massed. Kept from the chain:
+  the request-and-deny shape - a world with a want is answered by the quiet world that can give
+  the most, denied by attack, a campaign staging, hostiles near, its keep, or an order standing.
+  **Critical producers keep their size** (`ThreatColonyManager.keepStrata`): the sole largest hive
+  holder of a mine, a refinery or a fuel plant (`criticalProducers`) gives nothing below its own
+  size's floor to a strike or a shift - availability is a broadcast of the largest single source,
+  so a size off it is a unit off every importer's imports; a second holder of its size makes it
+  spare again. Its own defence may still spend it all. **Held counts standing swarms:** forward
+  staging reads a staging system's swarms in orbit and in flight (`ownedFleetFP`) as held - a
+  shifted swarm is absorbed at the staging's flow, 400 a day at a small world, and stands until
+  then; the launch takes standing swarms first, so they serve the strike unabsorbed.
 - **Offensive** (`ThreatOffensive`): the fund is the strata the worlds in reach of the staging
   system can spare - all above what the posture keeps, the rally want against forces seen
   nearby plus the 800 floor (DECIDED round 7: a quiet fortress can send 10,000 FP) - read as

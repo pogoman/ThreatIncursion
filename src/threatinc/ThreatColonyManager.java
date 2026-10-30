@@ -4111,17 +4111,62 @@ public class ThreatColonyManager {
 		stagedFP().put(market.getId(), staged(market.getId()) + fp);
 	}
 
-	/** The strata the colony holds above its size's own and above shiftFloorStrata, in fleet points: what it builds from without losing a size. */
+	/** The strata the colony holds above its size's own and above keepStrata, in fleet points: what it builds from without losing a size. */
 	public static float spareFP(MarketAPI market) {
 		if (market == null) return 0f;
-		float keep = Math.max(ThreatStrata.sizeAt(market.getSize()), Math.max(0f, ThreatIncConfig.shiftFloorStrata()));
+		float keep = Math.max(ThreatStrata.sizeAt(market.getSize()), keepStrata(market));
 		return ThreatStrata.fpOf(Math.max(0f, ThreatStrata.of(market) - keep));
 	}
 
-	/** The strata above shiftFloorStrata (800), in fleet points: what a strike or a shift may take, a size or more with it (the user, round 7). */
+	/** The strata above keepStrata (800, a critical producer's size), in fleet points: what a strike or a shift may take, a size or more with it (the user, round 7). */
 	public static float strikeSpareFP(MarketAPI market) {
 		if (market == null) return 0f;
-		return ThreatStrata.fpOf(Math.max(0f, ThreatStrata.of(market) - Math.max(0f, ThreatIncConfig.shiftFloorStrata())));
+		return ThreatStrata.fpOf(Math.max(0f, ThreatStrata.of(market) - keepStrata(market)));
+	}
+
+	/**
+	 * The strata a strike or a shift leaves on the world: shiftFloorStrata (800), and for a CRITICAL
+	 * PRODUCER its own size's floor, so no strike or shift takes a size off it (the user, 2026-10-30
+	 * 14:30: "make sure critical producers arent compromised"). A critical producer holds a mine, a
+	 * refinery or a fuel plant that no other hive world of its size or bigger holds: availability is
+	 * a broadcast of the largest single source (hive-economy.md), so a size off it is a unit off
+	 * every importer's imports; a second producer of its size makes it spare again. Its own defence
+	 * may still spend it all (ThreatBudding.take, forDefence).
+	 */
+	public static float keepStrata(MarketAPI market) {
+		float floor = Math.max(0f, ThreatIncConfig.shiftFloorStrata());
+		if (market == null) return floor;
+		if (criticalProducers().contains(market.getId())) floor = Math.max(floor, ThreatStrata.sizeAt(market.getSize()));
+		return floor;
+	}
+
+	protected static final String[] PRODUCER_INDUSTRIES = { Industries.MINING, Industries.REFINING, Industries.FUELPROD };
+	protected static java.util.Set<String> criticalCache = null;
+	protected static float criticalCacheDay = Float.NaN;
+
+	/** The hive worlds that are the sole largest source of a producer industry (keepStrata), read once a quarter-day. */
+	public static java.util.Set<String> criticalProducers() {
+		float day = ThreatPosture.today();
+		if (criticalCache != null && !Float.isNaN(criticalCacheDay) && Math.abs(day - criticalCacheDay) < 0.25f) return criticalCache;
+		java.util.Set<String> out = new java.util.HashSet<String>();
+		List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
+		for (String industry : PRODUCER_INDUSTRIES) {
+			MarketAPI top = null;
+			boolean tied = false;
+			for (MarketAPI m : hives) {
+				if (m == null || !m.hasIndustry(industry)) continue;
+				if (top == null || m.getSize() > top.getSize()) {
+					top = m;
+					tied = false;
+				} else if (m.getSize() == top.getSize()) {
+					tied = true;
+				}
+			}
+			if (top != null && !tied) out.add(top.getId());
+		}
+		criticalCache = out;
+		criticalCacheDay = day;
+		return out;
 	}
 
 	/** The colony's bank: what is staged at it plus its spare strata in fleet points (spareFP). */
@@ -4153,7 +4198,7 @@ public class ThreatColonyManager {
 		}
 		float rest = fp - fromStaged;
 		if (rest <= 0f) return;
-		float floor = Math.max(0f, ThreatIncConfig.shiftFloorStrata());
+		float floor = keepStrata(market);
 		if (keepSize) floor = Math.max(floor, ThreatStrata.sizeAt(market.getSize()));
 		float take = Math.min(ThreatStrata.strataOf(rest), Math.max(0f, ThreatStrata.of(market) - floor));
 		if (take < ThreatStrata.strataOf(rest) - 0.5f) {
