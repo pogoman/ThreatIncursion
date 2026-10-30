@@ -998,6 +998,23 @@ public class ThreatFactionView {
 		main.addSectionHeading("Requests for aid", bright, dark, Alignment.MID, opad);
 		// the toggles sit in a reserved row under the heading; they float in later (addRequestButtons)
 		out.anchor = main.addSpacer(SELECTOR_ROW_H);
+		// the rows first: a row an offer, none for a call nobody has answered, and with no offer at all no
+		// table either (the user, 2026-10-31: "no answers and there are still multiple rows. get rid of the whitespace")
+		List<Object[]> rows = new ArrayList<Object[]>();
+		for (ThreatAidRequests.Call c : ThreatAidRequests.open()) {
+			ThreatBases.Base base = ThreatAidRequests.resolveTarget(c.targetId);
+			if (base == null) continue;
+			for (ThreatAidRequests.Offer o : ThreatAidRequests.offersFor(c)) rows.add(new Object[] { c, base, o });
+		}
+		// offers at sea whose call was toggled off: still sailing, still cancellable
+		for (ThreatAidRequests.Offer o : ThreatAidRequests.strays()) {
+			ThreatBases.Base base = ThreatAidRequests.resolveTarget(o.targetId);
+			if (base != null) rows.add(new Object[] { null, base, o });
+		}
+		if (rows.isEmpty()) {
+			main.addSpacer(opad);
+			return out;
+		}
 		final float tw = width - 24f;
 		String[] names = {"World", "Commodity", "Age", "Answer", "Standing", "ETA", "Actions"};
 		final float[] frac = {.13f, .13f, .06f, .30f, .08f, .07f, .23f};
@@ -1014,23 +1031,12 @@ public class ThreatFactionView {
 		main.addTableHeaderTooltip(4, "Standing with the sender, charged when it lands.");
 		main.addTableHeaderTooltip(5, "Days until it lands; the passage quoted until then.");
 		int rowIndex = 0;
-		for (final ThreatAidRequests.Call c : ThreatAidRequests.open()) {
-			final ThreatBases.Base base = ThreatAidRequests.resolveTarget(c.targetId);
-			if (base == null) continue;
-			// a row an offer, none for a call nobody has answered (the user, 2026-10-31: "should have no waiting
-			// entry its just on or off dependent on any toggles being on")
-			for (ThreatAidRequests.Offer o : ThreatAidRequests.offersFor(c)) {
-				addOfferRow(main, out, c, base, o, rowIndex++, tw, frac, text, gray, h, neg);
-			}
-		}
-		// offers at sea whose call was toggled off: still sailing, still cancellable
-		for (ThreatAidRequests.Offer o : ThreatAidRequests.strays()) {
-			ThreatBases.Base base = ThreatAidRequests.resolveTarget(o.targetId);
-			if (base == null) continue;
-			addOfferRow(main, out, null, base, o, rowIndex++, tw, frac, text, gray, h, neg);
+		for (Object[] row : rows) {
+			addOfferRow(main, out, (ThreatAidRequests.Call) row[0], (ThreatBases.Base) row[1], (ThreatAidRequests.Offer) row[2],
+					rowIndex++, tw, frac, text, gray, h, neg);
 		}
 		out.rowCount = rowIndex;
-		main.addTable("None", -1, 0f);
+		main.addTable("", -1, 0f);
 		main.addSpacer(opad);
 		return out;
 	}
@@ -1351,8 +1357,10 @@ public class ThreatFactionView {
 	 * Send on each row (BUTTON_AID_NEED), off with its reason as the tooltip.
 	 */
 	protected static void addRequestButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Requests requests) {
-		if (requests == null || requests.table == null) return;
-		if (requests.aid) {
+		if (requests == null) return;
+		if (requests.table == null) {
+			// no offers, no table: only the toggle row
+		} else if (requests.aid) {
 			for (int i = 0; i < requests.marketIds.size(); i++) {
 				String marketId = requests.marketIds.get(i);
 				int row = requests.firstRows.get(i);
