@@ -22,13 +22,14 @@ import com.fs.starfarer.api.util.Misc;
  */
 public class ThreatObjectives {
 
-	/** The cell: "Worlds: 3, Mass: 24,000, Remark: Size 8 Fuel Production"; a seeded system its stage alone. */
+	/** The cell: "Worlds: 3, Mass: 24,000, Size 8 Fuel Production"; a seeded system its stage alone. */
 	public static String cellText(ThreatWarBoard.Entry e) {
 		if (!e.isColony()) {
-			return "Remark: " + (ThreatIncData.STAGE_COLONIZING.equals(e.stage) ? "Colonizing" : "Seeded");
+			return ThreatIncData.STAGE_COLONIZING.equals(e.stage) ? "Colonizing" : "Seeded";
 		}
 		float mass = massSeen(e);
-		return "Worlds: " + e.markets.size() + ", Mass: " + (mass >= 0f ? n(mass) : "?") + ", Remark: " + remark(e);
+		// no "Remark:" label (the user, 2026-10-30 17:00)
+		return "Worlds: " + e.markets.size() + ", Mass: " + (mass >= 0f ? n(mass) : "?") + ", " + remark(e);
 	}
 
 	/** The one remark, the most important first. */
@@ -68,6 +69,11 @@ public class ThreatObjectives {
 		float lost = ThreatIntel.lostDay(Factions.PLAYER, e.systemId);
 		float seenDay = e.seen != null ? e.seen.day : -1f;
 		float latest = Math.max(lost, seenDay);
+		if (ThreatIncConfig.debugMode()) {
+			// the Age column read "-" on every row at 16:55 while the Notes beside it read the same report; the figures
+			ThreatIncConfig.log("Age " + e.systemId + ": seen " + (e.seen != null ? e.seen.day + " " + e.seen.source + " by " + e.seen.seenBy : "null")
+					+ ", lost " + lost + ", today " + ThreatPosture.today());
+		}
 		if (latest < 0f) return "-";
 		int days = (int) Math.max(0f, ThreatPosture.today() - latest);
 		return days < 1 ? "today" : days + " d";

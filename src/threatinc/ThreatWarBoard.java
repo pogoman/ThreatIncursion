@@ -1991,8 +1991,8 @@ public class ThreatWarBoard {
 			// sorted nearest first; the priority score and the Swarm fleet column are gone (0 width), the
 			// Notes column (15:30, in the old Core (ly) slot) says what to hit
 			float[] frac = narrow
-					? new float[] {.07f, .15f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .25f, .06f, .17f}
-					: new float[] {.07f, .17f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .25f, .06f, .15f};
+					? new float[] {.07f, .11f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .29f, .06f, .17f}
+					: new float[] {.07f, .12f, 0f, 0f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .30f, .06f, .15f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
