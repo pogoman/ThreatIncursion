@@ -120,6 +120,17 @@ an NPC-to-NPC standing, so a charge would be permanent - the user's decision 202
 docs/war-board.md "The calls and the offers" has the table. The paragraphs below are the earlier
 flows the rest still follows.
 
+**The Send lever (2026-10-31 late, the user: "we probably need a min med max toggle for sending";
+BUILT, untested):** an NPC tab's Requests table carries one lever above it, **Send** Min / Med / Max
+(`ThreatIncursionIntel.LEVER_AID_SEND`, default Med, `ThreatFactionView.SEND_LABELS`). Each row's
+Commodity is the need's figure at that tier (`ThreatNeeds.Need.tier`; the row tooltip keeps all
+three), Standing what landing it earns at the one rate, and Send sails exactly that amount of the
+good from the player's colony sparing the most (`ThreatAid.quoteAid(target, good, amount)`: the
+good's lever alone at Max, the load cut to the amount, hulls at the port alike;
+`dispatchAid(target, good, amount, random)`; the row's need by `ThreatFactionView.needFor`, the figure
+by `sendAmount`). A fleets row stays the fronts' Defend at the Fleet lever. The colonies table's
+levers no longer size an NPC Send.
+
 **From 2026-10-29 evening to 2026-10-31 (the user: "i want to rework the request and aid system"; BUILT jar
 19:43:00, untested):** no Request button. A request is logged from a **Transfer or Deploy that
 cannot meet what the colony needs** at the colonies table's levers: after the order sails (at once
@@ -209,18 +220,18 @@ stand; "on the next slow tick" is now "at once".) Then, on the next slow tick:
 
 ## 4. Reputation for giving
 
-As today's section 3 of player-aid.md, with the mission doubling replaced by a purpose weight:
+**Since 2026-10-31 late (the user: "should be parity on rep for sending and requesting"): one rate,
+either way.** `ThreatAid.standingFor(market, good, amount)` is the standing any aid is worth: the
+goods' value at the receiving market (`valueAt`) / `aidRepPerCredits` (10,000 credits a point), a
+defence fleet `aidRepGuardArrived`. The player earns it when their convoy lands (`onDelivered`, the
+same figure the NPC tab's Standing column quoted) and pays it when an accepted offer lands
+(`ThreatAidRequests.priceFor` on what the offer carries, a whole point at least). The purpose weights
+of the table below, the Min / Med / Max price tiers and the +10 cap are gone: `aidRepMaxPerDelivery`
+defaults 0 (off) and stays a knob; `aidAskPrice*` and `aidRepWeight*` are retired keys. What made
+the asymmetry: 12,900 hulls sent read +10 (the cap) while 700 received cost -15 (x1.5 a unit,
+uncapped). A quote cut to a faction's standing budget now cuts the amount by the price a unit.
 
-| Purpose | Weight on `value / aidRepPerCredits` |
-| --- | --- |
-| hold the line, lift the orbit | 2.0 |
-| push back, arm the defenders, provision the expedition | 1.5 |
-| keep the depot, rebuild the navy | 1.0 |
-| surplus beyond Max, or a good nobody needs | 0.5 |
-
-Capped at `aidRepMaxPerDelivery` (+10) per landing as now. Defend (a guard on station) keeps
-its arrival / fight / term points. Nothing pays credits. The notice on landing stays a fact
-notice ("Aid Landed": the cargo, the colony, the faction), one per landing.
+The original plan (superseded): the mission doubling replaced by a purpose weight -
 
 ## 5. The dock - handing over in person
 

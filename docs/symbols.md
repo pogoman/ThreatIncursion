@@ -504,7 +504,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAcademyFleetGuard.createRouteParams(MiscFleetRouteManager manager, java.util.Random random)` :36
 - `ThreatAcademyFleetGuard.install()` :47 - Replaces vanilla's academy creator with Academy in the route manager's static list.
 
-## ThreatAid (1160 lines)
+## ThreatAid (1195 lines)
 - `ThreatAid.ok()` :80 - What a force sized for an outcome is sized against, one line for its prompt ("Against N fleet points of Defense Swarms seen");
 ### who may receive
 - `ThreatAid.canAid(FactionAPI faction)` :90 - Why the player cannot aid this faction, or null if they can.
@@ -556,27 +556,30 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAid.quoteReinforce(MarketAPI target, int[] levers)` :767 - REINFORCE an ally's colony under a Threat army (user, 2026-10-17:
 - `ThreatAid.quoteBattle(MarketAPI target, int[] levers, Quote q)` :792 - A convoy of marines and heavy armaments into a colony's stockpile against the Threat army on it, at the fronts table's levers ({marines, arms};
 - `ThreatAid.dispatchReinforce(MarketAPI target, int[] levers, Random random)` :839 - The board's Reinforce aid order at the fronts table's levers:
-- `ThreatAid.dispatchAid(MarketAPI target, int[] levers, Random random)` :870 - The board's Aid order (2026-10-23;
+- `ThreatAid.quoteAid(MarketAPI target, String good, float amount)` :875 - A convoy of amount of ONE good (an NPC tab's Send at its Min / Med / Max lever - the user, 2026-10-31:
+- `ThreatAid.dispatchAid(MarketAPI target, int[] levers, Random random)` :895 - The board's Aid order (2026-10-23;
+- `ThreatAid.dispatchAid(MarketAPI target, String good, float amount, Random random)` :901 - As above for an amount of one good (#quoteAid(MarketAPI, String, float)).
+- `ThreatAid.dispatchAid(MarketAPI target, Quote q, Random random)` :906
 ### arrivals: reputation and contracts
-- `ThreatAid.valueAt(MarketAPI market, String commodityId, float quantity)` :918 - One unit's price to the receiving market, times the quantity.
-- `ThreatAid.rep(String factionId, float points, TextPanelAPI text)` :938 - Standing with the faction:
-- `ThreatAid.standingFor(MarketAPI market, String good, float amount)` :956 - STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31:
-- `ThreatAid.standingFor(MarketAPI market, float[] load, int hullUnits)` :964 - As above for a load in AID_COMMODITIES order, hull units in the fifth slot or hullUnits:
-- `ThreatAid.capped(float points)` :976 - aidRepMaxPerDelivery above 0 caps a delivery's points;
-- `ThreatAid.rewardEstimate(MarketAPI market, float[] load, int hullUnits)` :982 - The NPC tabs' Standing column:
-- `ThreatAid.rewardEstimate(MarketAPI market, String good, float amount)` :987 - As above for an amount of one good.
-- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights)` :998 - Goods landed at another faction's colony, by convoy or by hand.
-- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :1026 - The player's guard reached the colony it defends:
-- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :1038
-- `ThreatAid.target(ThreatFleetOrders.Order o)` :1051 - The order's target for a line:
-- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :1057 - A task force at a hive's door:
-- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :1089 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
+- `ThreatAid.valueAt(MarketAPI market, String commodityId, float quantity)` :953 - One unit's price to the receiving market, times the quantity.
+- `ThreatAid.rep(String factionId, float points, TextPanelAPI text)` :973 - Standing with the faction:
+- `ThreatAid.standingFor(MarketAPI market, String good, float amount)` :991 - STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31:
+- `ThreatAid.standingFor(MarketAPI market, float[] load, int hullUnits)` :999 - As above for a load in AID_COMMODITIES order, hull units in the fifth slot or hullUnits:
+- `ThreatAid.capped(float points)` :1011 - aidRepMaxPerDelivery above 0 caps a delivery's points;
+- `ThreatAid.rewardEstimate(MarketAPI market, float[] load, int hullUnits)` :1017 - The NPC tabs' Standing column:
+- `ThreatAid.rewardEstimate(MarketAPI market, String good, float amount)` :1022 - As above for an amount of one good.
+- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights)` :1033 - Goods landed at another faction's colony, by convoy or by hand.
+- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :1061 - The player's guard reached the colony it defends:
+- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :1073
+- `ThreatAid.target(ThreatFleetOrders.Order o)` :1086 - The order's target for a line:
+- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :1092 - A task force at a hive's door:
+- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :1124 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
 ### presence, for the defence contract
-- `ThreatAid.playerAssetIn(MarketAPI market)` :1117 - The player's fleet, or a player guard on station, in the colony's system.
+- `ThreatAid.playerAssetIn(MarketAPI market)` :1152 - The player's fleet, or a player guard on station, in the colony's system.
 ### the board's lists
-- `ThreatAid.aidOrdersFor(String recipientFactionId)` :1137 - Player aid task forces bound for this faction's colonies (or, with null, the front).
-- `ThreatAid.aidConvoysFor(String recipientFactionId)` :1147
-- `ThreatAid.keep(Commodities c)` :1158 - Unused-import guard.
+- `ThreatAid.aidOrdersFor(String recipientFactionId)` :1172 - Player aid task forces bound for this faction's colonies (or, with null, the front).
+- `ThreatAid.aidConvoysFor(String recipientFactionId)` :1182
+- `ThreatAid.keep(Commodities c)` :1193 - Unused-import guard.
 
 ## ThreatAidAnswersIntel (191 lines)
 - `ThreatAidAnswersIntel.ThreatAidAnswersIntel(MarketAPI market, String asked)` :58
@@ -1689,7 +1692,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.aided(String f, String c)` :559 - Notes that allies sailed the faction a convoy of the stock.
 - `ThreatFactionStock.describe(String f)` :564 - One line of the faction's plan for the log:
 
-## ThreatFactionView (3367 lines)
+## ThreatFactionView (3389 lines)
 ### selector row (both views)
 - `ThreatFactionView.selectorIds()` :136 - The factions the selector offers:
 - `ThreatFactionView.reserveSelectorRow(TooltipMakerAPI main)` :161 - Reserves the selector row's space in the flow, right after the strip.
@@ -1738,88 +1741,89 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.requestTarget(ThreatIncursionIntel intel, List<ThreatBases.Base> targets)` :1130 - The entry the toggles read:
 - `ThreatFactionView.nextRequestTarget(ThreatBases.Base current, List<ThreatBases.Base> targets)` :1137 - The entry after the current one, round the list.
 - `ThreatFactionView.addFactionNeeds(ThreatIncursionIntel intel, TooltipMakerAPI main, float width, float opad, final FactionAPI faction)` :1160 - AN NPC FACTION'S CALLS (the user, 2026-10-31:
-- `ThreatFactionView.isTooltipExpandable(Object tooltipParam)` :1278
-- `ThreatFactionView.getTooltipWidth(Object tooltipParam)` :1279
-- `ThreatFactionView.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1280
-- `ThreatFactionView.needLevers(String good, int[] levers)` :1305 - The colonies table's levers cut to one good for a need row's Send (2026-10-30):
-- `ThreatFactionView.aidNeedParts(String[] parts)` :1313 - A Send on a fleets need is the fronts' Defend (BUTTON_AID_DEFEND);
-- `ThreatFactionView.convoysWith(MarketAPI m, String good)` :1321 - The convoys at sea to the market carrying some of the good, whoever sent them.
-- `ThreatFactionView.cargoOf(ThreatConvoys.Convoy c, String good)` :1333 - Units of the good aboard a convoy (hulls as ThreatHulls shows them).
-- `ThreatFactionView.convoyEta(ThreatConvoys.Convoy c, MarketAPI to)` :1343 - Days until the convoy lands at the market by the passage it was sent on, 0 once overdue.
-- `ThreatFactionView.convoyStatus(ThreatConvoys.Convoy c, int hunters)` :1351 - A convoy row's Status:
-- `ThreatFactionView.convoyEtaText(ThreatConvoys.Convoy c)` :1359 - A convoy row's ETA:
-- `ThreatFactionView.addRequestButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Requests requests)` :1379 - The Requests table's buttons, floated in last (platform traps 1 and 2):
-- `ThreatFactionView.isTooltipExpandable(Object p)` :1429
-- `ThreatFactionView.getTooltipWidth(Object p)` :1430
-- `ThreatFactionView.createTooltip(TooltipMakerAPI tt, boolean ex, Object p)` :1431
-- `ThreatFactionView.fleetLeverSet(int[] levers)` :1454 - Whether the Domain's Fleet lever (the sixth of ThreatIncursionIntel.colonyLevers) is at Med or Max:
-- `ThreatFactionView.callWord(String good)` :1459 - "a defence fleet" for the fleets call, else the good's label - a call's wording.
-- `ThreatFactionView.withdrawTarget(String rest)` :1464 - A Withdraw button's "marketId:good" - the market id, then the good (null when the id carries none).
-- `ThreatFactionView.forceText(ThreatAid.Quote q)` :1471
-- `ThreatFactionView.addProvisionsLine(TooltipMakerAPI prompt, MarketAPI base, float combatFP, org.lwjgl.util.vector.Vector2f dest, boolean self)` :1480 - A prompt's provisions lines for a player force of combatFP from the base to dest (ThreatFleetOrders.forceProvisions):
-- `ThreatFactionView.addTakesLine(TooltipMakerAPI prompt, MarketAPI base, float fuel, float supplies)` :1494 - "Takes N fuel and M supplies from X's F fuel and S supplies." - what an order draws from its base's reserve.
-- `ThreatFactionView.forcePrompt(float points, float free, String... more)` :1503 - A quote's size as a prompt's format and highlights, more highlights appended (ThreatAid.forcePrompt).
-- `ThreatFactionView.forcePrompt(float points, float free, int fleets, String... more)` :1508 - As above for a force of several fleets.
-- `ThreatFactionView.highlights(String[] f)` :1516 - The highlights of a #forcePrompt array:
-- `ThreatFactionView.disableWith(TooltipMakerAPI main, ButtonAPI button, boolean enabled, final String reason)` :1520
-- `ThreatFactionView.navy()` :1538
-- `ThreatFactionView.army()` :1539
-- `ThreatFactionView.suppliesFP()` :1540
-- `ThreatFactionView.fuelFP()` :1541
-- `ThreatFactionView.depots()` :1542
-- `ThreatFactionView.total()` :1543
-- `ThreatFactionView.strengthOf(String factionId)` :1547 - The faction's Strength now.
-- `ThreatFactionView.disableWith(TooltipMakerAPI main, ButtonAPI button, boolean enabled, String reason, String help)` :1572 - A button's tooltip is the one place its rule is written:
-- `ThreatFactionView.isTooltipExpandable(Object tooltipParam)` :1579
-- `ThreatFactionView.getTooltipWidth(Object tooltipParam)` :1580
-- `ThreatFactionView.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1581
-- `ThreatFactionView.totalCell(List<Object> cells, List<ColonyRow> rows, String commodityId, String factionId, Color plain)` :1594 - The totals cell, by the same rule as #stockCell:
+- `ThreatFactionView.isTooltipExpandable(Object tooltipParam)` :1283
+- `ThreatFactionView.getTooltipWidth(Object tooltipParam)` :1284
+- `ThreatFactionView.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1285
+- `ThreatFactionView.needFor(MarketAPI m, String good)` :1307 - The world's need of the good the NPC tab's row shows:
+- `ThreatFactionView.sendAmount(ThreatNeeds.Need n, ThreatIncursionIntel intel)` :1318 - What Send sends of a need at the Send lever (ThreatIncursionIntel.LEVER_AID_SEND):
+- `ThreatFactionView.aidNeedParts(String[] parts)` :1324 - A Send on a fleets need is the fronts' Defend (BUTTON_AID_DEFEND);
+- `ThreatFactionView.convoysWith(MarketAPI m, String good)` :1332 - The convoys at sea to the market carrying some of the good, whoever sent them.
+- `ThreatFactionView.cargoOf(ThreatConvoys.Convoy c, String good)` :1344 - Units of the good aboard a convoy (hulls as ThreatHulls shows them).
+- `ThreatFactionView.convoyEta(ThreatConvoys.Convoy c, MarketAPI to)` :1354 - Days until the convoy lands at the market by the passage it was sent on, 0 once overdue.
+- `ThreatFactionView.convoyStatus(ThreatConvoys.Convoy c, int hunters)` :1362 - A convoy row's Status:
+- `ThreatFactionView.convoyEtaText(ThreatConvoys.Convoy c)` :1370 - A convoy row's ETA:
+- `ThreatFactionView.addRequestButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Requests requests)` :1390 - The Requests table's buttons, floated in last (platform traps 1 and 2):
+- `ThreatFactionView.isTooltipExpandable(Object p)` :1449
+- `ThreatFactionView.getTooltipWidth(Object p)` :1450
+- `ThreatFactionView.createTooltip(TooltipMakerAPI tt, boolean ex, Object p)` :1451
+- `ThreatFactionView.fleetLeverSet(int[] levers)` :1474 - Whether the Domain's Fleet lever (the sixth of ThreatIncursionIntel.colonyLevers) is at Med or Max:
+- `ThreatFactionView.callWord(String good)` :1479 - "a defence fleet" for the fleets call, else the good's label - a call's wording.
+- `ThreatFactionView.withdrawTarget(String rest)` :1484 - A Withdraw button's "marketId:good" - the market id, then the good (null when the id carries none).
+- `ThreatFactionView.forceText(ThreatAid.Quote q)` :1491
+- `ThreatFactionView.addProvisionsLine(TooltipMakerAPI prompt, MarketAPI base, float combatFP, org.lwjgl.util.vector.Vector2f dest, boolean self)` :1500 - A prompt's provisions lines for a player force of combatFP from the base to dest (ThreatFleetOrders.forceProvisions):
+- `ThreatFactionView.addTakesLine(TooltipMakerAPI prompt, MarketAPI base, float fuel, float supplies)` :1514 - "Takes N fuel and M supplies from X's F fuel and S supplies." - what an order draws from its base's reserve.
+- `ThreatFactionView.forcePrompt(float points, float free, String... more)` :1523 - A quote's size as a prompt's format and highlights, more highlights appended (ThreatAid.forcePrompt).
+- `ThreatFactionView.forcePrompt(float points, float free, int fleets, String... more)` :1528 - As above for a force of several fleets.
+- `ThreatFactionView.highlights(String[] f)` :1536 - The highlights of a #forcePrompt array:
+- `ThreatFactionView.disableWith(TooltipMakerAPI main, ButtonAPI button, boolean enabled, final String reason)` :1540
+- `ThreatFactionView.navy()` :1558
+- `ThreatFactionView.army()` :1559
+- `ThreatFactionView.suppliesFP()` :1560
+- `ThreatFactionView.fuelFP()` :1561
+- `ThreatFactionView.depots()` :1562
+- `ThreatFactionView.total()` :1563
+- `ThreatFactionView.strengthOf(String factionId)` :1567 - The faction's Strength now.
+- `ThreatFactionView.disableWith(TooltipMakerAPI main, ButtonAPI button, boolean enabled, String reason, String help)` :1592 - A button's tooltip is the one place its rule is written:
+- `ThreatFactionView.isTooltipExpandable(Object tooltipParam)` :1599
+- `ThreatFactionView.getTooltipWidth(Object tooltipParam)` :1600
+- `ThreatFactionView.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1601
+- `ThreatFactionView.totalCell(List<Object> cells, List<ColonyRow> rows, String commodityId, String factionId, Color plain)` :1614 - The totals cell, by the same rule as #stockCell:
 ### data
-- `ThreatFactionView.fromColony(String marketId)` :1623 - " (Earth)" - the colony a fleet sailed from, after its name in the Fleet column;
-- `ThreatFactionView.colonyRows(List<MarketAPI> markets)` :1628
-- `ThreatFactionView.compare(ColonyRow a, ColonyRow b)` :1650
-- `ThreatFactionView.strikesAgainst(MarketAPI market)` :1660
-- `ThreatFactionView.militaryLabel(MarketAPI m)` :1671
-- `ThreatFactionView.stockCell(List<Object> cells, MarketAPI m, String commodityId, Color text)` :1687 - A reserve cell:
-- `ThreatFactionView.deployedCell(List<Object> cells, float pts, Color text)` :1715 - The colonies table's Fleet cell (2026-10-30):
-- `ThreatFactionView.fleetCell(List<Object> cells, MarketAPI m, Color text)` :1723
-- `ThreatFactionView.onLedger(MarketAPI m)` :1753
-- `ThreatFactionView.fleetColor(float free, Color text)` :1759
-- `ThreatFactionView.fleetTotalCell(List<Object> cells, List<ColonyRow> rows, Color plain)` :1774 - The totals cell:
-- `ThreatFactionView.hullLine(TooltipMakerAPI tooltip, MarketAPI m)` :1809 - The hulls line beside the resource lines, the same shape:
-- `ThreatFactionView.colonyTooltip(TooltipMakerAPI tooltip, ColonyRow r)` :1822
-- `ThreatFactionView.fleetRows(String factionId)` :1862
-- `ThreatFactionView.razesEvery(ThreatPurgeFGI p)` :2126 - Whether the expedition razes every world it was sent against - the Bombard order's, or an NPC's razing expedition - and lands on none.
-- `ThreatFactionView.fleetStrength(CampaignFleetAPI fleet)` :2137 - " - " for the Marines - Fleet column - the marines a fleet carries over its fleet points.
-- `ThreatFactionView.abstractFP(ThreatPurgeFGI p)` :2144 - The FP an unspawned expedition fields, estimated from its planned fleet sizes:
-- `ThreatFactionView.siegeMarineGoal(int tier, MarketAPI base, List<MarketAPI> targets)` :2154 - The marines a siege tier's landing draws from the base's reserve, an outcome each (IncursionManager.siegeTierMarines;
-- `ThreatFactionView.trimZero(float f)` :2191 - "2" for 2.0, "1.5" for 1.5 - a factor without a trailing zero.
-- `ThreatFactionView.cargoText(float marines, float armaments, float fuel, float supplies)` :2195
-- `ThreatFactionView.cargoText(float marines, float armaments, float fuel, float supplies, float ships)` :2200 - "N marines, N arms, N fuel, N supplies, N ship hulls" - the parts that are there, or "empty".
-- `ThreatFactionView.nearestBase(List<MarketAPI> markets, StarSystemAPI system)` :2211 - The nearest base among these within its expedition range - a player colony at any range (docs/strategy-layer.md "Ranges").
+- `ThreatFactionView.fromColony(String marketId)` :1643 - " (Earth)" - the colony a fleet sailed from, after its name in the Fleet column;
+- `ThreatFactionView.colonyRows(List<MarketAPI> markets)` :1648
+- `ThreatFactionView.compare(ColonyRow a, ColonyRow b)` :1670
+- `ThreatFactionView.strikesAgainst(MarketAPI market)` :1680
+- `ThreatFactionView.militaryLabel(MarketAPI m)` :1691
+- `ThreatFactionView.stockCell(List<Object> cells, MarketAPI m, String commodityId, Color text)` :1707 - A reserve cell:
+- `ThreatFactionView.deployedCell(List<Object> cells, float pts, Color text)` :1735 - The colonies table's Fleet cell (2026-10-30):
+- `ThreatFactionView.fleetCell(List<Object> cells, MarketAPI m, Color text)` :1743
+- `ThreatFactionView.onLedger(MarketAPI m)` :1773
+- `ThreatFactionView.fleetColor(float free, Color text)` :1779
+- `ThreatFactionView.fleetTotalCell(List<Object> cells, List<ColonyRow> rows, Color plain)` :1794 - The totals cell:
+- `ThreatFactionView.hullLine(TooltipMakerAPI tooltip, MarketAPI m)` :1829 - The hulls line beside the resource lines, the same shape:
+- `ThreatFactionView.colonyTooltip(TooltipMakerAPI tooltip, ColonyRow r)` :1842
+- `ThreatFactionView.fleetRows(String factionId)` :1882
+- `ThreatFactionView.razesEvery(ThreatPurgeFGI p)` :2146 - Whether the expedition razes every world it was sent against - the Bombard order's, or an NPC's razing expedition - and lands on none.
+- `ThreatFactionView.fleetStrength(CampaignFleetAPI fleet)` :2157 - " - " for the Marines - Fleet column - the marines a fleet carries over its fleet points.
+- `ThreatFactionView.abstractFP(ThreatPurgeFGI p)` :2164 - The FP an unspawned expedition fields, estimated from its planned fleet sizes:
+- `ThreatFactionView.siegeMarineGoal(int tier, MarketAPI base, List<MarketAPI> targets)` :2174 - The marines a siege tier's landing draws from the base's reserve, an outcome each (IncursionManager.siegeTierMarines;
+- `ThreatFactionView.trimZero(float f)` :2213 - "2" for 2.0, "1.5" for 1.5 - a factor without a trailing zero.
+- `ThreatFactionView.cargoText(float marines, float armaments, float fuel, float supplies)` :2217
+- `ThreatFactionView.cargoText(float marines, float armaments, float fuel, float supplies, float ships)` :2222 - "N marines, N arms, N fuel, N supplies, N ship hulls" - the parts that are there, or "empty".
+- `ThreatFactionView.nearestBase(List<MarketAPI> markets, StarSystemAPI system)` :2233 - The nearest base among these within its expedition range - a player colony at any range (docs/strategy-layer.md "Ranges").
 ### order buttons: prompt text and execution (called from ThreatIncursionIntel)
-- `ThreatFactionView.renderUnmobilised(ThreatIncursionIntel intel, TooltipMakerAPI main, float opad, FactionAPI faction)` :2234 - The player's own tab before they mobilise:
-- `ThreatFactionView.isOrderButton(String id)` :2256 - Whether this button id is one of the faction view's order buttons.
-- `ThreatFactionView.parse(String id)` :2274 - Splits "prefix" + "factionId:target" into [prefix, factionId, target].
-- `ThreatFactionView.addOrderPrompt(TooltipMakerAPI prompt, String id, ThreatIncursionIntel intel)` :2293 - The confirm-dialog text for an order button.
-- `ThreatFactionView.addOrderPromptBody(TooltipMakerAPI prompt, String id, String[] parts, ThreatIncursionIntel intel)` :2300 - The order's own confirm text, by button.
-- `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :2615 - The Bombard order's confirm:
-- `ThreatFactionView.addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d)` :2669 - The Deploy order's confirmation:
-- `ThreatFactionView.addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a)` :2690 - The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8):
-- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :2733 - Executes an order button.
-- `ThreatFactionView.addRecallAllButton(ThreatIncursionIntel intel, TooltipMakerAPI main, UIPanelAPI table, float up, FactionAPI faction, MarketAPI world, boolean mayOrder, String blocked)` :3030 - The Staging group's Recall, left of Transfer (2026-10-30 21:00):
-- `ThreatFactionView.attackedRows()` :3042 - The hive worlds the player's landings are attacking - the Domain table's Front rows (2026-10-30 evening).
-- `ThreatFactionView.purgedInReach(FactionAPI faction)` :3050
-- `ThreatFactionView.group(String key)` :3061 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
-- `ThreatFactionView.groupFleet(String key)` :3078 - The fleet of a group key, while it still lives with its group.
-- `ThreatFactionView.groupTargetSystem(String key)` :3093 - The hive system a group key's fleet is sent against.
-- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :3120 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
-- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :3129 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
-- `ThreatFactionView.recallAllCount(FactionAPI faction, MarketAPI world)` :3175 - What the Staging group's Recall would call home (2026-10-30 21:00):
-- `ThreatFactionView.recallAllText(FactionAPI faction, MarketAPI world)` :3209 - The Recall's tooltip and confirm:
-- `ThreatFactionView.recallAll(FactionAPI faction, MarketAPI world, java.util.Random random)` :3227 - The Recall carried out (recallAllCount says what);
-- `ThreatFactionView.recall(String factionId, String key)` :3288
-- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :3365 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
+- `ThreatFactionView.renderUnmobilised(ThreatIncursionIntel intel, TooltipMakerAPI main, float opad, FactionAPI faction)` :2256 - The player's own tab before they mobilise:
+- `ThreatFactionView.isOrderButton(String id)` :2278 - Whether this button id is one of the faction view's order buttons.
+- `ThreatFactionView.parse(String id)` :2296 - Splits "prefix" + "factionId:target" into [prefix, factionId, target].
+- `ThreatFactionView.addOrderPrompt(TooltipMakerAPI prompt, String id, ThreatIncursionIntel intel)` :2315 - The confirm-dialog text for an order button.
+- `ThreatFactionView.addOrderPromptBody(TooltipMakerAPI prompt, String id, String[] parts, ThreatIncursionIntel intel)` :2322 - The order's own confirm text, by button.
+- `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :2637 - The Bombard order's confirm:
+- `ThreatFactionView.addDeployPrompt(TooltipMakerAPI prompt, ThreatDeploy.Plan d)` :2691 - The Deploy order's confirmation:
+- `ThreatFactionView.addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a)` :2712 - The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8):
+- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :2755 - Executes an order button.
+- `ThreatFactionView.addRecallAllButton(ThreatIncursionIntel intel, TooltipMakerAPI main, UIPanelAPI table, float up, FactionAPI faction, MarketAPI world, boolean mayOrder, String blocked)` :3052 - The Staging group's Recall, left of Transfer (2026-10-30 21:00):
+- `ThreatFactionView.attackedRows()` :3064 - The hive worlds the player's landings are attacking - the Domain table's Front rows (2026-10-30 evening).
+- `ThreatFactionView.purgedInReach(FactionAPI faction)` :3072
+- `ThreatFactionView.group(String key)` :3083 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
+- `ThreatFactionView.groupFleet(String key)` :3100 - The fleet of a group key, while it still lives with its group.
+- `ThreatFactionView.groupTargetSystem(String key)` :3115 - The hive system a group key's fleet is sent against.
+- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :3142 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
+- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :3151 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
+- `ThreatFactionView.recallAllCount(FactionAPI faction, MarketAPI world)` :3197 - What the Staging group's Recall would call home (2026-10-30 21:00):
+- `ThreatFactionView.recallAllText(FactionAPI faction, MarketAPI world)` :3231 - The Recall's tooltip and confirm:
+- `ThreatFactionView.recallAll(FactionAPI faction, MarketAPI world, java.util.Random random)` :3249 - The Recall carried out (recallAllCount says what);
+- `ThreatFactionView.recall(String factionId, String key)` :3310
+- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :3387 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
 
 ## ThreatFeeding (397 lines)
 - `ThreatFeeding.enabled()` :61 - Fleet memory:

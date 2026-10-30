@@ -256,9 +256,13 @@ its colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`), one row
 most urgent need of the good) - World, Commodity, Age (days the shortage has stood,
 `ThreatAidRequests.shortageSince`), Answer (the convoy at sea with the good and whose it is,
 `convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - NPC-to-NPC aid
-charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
-alone at its lever, Med when None, from the player's colony sparing the most - `ThreatAid.quoteAid`
-through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever). Until 2026-10-31 a
+charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: exactly the
+Commodity figure of that good from the player's colony sparing the most - `ThreatAid.quoteAid(target,
+good, amount)`; a fleets need is the fronts' Defend at the Fleet lever). A **Send** lever above the
+table, Min / Med / Max (`ThreatIncursionIntel.LEVER_AID_SEND`, default Med), picks which of the
+need's three figures the Commodity column shows and Send sails (the row tooltip lists all three).
+Standing is one rate either way (`ThreatAid.standingFor`, 2026-10-31 late): what a Send earns on
+landing is what the same goods would cost as an accepted offer. Until 2026-10-31 a
 request was logged from a Transfer or Deploy short of the colony's needs in the order's own confirm
 box, one a world with a part a good in the lever's tier words, and the first faction with the
 capacity sailed on its own; that flow, its Withdraw and the task-force part are gone. An ally's colony rows hold

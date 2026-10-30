@@ -1187,6 +1187,8 @@ public class ThreatFactionView {
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 		main.addSectionHeading("Requests for aid", bright, dark, Alignment.MID, opad);
+		// the Send lever's row (Min / Med / Max of the ask), floated in by addRequestButtons
+		out.anchor = main.addSpacer(SELECTOR_ROW_H);
 		float tw = width - 24f;
 		String[] names = {"World", "Commodity", "Age", "Answer", "Standing", "ETA", "Actions"};
 		float[] frac = {.13f, .13f, .06f, .30f, .08f, .07f, .23f};
@@ -1217,17 +1219,20 @@ public class ThreatFactionView {
 				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
 						+ q.source.getName() + " to take the orbit, at the Fleet lever." : "Sends a task force to take the orbit.";
 			} else {
-				q = ThreatAid.quoteAid(m, needLevers(n.good, levers));
-				reward = q.ok() ? ThreatAid.rewardEstimate(m, q.load, q.hullUnits) : ThreatAid.rewardEstimate(m, n.good, n.max);
-				help = q.ok() ? "Sends " + aidCargo(q) + " from " + q.source.getName() + ", at the " + ThreatReserves.label(n.good)
-						+ " lever." : "Sends a convoy of " + ThreatReserves.label(n.good) + ".";
+				// the ask at the Send lever (Min / Med / Max of the need), from the colony sparing the most
+				float amount = sendAmount(n, intel);
+				q = ThreatAid.quoteAid(m, n.good, amount);
+				reward = q.ok() ? ThreatAid.rewardEstimate(m, q.load, q.hullUnits) : ThreatAid.rewardEstimate(m, n.good, amount);
+				help = q.ok() ? "Sends " + aidCargo(q) + " from " + q.source.getName() + "."
+						: "Sends a convoy of " + ThreatReserves.label(n.good) + ".";
 			}
 			if (off == null && !q.ok()) off = ThreatNotice.text(q.reason);
 			List<Object> cells = new ArrayList<Object>();
 			ThreatWarBoard.cell(cells, Alignment.LMID, text,
 					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
-			// the full ask (the user, 2026-10-31: "exact amount requested")
-			String asked = n.isFleets() ? "defence fleet of " + n.shown(n.max) : n.shown(n.max) + " " + n.goodLabel();
+			// the ask at the Send lever (the user, 2026-10-31: "exact amount requested"; the row tooltip has every tier)
+			float ask = n.isFleets() ? n.max : sendAmount(n, intel);
+			String asked = n.isFleets() ? "defence fleet of " + n.shown(n.max) : n.shown(ask) + " " + n.goodLabel();
 			ThreatWarBoard.cell(cells, Alignment.LMID, n.color(),
 					main.shortenString(asked + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
 			Long since = n.isFleets() ? null : ThreatAidRequests.shortageSince().get(m.getId() + ":" + n.good);
@@ -1298,15 +1303,21 @@ public class ThreatFactionView {
 		return out;
 	}
 
-	/**
-	 * The colonies table's levers cut to one good for a need row's Send (2026-10-30): that good's
-	 * lever, Med when it stands at None, every other at None.
-	 */
-	protected static int[] needLevers(String good, int[] levers) {
-		int[] single = new int[ThreatReserves.AID_COMMODITIES.length];
-		int i = ThreatAid.index(good);
-		if (i >= 0) single[i] = levers != null && i < levers.length && levers[i] > 0 ? levers[i] : 1;
-		return single;
+	/** The world's need of the good the NPC tab's row shows: the most urgent of that good, the largest ask on a tie; null with none. */
+	protected static ThreatNeeds.Need needFor(MarketAPI m, String good) {
+		if (m == null || good == null) return null;
+		ThreatNeeds.Need best = null;
+		for (ThreatNeeds.Need n : ThreatNeeds.of(m)) {
+			if (!good.equals(n.good)) continue;
+			if (best == null || n.urgency > best.urgency || (n.urgency == best.urgency && n.max > best.max)) best = n;
+		}
+		return best;
+	}
+
+	/** What Send sends of a need at the Send lever (ThreatIncursionIntel.LEVER_AID_SEND): the need's Min / Med / Max figure (Need.tier). */
+	protected static float sendAmount(ThreatNeeds.Need n, ThreatIncursionIntel intel) {
+		if (n == null) return 0f;
+		return n.tier(intel != null ? intel.lever(ThreatIncursionIntel.LEVER_AID_SEND) : 1);
 	}
 
 	/** A Send on a fleets need is the fronts' Defend (BUTTON_AID_DEFEND); any other id passes through. */
@@ -1390,6 +1401,15 @@ public class ThreatFactionView {
 						BUTTON_AID_NEED + requests.factionId + ":" + marketId + ":" + requests.goods.get(i));
 				button.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f);
 				disableWith(main, button, off == null, off, requests.helps.get(i));
+			}
+			// the Send lever: Min / Med / Max of what each world asks (the user, 2026-10-31: "we probably need a
+			// min med max toggle for sending")
+			if (requests.anchor != null) {
+				String[] tips = { "Send the least each world asks for.", "Send the middle figure each world asks for.",
+						"Send all each world asks for." };
+				addTierSelector(intel, main, requests.anchor, "Send", LEVER_LABEL_W,
+						BUTTON_LEVER + ThreatIncursionIntel.LEVER_AID_SEND + ":", intel.lever(ThreatIncursionIntel.LEVER_AID_SEND),
+						tips, 0f, SEND_LABELS, LEVER_BUTTON_W);
 			}
 			return;
 		}
@@ -2166,6 +2186,8 @@ public class ThreatFactionView {
 
 	/** A lever's three labels, index = tier: nothing, half the source's spare, all of it (2026-10-28). */
 	protected static final String[] LEVER_LABELS = {"None", "Med", "Max"};
+	/** The NPC tabs' Send lever: the need's Min / Med / Max figure. */
+	protected static final String[] SEND_LABELS = {"Min", "Med", "Max"};
 
 	/** Where a lever's first button sits: clear of "Supplies". */
 	protected static final float LEVER_LABEL_W = 62f;
@@ -2437,7 +2459,7 @@ public class ThreatFactionView {
 			// SEND on an NPC faction's need row (2026-10-30): a convoy of that good alone at its lever
 			String[] wt = withdrawTarget(parts[2]);
 			MarketAPI target = wt[0] != null ? Global.getSector().getEconomy().getMarket(wt[0]) : null;
-			ThreatAid.Quote q = ThreatAid.quoteAid(target, needLevers(wt[1], levers));
+			ThreatAid.Quote q = ThreatAid.quoteAid(target, wt[1], sendAmount(needFor(target, wt[1]), intel));
 			aidPrompt(prompt, target, q, who, h);
 		} else if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
@@ -2756,7 +2778,7 @@ public class ThreatFactionView {
 			// SEND on a need row (2026-10-30): a convoy of that good alone at its lever (a fleets need became Defend above)
 			String[] wt = withdrawTarget(parts[2]);
 			MarketAPI target = wt[0] != null ? Global.getSector().getEconomy().getMarket(wt[0]) : null;
-			return target != null && ThreatAid.dispatchAid(target, needLevers(wt[1], levers), random) ? "aid-need" : null;
+			return target != null && ThreatAid.dispatchAid(target, wt[1], sendAmount(needFor(target, wt[1]), intel), random) ? "aid-need" : null;
 		}
 		if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			// at the fronts' Fleet lever (2026-10-29 evening), as the player's own Defend

@@ -1336,15 +1336,13 @@
 	# THE LEDGER OF NEEDS (2026-10-23, docs/war-effort-rework.md): what each colony is short of, by purpose
 	# (hold the line, push back, arm the defenders, lift the orbit, keep the depot, rebuild the navy,
 	# provision the expedition), on the war board's Needs column and at the dock; nothing is posted,
-	# accepted or paid. aidRequestsEnabled: the player may ask the sector for one of their own colony's
-	# needs; every faction at Favourable or better answers, and each sender's price is standing - the
-	# goods' value at the player's market / aidRepPerCredits (a guard: its points x aidRepGuardArrived
-	# / 100), times the tier (aidAskPrice Min / Med / Max), never below Favourable, a whole number of
-	# points charged on receipt. aidComms: the voiced war comms when a need appears, escalates
-	# or is met, aidCommsMinDays apart for one world and purpose. aidExpeditionNoteDays: how long a
-	# postponed siege's provisions need stands. aidRepWeight: standing for giving by the purpose served
-	# (critical: hold the line, lift the orbit; urgent: push back, arm, provision; routine: the depot,
-	# the navy; surplus: beyond Max, or a good nobody needs)
+	# accepted or paid. aidRequestsEnabled: the player may call the sector for a colony's needs (the
+	# toggles under Requests); factions at aidMinRelation or better offer from their surplus colonies,
+	# and an offer's price is standing at the ONE rate aid earns or costs either way (2026-10-31
+	# parity): the goods' value at the receiving market / aidRepPerCredits (a defence fleet:
+	# aidRepGuardArrived), a whole number of points charged when it lands. aidComms: the voiced war
+	# comms when a need appears, escalates or is met, aidCommsMinDays apart for one world and purpose.
+	# aidExpeditionNoteDays: how long a postponed siege's provisions need stands.
 	"threatinc_aidRequestsEnabled": true,
 	# aidRequestMinSpare: the least a colony must spare of a good for its faction to answer a request with it (a unit for
 	# ship hulls) - Max asks all of what one colony spares, Med half

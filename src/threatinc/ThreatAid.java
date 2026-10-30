@@ -866,16 +866,51 @@ public class ThreatAid {
 		return true;
 	}
 
+	/**
+	 * A convoy of {@code amount} of ONE good (an NPC tab's Send at its Min / Med / Max lever - the
+	 * user, 2026-10-31: "we probably need a min med max toggle for sending"): {@link #quoteAid} with
+	 * that good's lever alone at Max, the load then cut to the amount (hulls aboard or the port's
+	 * second convoy alike).
+	 */
+	public static Quote quoteAid(MarketAPI target, String good, float amount) {
+		int idx = index(good);
+		if (idx < 0 || amount <= 0f) {
+			Quote q = new Quote();
+			q.reason = ThreatNotice.Reason.of("Nothing to send");
+			return q;
+		}
+		int[] levers = new int[ThreatReserves.AID_COMMODITIES.length];
+		levers[idx] = 2;
+		Quote q = quoteAid(target, levers);
+		if (!q.ok()) return q;
+		float cut = (float) Math.floor(amount);
+		if (q.load != null && idx < q.load.length && q.load[idx] > cut) q.load[idx] = cut;
+		if (q.hullUnits > cut) q.hullUnits = (int) cut;
+		q.quantity = q.load != null && idx < q.load.length ? Math.round(q.load[idx]) : 0;
+		if (q.load != null) q.points = ThreatAidCapacity.convoyPoints(q.load);
+		return q;
+	}
+
 	/** The board's Aid order (2026-10-23; at the levers since 2026-10-28): the convoy sails - and a hull convoy from the port when the goods donor is not it - or a refusal notice says why not. */
 	public static boolean dispatchAid(MarketAPI target, int[] levers, Random random) {
 		if (target == null) return false;
+		return dispatchAid(target, quoteAid(target, levers), random);
+	}
+
+	/** As above for an amount of one good ({@link #quoteAid(MarketAPI, String, float)}). */
+	public static boolean dispatchAid(MarketAPI target, String good, float amount, Random random) {
+		if (target == null) return false;
+		return dispatchAid(target, quoteAid(target, good, amount), random);
+	}
+
+	protected static boolean dispatchAid(MarketAPI target, Quote q, Random random) {
+		if (target == null || q == null) return false;
 		FactionAPI player = Global.getSector().getPlayerFaction();
 		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
 			ThreatNotice.titled("Aid Refused").bad().icon(player).lines(blocked).send();
 			return false;
 		}
-		Quote q = quoteAid(target, levers);
 		if (!q.ok()) {
 			ThreatNotice.titled("Aid Refused").bad().icon(player).lines(q.reason).send();
 			return false;
