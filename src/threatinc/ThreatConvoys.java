@@ -1332,6 +1332,11 @@ public class ThreatConvoys {
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null) continue;
+			// NOTHING OF THE PLAYER'S MOVES UNORDERED (the user, 2026-10-30, after "Your faction Expedition Sails" notices: "turn off
+			// the random supply convoys for player. nothing moves unless player orders it"): no staging stock, relief, front
+			// run, outpost return, feeding convoy or Support sortie sails from the player's colonies by itself - the board's
+			// Supplies, Reinforce, Deploy and Fleet buttons are the only orders (knob threatinc_playerAutoConvoys)
+			if (faction.isPlayerFaction() && !ThreatIncConfig.playerAutoConvoys()) continue;
 			List<MarketAPI> markets = ThreatReserves.marketsOf(factionId);
 			// the bases short of the most (as a share of their target) sail
 			// first, so the donors' stock goes to them first. No cap on
@@ -1697,14 +1702,19 @@ public class ThreatConvoys {
 		// a link in the hive's own system is always nearest, and pickBase takes it
 		if (ThreatFrontlines.isOutpost(base)) base = colonyBase(faction, hive.getLocationInHyperspace(), base);
 		if (base != null && skip != null && skip.contains(base.getId())) base = null;
-		if (pickup || faction.isPlayerFaction() || hive.getStarSystem() == null) return ThreatBases.of(base);
-		// an NPC front loads where the most of what it wants is: the nearest base,
-		// or any of the faction's markets in reach of the hive (the siege pool,
-		// IncursionManager.siegeDonors). One base alone let Hegemony's Loka front
-		// go dry and fall with 15k marines banked elsewhere (run 9)
+		if (pickup || hive.getStarSystem() == null) return ThreatBases.of(base);
+		// a front loads where the most of what it wants is: the nearest base, or any of the faction's
+		// markets in reach of the hive (the siege pool, IncursionManager.siegeDonors) - the player's any
+		// colony of theirs at any range (2026-10-30 21:00: the Domain row's Transfer read "No base in
+		// reach has marines or heavy armaments above its floor" at the nearest base alone while other
+		// colonies had both; distance costs time, never permission). One base alone let Hegemony's Loka
+		// front go dry and fall with 15k marines banked elsewhere (run 9)
 		MarketAPI best = base;
 		float bestScore = base != null ? frontScore(base, wants) : -1f;
-		for (MarketAPI m : IncursionManager.factionMarketsInReach(faction, hive.getStarSystem())) {
+		java.util.List<MarketAPI> pool = faction.isPlayerFaction()
+				? ThreatReserves.marketsOf(faction.getId())
+				: IncursionManager.factionMarketsInReach(faction, hive.getStarSystem());
+		for (MarketAPI m : pool) {
 			if (m == base || ThreatFrontlines.isOutpost(m)) continue;
 			if (skip != null && skip.contains(m.getId())) continue;
 			float s = frontScore(m, wants);
@@ -1739,6 +1749,10 @@ public class ThreatConvoys {
 
 	/** How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share). */
 	protected static float frontScore(MarketAPI m, float[] wants) {
+		if (wants[0] <= 0f && wants[1] <= 0f) {
+			// a front that wants nothing: the levers still send - the colony with the most above its floor
+			return ThreatReserves.available(m, Commodities.MARINES) + ThreatReserves.available(m, Commodities.HAND_WEAPONS);
+		}
 		float marines = wants[0] > 0f
 				? Math.min(1f, ThreatReserves.available(m, Commodities.MARINES) / wants[0]) : 0f;
 		float arms = wants[1] > 0f
@@ -1915,6 +1929,21 @@ public class ThreatConvoys {
 		return dispatchFrontRun(base, hive, front, faction, load, false, random);
 	}
 
+	/**
+	 * AN ALLY'S SUPPLY RUN TO THE PLAYER'S FRONT (ThreatAidRequests.accept, 2026-10-31): the helper's
+	 * run from its base to the hive world the player's landing attacks, {@code load} = [marines,
+	 * armaments], flagged for the player so the player's own cover opens its door (pollFrontRun) and
+	 * its landing is received as aid. The lead convoy, or null when nothing sailed.
+	 */
+	public static Convoy aidFrontRun(ThreatBases.Base base, MarketAPI hive, FactionAPI helper, float[] load, Random random) {
+		if (base == null || hive == null || helper == null || load == null) return null;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+		if (front == null || !front.isPlayerOwned()) return null;
+		Convoy c = dispatchFrontRun(base, hive, front, helper, load, false, random);
+		if (c != null) c.recipientFactionId = com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
+		return c;
+	}
+
 	/** Why the board's Supply order at this load tier would send nothing now, or null if a run would sail. */
 	public static String supplyBlockReason(FactionAPI faction, MarketAPI hive, int[] levers) {
 		ThreatGroundFronts.GroundFront front = hive != null
@@ -1927,34 +1956,64 @@ public class ThreatConvoys {
 		if (allNone(levers)) return "Marines and Arms are both at None.";
 		float[] asked = supplyAsk(front, hive, levers);
 		if (asked[0] < 1f && asked[1] < 1f) {
-			return "No base in reach has marines or heavy armaments above its floor to send.";
+			ThreatBases.Base base = pickFrontBase(faction, hive, false, frontWants(front, hive));
+			return base == null ? "No base in reach."
+					: base.name() + " has no marines or heavy armaments above its floor to send at the levers.";
 		}
 		return null;
 	}
 
-	/** Why the board's Pull out order would send nothing now, or null if a run would sail. */
+	/** Why the Recall's lift of a front would send nothing (the Domain row's Recall is greyed with it), or null when the evacuation convoy would sail. */
 	public static String pullOutBlockReason(FactionAPI faction, MarketAPI hive) {
 		ThreatGroundFronts.GroundFront front = hive != null
 				? ThreatGroundFronts.getFront(hive.getId()) : null;
 		if (front == null || faction == null) return "No front there.";
 		if (!ThreatIncConfig.frontRunsEnabled()) return "Front runs are disabled in the mod settings.";
-		if (convoyBoundForFront(hive.getId())) return "A run is already on its way there.";
-		String refused = canRunTo(faction, hive);
-		if (refused != null) return refused;
+		if (pickupBoundFor(hive.getId())) return "An evacuation convoy is already on its way there.";
 		if (pickFrontBase(faction, hive, true, new float[] {0f, 0f}) == null) return "No base in reach.";
 		return null;
 	}
 
-	/** The board's Pull out order: a pickup run for this front now. Refused on a contested orbit. */
+	/**
+	 * What the Recall's lift does, for its tooltip and confirm: "An evacuation convoy from Haven
+	 * lifts the 288 marines and 101 heavy armaments off Ogre." - and, while the orbit is contested,
+	 * that it waits at the door (frontRunWaitDays at most, then home).
+	 */
+	public static String pullOutText(FactionAPI faction, MarketAPI hive) {
+		String why = pullOutBlockReason(faction, hive);
+		if (why != null) return why;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+		ThreatBases.Base base = pickFrontBase(faction, hive, true, new float[] {0f, 0f});
+		String text = "An evacuation convoy from " + base.name() + " lifts the "
+				+ Misc.getWithDGS((int) front.marines) + " marines and " + Misc.getWithDGS((int) front.armaments)
+				+ " heavy armaments off " + hive.getName() + ".";
+		if (canRunTo(faction, hive) != null) {
+			text += " It waits at the door while the orbit is contested, "
+					+ (int) ThreatIncConfig.frontRunWaitDays() + " days at most.";
+		}
+		return text;
+	}
+
+	/**
+	 * The Recall's lift of a front (the board's Pull out order until 2026-10-30 evening): the front
+	 * is marked for withdrawal and the evacuation convoy sails NOW from the nearest base - the
+	 * user, 2026-10-30: "recall should send convoy here to retrieve marines and arms". It waits at
+	 * the door while the orbit is contested (poll, frontRunWaitDays at most) and lifts the front
+	 * whole when it lands; a supply run already bound there lands first or finds no front and
+	 * goes home. Until then a contested orbit or a run at sea refused the order outright, and the
+	 * player's fronts have no planner pass to retry it (planLogistics skips the player, 2026-10-30
+	 * evening). Returns the convoy, or null when none sailed.
+	 */
 	public static Convoy pullOutFront(MarketAPI hive, FactionAPI faction, Random random) {
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
 		if (front == null || faction == null || !ThreatIncConfig.frontRunsEnabled()) return null;
-		if (convoyBoundForFront(hive.getId())) return null;
-		if (canRunTo(faction, hive) != null) return null;
+		if (pickupBoundFor(hive.getId())) return null;
 		ThreatBases.Base base = pickFrontBase(faction, hive, true, new float[] {0f, 0f});
 		if (base == null) return null;
 		front.withdrawRequested = true;
-		return dispatchFrontRun(base, hive, front, faction, new float[] {0f, 0f}, true, random);
+		Convoy c = dispatchFrontRun(base, hive, front, faction, new float[] {0f, 0f}, true, random);
+		if (c == null) front.withdrawRequested = false;
+		return c;
 	}
 
 	/**
@@ -2093,7 +2152,12 @@ public class ThreatConvoys {
 		if (!c.runningIn) {
 			// the same door canRunTo keeps: our own escort or orbit cover over the
 			// planet lets the run in
-			if (canRunTo(fleet.getFaction(), hive) != null) {
+			// (an ally's run to the player's front, 2026-10-31: the player's cover opens it too)
+			String door = canRunTo(fleet.getFaction(), hive);
+			if (door != null && c.recipientFactionId != null) {
+				door = canRunTo(Global.getSector().getFaction(c.recipientFactionId), hive);
+			}
+			if (door != null) {
 				long now = Global.getSector().getClock().getTimestamp();
 				if (c.waitSinceTimestamp == 0L) {
 					c.waitSinceTimestamp = now;
@@ -2153,6 +2217,8 @@ public class ThreatConvoys {
 			}
 			ThreatIncConfig.log("Supply run delivered at " + hive.getName() + ": " + marines
 					+ " marines, " + armaments + " armaments");
+			// an ally's run answering the player's call (ThreatAidRequests, 2026-10-31): received and charged
+			if (c.recipientFactionId != null && c.requestId != null) ThreatAidRequests.onConvoyLanded(c, ThreatBases.of(hive));
 		}
 		all().remove(c);
 		// home on the tracked leg: survivors and any undelivered cargo return to
@@ -3373,13 +3439,13 @@ public class ThreatConvoys {
 
 		// another faction's colony: the player's standing, an ally's word
 		FactionAPI sender = Global.getSector().getFaction(c.factionId);
-		if (c.recipientFactionId != null && sender != null && base.market != null) {
-			if (sender.isPlayerFaction()) {
+		if (c.recipientFactionId != null && sender != null) {
+			if (sender.isPlayerFaction() && base.market != null) {
 				ThreatAid.onDelivered(base.market, c.recipientFactionId, marines, armaments, fuel,
 						supplies, ships, true, null, weights);
 			} else {
 				// an answer to the player's request for aid lands: the part is received and charged (ThreatAidRequests); any other ally's convoy, its word
-				if (!ThreatAidRequests.onConvoyLanded(c, base.market)) ThreatCoalition.onAllyDelivered(c, base.market);
+				if (!ThreatAidRequests.onConvoyLanded(c, base) && base.market != null) ThreatCoalition.onAllyDelivered(c, base.market);
 			}
 		}
 

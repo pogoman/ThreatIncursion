@@ -213,8 +213,7 @@ others midline) tied to a `station_built_from_industry` entity orbiting the plan
 its fleet lives, `checkWaveArrivals` refuses to found a colony there (the wave stays and
 fights). Player pays `outpostCredits` (150,000); an NPC base pays `outpostSupplies` /
 `outpostFuel` above its floor; NPC factions raise none since 2026-10-18 (the purged-world
-founding `planNPC` was removed, docs/frontlines.md). Faction view: a "Purged worlds in reach" table
-with an **Outpost** button. A dead station is a lost outpost (fast poll). Until 2026-09-06
+founding `planNPC` was removed, docs/frontlines.md). Faction view: a "Purged worlds in reach" table with an **Outpost** button until 2026-10-30 evening; since, a "Purged" row of the player's Domain table with the same button (`ThreatFactionView`, docs/war-board.md "The Domain table"). A dead station is a lost outpost (fast poll). Until 2026-09-06
 outposts also sat in the fleets table with a Recall that scuttled them - see "Storage and
 orders" below for what replaced that.
 

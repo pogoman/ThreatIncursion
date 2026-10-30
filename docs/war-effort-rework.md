@@ -90,7 +90,37 @@ deficit; what it lacks is the *purpose* and the *size*. Changes, all within the 
 
 ## 3. Requesting aid for the player's colonies
 
-**Since 2026-10-29 evening (the user: "i want to rework the request and aid system"; BUILT jar
+**Since 2026-10-31 (the user: "buttons below Requests table header for each type like we have on
+domains, but these are just on/off toggles. when toggle active that counts as you asking the sector
+for the given commodity. the table then will have responses from other factions which you can
+accept or ignore to clear"; BUILT jar 17:24:55, untested):** a call is a **toggle**, not an order's
+by-product. The Requests row holds Colony (the Domain entry: a colony, a front's hive world, an
+outpost) and a button a good, On or Off (`ThreatAidRequests.Call`, `toggle`). Each candidate faction
+looks once a day (`check`) and **offers** rather than sails (`Offer`, `quote`: all that its colony
+sparing the most in reach spares, cut to the standing budget, at the Max price rate - there is no
+tier any more); the player **accepts** (the convoy sails now - to a colony or outpost as a plain
+convoy, to a front as a supply run, `ThreatConvoys.aidFrontRun`), **rejects** (the faction is
+declined on that call until it is toggled again) or **cancels** an accepted one at sea (home,
+nothing charged). Charged on receipt as before; a delivered offer leaves the table and the faction
+may offer again while the call stands. The same evening (the user: "factions should only make offers
+from surplus colonies ... if they suddenly need those marines they should recall the offer ... the
+speed in which a faction responds to offer should be determined by how preoccupied they are with the
+war ... player should be able to send aid to unfavourable factions to increase rep, they just wont
+send back unless favourable"; BUILT jar 17:56:40, untested): a colony offers only with its reserve
+of the good in the white state (`holdsSurplus`) and offers what it holds above its own keep
+(`offerSpare` - the staging bank `ThreatConvoys.spare` holds back is not kept: an accepted offer is
+the faction's choice to spend it); an offer it can no longer make is withdrawn ("Offer Withdrawn");
+its looks come `aidRequestCheckDays` x (1 + besetness x `aidRequestBesetDelay`) days apart
+(`checkDays(helper)`); the table draws no row for an unanswered call, Reject reads Dismiss, ETA shows
+the quoted passage before acceptance, and the Colony button clears every call (`clearCalls`). The
+player may send aid to any faction not at war with them (`threatinc_aidMinRelation` -1); an NPC
+faction answers the player's calls only from Favourable (`willingness`), and NPC-to-NPC aid
+(`ThreatCoalition.allyAid`) still changes no standing - nothing in vanilla or the mod ever restores
+an NPC-to-NPC standing, so a charge would be permanent - the user's decision 2026-10-31: "No charge"; `ThreatCoalition.allyAid` stays free. The war board section in
+docs/war-board.md "The calls and the offers" has the table. The paragraphs below are the earlier
+flows the rest still follows.
+
+**From 2026-10-29 evening to 2026-10-31 (the user: "i want to rework the request and aid system"; BUILT jar
 19:43:00, untested):** no Request button. A request is logged from a **Transfer or Deploy that
 cannot meet what the colony needs** at the colonies table's levers: after the order sails (at once
 when nothing can sail) the order's own intel confirm box (`ThreatFactionView.addOrderPrompt`, since

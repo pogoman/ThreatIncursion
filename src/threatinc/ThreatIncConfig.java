@@ -783,6 +783,8 @@ public class ThreatIncConfig {
 	public static float expeditionTransportMult() { return f("threatinc_expeditionTransportMult"); }
 	/** Whether mobilised factions run supply convoys between their colonies. */
 	public static boolean convoyEnabled()     { return b("threatinc_convoyEnabled", true); }
+	/** Whether the player's colonies run their own convoys unordered - staging stock, relief, front runs, outpost returns (the user, 2026-10-30: "nothing moves unless player orders it"). */
+	public static boolean playerAutoConvoys() { return b("threatinc_playerAutoConvoys", false); }
 	/** The reference marine load a worthwhile sailing is measured in, and a pooled haul billed per (ThreatConvoys.haulPerUnit) - not a cap (2026-09-29). */
 	public static float convoyMarineCapacity() { return f("threatinc_convoyMarineCapacity"); }
 	/** The reference cargo load (armaments, fuel, supplies) a worthwhile sailing is measured in, and a pooled haul billed per - not a cap (2026-09-29). */
@@ -1078,6 +1080,8 @@ public class ThreatIncConfig {
 	public static float aidRequestCheckDays()  { return f("threatinc_aidRequestCheckDays"); }
 	/** How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) gates its answer: it answers nothing while besetness x this outweighs the player's standing (ThreatAidRequests.willingness; 0 always answers). */
 	public static float aidRequestBesetWeight() { return f("threatinc_aidRequestBesetWeight"); }
+	/** How a faction's besetness stretches the days between its looks at a call (2026-10-31): x (1 + besetness x this). */
+	public static float aidRequestBesetDelay() { return f("threatinc_aidRequestBesetDelay"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }

@@ -44,6 +44,7 @@ threatinc_npcGrandFleet,Grand Fleets,Boolean,true,Each faction attacks as one gr
 threatinc_grandFleetShare,Grand Fleet Share of Navy,Double,0.5,The share of its navy a faction sends as its grand fleet.,0.1,1
 threatinc_allyAidEnabled,Allies Help Each Other,Boolean,true,"Factions guard and resupply each other's colonies by standing, yours included.",,
 threatinc_convoyEnabled,Convoys,Boolean,true,"Factions ship marines, fuel and supplies between their colonies in real convoys.",,
+threatinc_playerAutoConvoys,Your Convoys Sail Themselves,Boolean,false,"Your colonies stock each other, relieve and resupply your fronts unordered. Off: nothing of yours sails unless you order it from the board.",,
 threatinc_frontlinesEnabled,Forward Bases,Boolean,false,Factions found small outposts toward hives their bases cannot reach. Off dismantles any standing.,,
 threatinc_outpostsEnabled,Outposts,Boolean,true,"Orbital stations over uncolonised worlds that keep the swarm from seeding them, yours and the factions'.",,
 threatinc_outpostTier,Outpost Tier,Int,1,"1 orbital station, 2 battlestation, 3 star fortress.",1,3
@@ -55,7 +56,8 @@ threatinc_aidEnabled,Aid to Other Factions,Boolean,true,Send task forces and con
 threatinc_aidRequestsEnabled,Request Aid,Boolean,true,Call friendly factions for what a Transfer or Deploy of yours cannot meet.,,
 threatinc_aidRequestCheckDays,Request Check Days,Double,1,Days between each friendly faction's looks at a request for aid.,0.5,30
 threatinc_aidRequestBesetWeight,Request Beset Weight,Double,1.0,"How a faction's own worlds under the Threat gate its answer: 0 always answers, 1 a faction with half its worlds beset answers only from half way to Cooperative.",0,2
-threatinc_aidCommsEnabled,War Comms,Boolean,true,Notices from colonies when they need something. Off silences them.,,
+threatinc_aidRequestBesetDelay,Request Beset Delay,Double,3.0,"How much slower a beset faction looks at your calls: its check days x (1 + beset share x this).",0,10
+threatinc_aidCommsEnabled,War Comms,Boolean,false,Notices from colonies when they need something (off by default since 2026-10-31: the war board's Requests tables show it).,,
 threatinc_missionBaseReward,Contract Reward per Hive Size,Double,150000,Credits a contract pays per size of its target.,25000,1000000
 threatinc_maxPostedMissions,Contracts on Offer,Int,3,Contracts offered at once.,1,6
 threatinc_swarmBountiesEnabled,Swarm Bounties,Boolean,true,Factions whose sieges are outweighed post bounties on Threat ships.,,

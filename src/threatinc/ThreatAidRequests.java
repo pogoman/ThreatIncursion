@@ -4,11 +4,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import org.lwjgl.util.vector.Vector2f;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
@@ -24,29 +25,31 @@ import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * REQUESTS FOR AID (reworked 2026-10-29 evening, the user: "i want to rework the request and aid
- * system"; docs/war-effort-rework.md section 3). A request is logged from the war board when a
- * Transfer or Deploy at the colonies table's levers cannot meet what the player's colony needs
- * ({@link #transferShortfall}, {@link #deployShortfall}; the yes / no prompt is
- * the confirm box {@link ThreatIncursionIntel#buttonPressConfirmed} opens): one request a world, a {@link Part} a good - or the task force,
- * {@link ThreatNeeds#FLEETS}, a Deploy's relief - at the lever's tier. It stands until every part
- * has landed or the player withdraws it ({@link #withdraw}), however long that takes. Every
- * candidate faction (Favourable or better, not hostile, {@link #candidates}) looks at it once a
- * day ({@link #check}, aidRequestCheckDays apart, on its own clock) and ACCEPTS a part it has the
- * capacity for ({@link #tryAccept}): Max is all that ONE colony of its spares of the good, Med
- * half of it (the colony sparing the most in reach, {@link #donors}); the task force is that share
- * of the hulls its navy has free, as a guard from its nearest base. The convoy or fleet sails at
- * once with an ETA ({@link #eta}). Nothing while the share of its worlds the Threat besets
- * outweighs the player's standing with it ({@link #willingness}). The price is standing, a WHOLE
- * number of points charged on receipt ({@link #charge}: the goods' value at the player's market
- * over aidRepPerCredits, a guard's points x aidRepGuardArrived / 100, times the tier's price,
- * aidAskPriceMed / Max), never below Favourable, set straight on the relationship so vanilla plays
- * neither its message nor its sound. A convoy or fleet lost at sea costs nothing and the part
- * reopens ({@link #settleLost}). The faction boards list the open requests
- * (ThreatFactionView.addRequests), the player's tab with every answer, a faction's tab with its
- * own. Before this (2026-10-23 to 2026-10-29 noon) a Request was a button on a sieged world's row,
- * answered once after a fixed wait by every faction at a willingness; its answers were one intel
- * entry (ThreatAidAnswersIntel, retired).
+ * CALLS FOR AID AND THE OFFERS THAT ANSWER THEM (the user, 2026-10-31: "buttons below Requests
+ * table header for each type like we have on domains, but these are just on/off toggles. when
+ * toggle active that counts as you asking the sector for the given commodity. the table then will
+ * have responses from other factions which you can accept or ignore"; docs/war-effort-rework.md
+ * section 3). A {@link Call} is a standing toggle on the war board's Requests row: one Domain entry
+ * (a colony of the player's, an outpost, or a hive world their landing attacks - the Colony button
+ * cycles them) and one good (Fuel, Supplies, Marines, Arms, Hulls). While it stands every candidate
+ * faction (Favourable or better, not hostile, {@link #candidates}) looks at it once a day on its
+ * own clock ({@link #check}, aidRequestCheckDays) and OFFERS what it can send ({@link #quote}): all
+ * that one colony of its spares of the good (the colony sparing the most in reach, {@link #donors}),
+ * at least {@link #minSpare}, cut to the standing the player can spend with it without dropping
+ * below Favourable. An {@link Offer} stands on the table until the player ACCEPTS it ({@link #accept}:
+ * the convoy sails now - a plain convoy to a colony or outpost, a supply run to a front - with an
+ * ETA, {@link #eta}) or REJECTS it ({@link #reject}: the faction offers nothing more on that call
+ * until it is toggled off and on). An accepted offer can be CANCELLED while at sea ({@link #cancel}:
+ * the convoy turns home, nothing charged). The price is standing, a WHOLE number of points charged
+ * on receipt ({@link #charge}: the goods' value at the player's prices over aidRepPerCredits times
+ * aidAskPriceMax), never below Favourable, set straight on the relationship so vanilla plays
+ * neither its message nor its sound. A convoy lost at sea costs nothing ({@link #settleLost}). A
+ * delivered offer leaves the table; with the call still on the faction may offer again.
+ *
+ * <p>Before this (2026-10-29 evening to 2026-10-30) a request was logged from a Transfer or Deploy
+ * short of the colony's needs, one {@link Request} a world with a {@link Part} a good, and the
+ * factions accepted and sailed on their own; those classes stay so an older save loads, and its
+ * open parts become calls, its parts at sea accepted offers ({@link #migrateOld}).
  *
  * <p>The mission board is gone since 2026-10-23: until then this class posted vanilla missions
  * ({@link ThreatAidMissionIntel}) for the same shortages. Its readers of a colony's state -
@@ -56,57 +59,46 @@ public class ThreatAidRequests {
 
 	/** Persistent: "marketId:commodityId" -> when its deficit was first seen. */
 	public static final String KEY_SHORTAGE = "threatinc_aidShortageSince";
-	/** Persistent: the player's requests. */
+	/** Persistent until 2026-10-31: the player's requests (Request / Part); read once to migrate. */
 	public static final String KEY_CALLS = "threatinc_aidCalls";
 	/** Persistent until 2026-10-29 evening (the one-request-a-world cooldown); cleared on the first tick. */
 	public static final String KEY_ASKED = "threatinc_aidAskedAt";
+	/** Persistent: the standing calls (2026-10-31). */
+	public static final String KEY_STANDING = "threatinc_aidStanding";
+	/** Persistent: the offers, open and accepted (2026-10-31). */
+	public static final String KEY_OFFERS = "threatinc_aidOffers";
 
-	/** One part of a request: one good, or the task force ({@link ThreatNeeds#FLEETS}), at a lever's tier. */
+	/** A call's target kind: a colony of the player's, their outpost, or the hive world their landing attacks. */
+	public static final String KIND_COLONY = "colony", KIND_OUTPOST = "outpost", KIND_FRONT = "front";
+
+	/** One part of an older save's request: one good, or the task force ({@link ThreatNeeds#FLEETS}), at a lever's tier. Read only to migrate. */
 	public static class Part {
-		/** A commodity id (ThreatReserves.AID_COMMODITIES), or ThreatNeeds.FLEETS. */
 		public String good;
-		/** 1 Med - half of what the answering colony spares; 2 Max - all of it. */
 		public int tier;
-		/** The faction that accepted it; null while it is open. */
 		public String factionId;
-		/** Units (fleet points for the task force) sailing; before acceptance, the shortfall the prompt quoted. */
 		public float amount;
-		/** The colony or base it sails from. */
 		public String fromName;
 		public String fromMarketId;
 		public long acceptedAt;
-		/** Days the passage was estimated at when it was accepted ({@link ThreatAidRequests#eta}). */
 		public float etaDays;
 		public boolean delivered;
-		/** Standing points charged on receipt - a whole number. */
 		public int price;
-		/** factionId -> why it could not take the part at its last check. */
 		public Map<String, String> reasons = new HashMap<String, String>();
 
 		public boolean open() { return factionId == null; }
 		public boolean atSea() { return factionId != null && !delivered; }
 		public boolean isFleets() { return ThreatNeeds.FLEETS.equals(good); }
-		public Map<String, String> reasons() {
-			if (reasons == null) reasons = new HashMap<String, String>();
-			return reasons;
-		}
 	}
 
-	/** One request of the player's for one of their colonies. */
+	/** An older save's request (2026-10-23 to 2026-10-30). Read only to migrate. */
 	public static class Request {
-		/** Unique: the market id and the clock when first logged (a convoy or order carries it, requestId). */
 		public String id;
 		public String marketId;
 		public String purpose;
-		/** Until 2026-10-28 the one good asked for; read only to migrate an older save's request ({@link #migrate}). */
 		public String good;
-		/** Until 2026-10-28 its tier; read only to migrate. */
 		public int tier;
-		/** 2026-10-28 to 2026-10-29 noon: the levers when asked, AID_COMMODITIES order; read only to migrate. */
 		public int[] tiers;
-		/** Until 2026-10-29 noon: a task force was asked for too; read only to migrate. */
 		public boolean fleets;
-		/** Until 2026-10-29 noon: the Fleet lever when asked; read only to migrate. */
 		public int fleetTier;
 		public boolean goodsDone;
 		public boolean fleetsDone;
@@ -114,38 +106,64 @@ public class ThreatAidRequests {
 		public boolean noAnswerNotified;
 		public float sent;
 		public int senders;
-		/** The parts (2026-10-29 evening). */
 		public List<Part> parts;
-		/** factionId -> when it last looked at the request. */
 		public Map<String, Long> checkedAt;
-		/** Withdrawn by the player with parts still at sea: hidden, checked no more, gone when the last lands or is lost. */
 		public boolean withdrawn;
 
 		public List<Part> parts() {
 			if (parts == null) parts = new ArrayList<Part>();
 			return parts;
 		}
+	}
+
+	/** A standing call: one Domain entry asking the sector for one good, from when it was toggled on. */
+	public static class Call {
+		/** The reserve key of the target (ThreatBases.Base.id: a market id or an outpost's station id). */
+		public String targetId;
+		/** {@link #KIND_COLONY}, {@link #KIND_OUTPOST} or {@link #KIND_FRONT}. */
+		public String kind;
+		/** A commodity id (ThreatReserves.AID_COMMODITIES). */
+		public String good;
+		public long since;
+		/** The factions whose offer the player rejected or cancelled: they offer nothing more until the call is toggled again. */
+		public List<String> declined;
+		/** factionId -> when it last looked. */
+		public Map<String, Long> checkedAt;
+
+		public List<String> declined() {
+			if (declined == null) declined = new ArrayList<String>();
+			return declined;
+		}
 
 		public Map<String, Long> checkedAt() {
 			if (checkedAt == null) checkedAt = new LinkedHashMap<String, Long>();
 			return checkedAt;
 		}
+	}
 
-		/** Every part has landed. */
-		public boolean done() {
-			for (Part p : parts()) if (!p.delivered) return false;
-			return true;
-		}
+	/** One faction's answer to a call: what it would send from where at what price; accepted, what sails. */
+	public static class Offer {
+		/** Unique; a convoy or order carries it (requestId) once accepted. */
+		public String id;
+		public String targetId;
+		public String good;
+		public String factionId;
+		public String fromMarketId;
+		public String fromName;
+		/** Units offered; once accepted, what sails. */
+		public float amount;
+		/** Days the passage is estimated at ({@link #eta}), from acceptance. */
+		public float etaDays;
+		/** Standing points charged on receipt - a whole number. */
+		public int price;
+		public long offeredAt;
+		/** 0 while the offer waits on the player. */
+		public long acceptedAt;
+		public boolean delivered;
 
-		public boolean anyAtSea() {
-			for (Part p : parts()) if (p.atSea()) return true;
-			return false;
-		}
-
-		public boolean anyOpen() {
-			for (Part p : parts()) if (p.open()) return true;
-			return false;
-		}
+		public boolean accepted() { return acceptedAt != 0L; }
+		public boolean atSea() { return accepted() && !delivered; }
+		public boolean isFleets() { return ThreatNeeds.FLEETS.equals(good); }
 	}
 
 	@SuppressWarnings("unchecked")
@@ -158,6 +176,7 @@ public class ThreatAidRequests {
 		return (Map<String, Long>) val;
 	}
 
+	/** An older save's requests, migrated and emptied on the first tick. */
 	@SuppressWarnings("unchecked")
 	public static List<Request> requests() {
 		Object val = Global.getSector().getPersistentData().get(KEY_CALLS);
@@ -166,6 +185,26 @@ public class ThreatAidRequests {
 			Global.getSector().getPersistentData().put(KEY_CALLS, val);
 		}
 		return (List<Request>) val;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<Call> calls() {
+		Object val = Global.getSector().getPersistentData().get(KEY_STANDING);
+		if (!(val instanceof List)) {
+			val = new ArrayList<Call>();
+			Global.getSector().getPersistentData().put(KEY_STANDING, val);
+		}
+		return (List<Call>) val;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<Offer> offers() {
+		Object val = Global.getSector().getPersistentData().get(KEY_OFFERS);
+		if (!(val instanceof List)) {
+			val = new ArrayList<Offer>();
+			Global.getSector().getPersistentData().put(KEY_OFFERS, val);
+		}
+		return (List<Offer>) val;
 	}
 
 	protected static String key(MarketAPI market, String commodityId) {
@@ -180,22 +219,25 @@ public class ThreatAidRequests {
 	}
 
 	/**
-	 * Every half day (IncursionManager.advance's interval, 2026-10-29 night - on the 30-day tick no faction ever looked):
-	 * each faction's look at the player's requests once aidRequestCheckDays have passed since its last, and what was lost at sea.
+	 * Every half day (IncursionManager.advance's interval): each faction's look at the standing calls
+	 * once aidRequestCheckDays have passed since its last ({@link #check}), and what was lost at sea.
 	 */
 	public static void tick(Random random) {
 		if (!ThreatWarState.enabled()) return;
 		if (!ThreatIncConfig.aidRequestsEnabled()) return;
-		for (Request r : new ArrayList<Request>(requests())) {
-			migrate(r);
-			MarketAPI market = Global.getSector().getEconomy().getMarket(r.marketId);
-			if (market == null || !market.isPlayerOwned()) {
-				requests().remove(r);
+		migrateOld();
+		for (Offer o : new ArrayList<Offer>(offers())) {
+			if (o.atSea()) settleLost(o);
+		}
+		for (Call c : new ArrayList<Call>(calls())) {
+			ThreatBases.Base target = resolveTarget(c.targetId);
+			if (target == null || requestOffReason(target) != null) {
+				// the world changed hands, the outpost fell, the front is gone: the call ends with it
+				ThreatIncConfig.log("Aid call dropped for " + c.targetId + " (" + c.good + "): the target is gone");
+				dropCall(c);
 				continue;
 			}
-			settleLost(r, market);
-			if (!r.withdrawn) check(r, market, random);
-			if (r.withdrawn && !r.anyAtSea()) requests().remove(r);
+			check(c, target, random);
 		}
 	}
 
@@ -222,413 +264,568 @@ public class ThreatAidRequests {
 	}
 
 	// ------------------------------------------------------------------
-	// the player's requests
+	// the targets
 	// ------------------------------------------------------------------
 
-	/** The standing request for the player's colony, or null (a withdrawn one with parts still at sea is not one). */
-	public static Request requestAt(MarketAPI market) {
-		if (market == null) return null;
-		for (Request r : requests()) {
-			if (!r.withdrawn && market.getId().equals(r.marketId)) {
-				migrate(r);
-				return r;
-			}
+	/** A call's target by its reserve key: a colony or outpost (ThreatBases.of), else the hive world of a front. */
+	public static ThreatBases.Base resolveTarget(String id) {
+		if (id == null) return null;
+		ThreatBases.Base b = ThreatBases.of(id);
+		if (b != null) return b;
+		return ThreatBases.of(ThreatIncData.resolveColonyMarket(id));
+	}
+
+	/** The kind of target: an outpost, the hive world of the player's landing, else a colony. */
+	public static String kindOf(ThreatBases.Base target) {
+		if (target == null) return KIND_COLONY;
+		if (target.isOutpost()) return KIND_OUTPOST;
+		if (target.market != null && ThreatGroundFronts.isHiveTarget(target.market)) return KIND_FRONT;
+		return KIND_COLONY;
+	}
+
+	/** The player's front on the target, for a front call; null otherwise. */
+	public static ThreatGroundFronts.GroundFront frontAt(ThreatBases.Base target) {
+		if (target == null || target.market == null) return null;
+		ThreatGroundFronts.GroundFront f = ThreatGroundFronts.getFront(target.market.getId());
+		return f != null && f.isPlayerOwned() ? f : null;
+	}
+
+	/** Why the player cannot call for aid for this target now, or null when they can. */
+	public static String requestOffReason(ThreatBases.Base target) {
+		if (!ThreatIncConfig.aidRequestsEnabled()) return "Requests for aid are disabled in the mod settings.";
+		if (target == null) return "No target.";
+		if (!ThreatWarState.isAtWar(Factions.PLAYER)) return "Your faction is not mobilised.";
+		String kind = kindOf(target);
+		if (KIND_FRONT.equals(kind)) {
+			if (frontAt(target) == null) return "No landing of yours on " + target.name() + ".";
+			return null;
 		}
+		if (!Factions.PLAYER.equals(target.factionId())) return "Not yours.";
 		return null;
 	}
 
-	/** Every standing request, oldest first. */
-	public static List<Request> open() {
-		List<Request> out = new ArrayList<Request>();
-		for (Request r : requests()) {
-			if (r.withdrawn) continue;
-			migrate(r);
-			out.add(r);
+	/** Why the good cannot be called for at this target (a front takes marines and arms; an outpost has no hull pool), or null. */
+	public static String goodOffReason(ThreatBases.Base target, String good) {
+		String kind = kindOf(target);
+		if (ThreatNeeds.FLEETS.equals(good)) return null; // a defence fleet can be called over any of them (2026-10-31)
+		if (KIND_FRONT.equals(kind) && !Commodities.MARINES.equals(good) && !Commodities.HAND_WEAPONS.equals(good)) {
+			return "A front takes marines, heavy armaments and a defence fleet.";
 		}
+		if (KIND_OUTPOST.equals(kind) && Commodities.SHIPS.equals(good)) return "An outpost has no hull pool.";
+		if (ThreatAid.index(good) < 0) return "Not a good a convoy carries.";
+		return null;
+	}
+
+	// ------------------------------------------------------------------
+	// the calls
+	// ------------------------------------------------------------------
+
+	/** The standing call for the target and good, or null. */
+	public static Call callAt(String targetId, String good) {
+		if (targetId == null || good == null) return null;
+		for (Call c : calls()) if (targetId.equals(c.targetId) && good.equals(c.good)) return c;
+		return null;
+	}
+
+	public static boolean isCalling(String targetId, String good) {
+		return callAt(targetId, good) != null;
+	}
+
+	/** The standing calls, oldest first. */
+	public static List<Call> open() {
+		List<Call> out = new ArrayList<Call>(calls());
+		Collections.sort(out, new Comparator<Call>() {
+			public int compare(Call a, Call b) { return Long.compare(a.since, b.since); }
+		});
 		return out;
 	}
 
-	protected static Request byId(String id) {
-		if (id == null) return null;
-		for (Request r : requests()) {
-			migrate(r);
-			if (id.equals(r.id)) return r;
-		}
-		return null;
-	}
-
-	/** The request's part of the good not yet landed, or null. */
-	protected static Part find(Request r, String good) {
-		for (Part p : r.parts()) if (!p.delivered && good != null && good.equals(p.good)) return p;
-		return null;
-	}
-
-	/** Why the player cannot call for aid for this world now, or null when they can. */
-	public static String requestOffReason(MarketAPI market) {
-		if (!ThreatIncConfig.aidRequestsEnabled()) return "Requests for aid are disabled in the mod settings.";
-		if (market == null || !market.isPlayerOwned()) return "Not your colony.";
-		if (!ThreatWarState.isAtWar(Factions.PLAYER)) return "Your faction is not mobilised.";
-		return null;
-	}
-
 	/**
-	 * Logs the request for the world, or adds to the one standing: a part for each short good at
-	 * its lever's tier - an open part of the same good is retiered, one already accepted left as it
-	 * is. Every faction looks at it on the next tick, then a day apart. Null when nothing was asked.
+	 * The player flips the call for the good at the target: on, the sector is asked (every candidate
+	 * faction looks on its next day); off, the open offers under it are dropped - an accepted one
+	 * still sails, with its Cancel. True when the call now stands.
 	 */
-	public static Request request(MarketAPI market, List<Part> shorts) {
-		if (requestOffReason(market) != null || shorts == null || shorts.isEmpty()) return null;
-		Request r = requestAt(market);
-		if (r == null) {
-			r = new Request();
-			r.since = Global.getSector().getClock().getTimestamp();
-			r.id = market.getId() + ":" + r.since;
-			r.marketId = market.getId();
-			r.purpose = "the defence of " + market.getName();
-			r.parts = new ArrayList<Part>();
-			requests().add(r);
+	public static boolean toggle(ThreatBases.Base target, String good) {
+		if (target == null || good == null) return false;
+		Call c = callAt(target.id(), good);
+		if (c != null) {
+			dropCall(c);
+			ThreatIncConfig.log("Aid call off for " + target.name() + ": " + good);
+			ThreatNotice.titled("Call Withdrawn").icon(target.market != null ? target.market.getFaction()
+					: Global.getSector().getPlayerFaction())
+					.line("%s withdraws its call for %s", targetNotice(target), ThreatReserves.label(good)).send();
+			return false;
 		}
-		List<String> asked = new ArrayList<String>();
-		for (Part s : shorts) {
-			if (s == null || s.good == null) continue;
-			int tier = Math.max(1, Math.min(2, s.tier));
-			Part have = find(r, s.good);
-			if (have != null && !have.open()) continue;
-			if (have != null) {
-				have.tier = tier;
-				have.reasons().clear();
-				asked.add(askLabel(have));
-			} else {
-				Part p = new Part();
-				p.good = s.good;
-				p.tier = tier;
-				r.parts().add(p);
-				asked.add(askLabel(p));
-			}
-		}
-		if (asked.isEmpty()) return r;
-		r.checkedAt().clear();
-		ThreatIncConfig.log("Aid requested for " + market.getName() + ": " + ThreatWarBoard.join(asked));
-		// an SOS (the user, 2026-10-29 night: "you dont know if anyone is coming"): the call, nothing of how
-		// it is answered; a call a good (2026-10-30: "a request for each resource type ... so different
-		// factions can answer each"), one line each
-		ThreatNotice n = ThreatNotice.titled("Distress Call").icon(market.getFaction());
-		for (String a : asked) n.line("%s calls for %s", ThreatNotice.market(market), a);
-		n.send();
-		return r;
-	}
-
-	/**
-	 * The player withdraws the call for one good (null: every open one): the open part is dropped; a
-	 * part already sailing still lands, and is still charged on receipt. The request goes when no
-	 * part is left open or at sea. False with nothing open to withdraw.
-	 */
-	public static boolean withdraw(MarketAPI market, String good) {
-		Request r = requestAt(market);
-		if (r == null) return false;
-		Part dropped = null;
-		for (Iterator<Part> it = r.parts().iterator(); it.hasNext();) {
-			Part p = it.next();
-			if (!p.open()) continue;
-			if (good != null && !good.equals(p.good)) continue;
-			dropped = p;
-			it.remove();
-		}
-		if (dropped == null) return false;
-		if (!r.anyOpen()) r.withdrawn = true;
-		boolean sailing = r.anyAtSea();
-		if (!r.anyOpen() && !sailing) requests().remove(r);
-		ThreatNotice.titled("Call Withdrawn").icon(market.getFaction())
-				.line("%s withdraws its call for %s", ThreatNotice.market(market),
-						good != null ? goodLabel(dropped) : "aid").send();
-		ThreatIncConfig.log("Aid request withdrawn for " + market.getName() + (good != null ? " (" + good + ")" : "")
-				+ (sailing ? " (parts at sea)" : ""));
+		if (requestOffReason(target) != null || goodOffReason(target, good) != null) return false;
+		c = new Call();
+		c.targetId = target.id();
+		c.kind = kindOf(target);
+		c.good = good;
+		c.since = Global.getSector().getClock().getTimestamp();
+		calls().add(c);
+		ThreatIncConfig.log("Aid call on for " + target.name() + ": " + good);
+		// an SOS (the user, 2026-10-29 night: "you dont know if anyone is coming"): the call, nothing of who answers
+		ThreatNotice.titled("Distress Call").icon(target.market != null ? target.market.getFaction()
+				: Global.getSector().getPlayerFaction())
+				.line("%s calls for %s", targetNotice(target), ThreatReserves.label(good)).send();
 		return true;
 	}
 
+	/** Every call goes (the Colony button moved on, 2026-10-31: "changing colony toggle resets all to off"); accepted offers sail on. */
+	public static void clearCalls() {
+		for (Call c : new ArrayList<Call>(calls())) dropCall(c);
+	}
+
+	/** The call and every open offer under it go; accepted offers sail on. */
+	protected static void dropCall(Call c) {
+		calls().remove(c);
+		for (Offer o : new ArrayList<Offer>(offers())) {
+			if (!o.accepted() && c.targetId.equals(o.targetId) && c.good.equals(o.good)) offers().remove(o);
+		}
+	}
+
+	/** The target's name for a notice: its market in its owner's colour, or the outpost's name highlighted. */
+	protected static Object targetNotice(ThreatBases.Base target) {
+		if (target.market != null) return ThreatNotice.market(target.market);
+		return ThreatNotice.hl(target.name());
+	}
+
 	// ------------------------------------------------------------------
-	// the shortfall a Transfer or Deploy leaves (the prompt)
+	// the offers
 	// ------------------------------------------------------------------
 
-	/**
-	 * What a Transfer at the colonies table's levers leaves short at the player's colony: a part a
-	 * good whose convoy load is under what the colony needs of it at the lever's tier
-	 * (ThreatNeeds.of, the largest need of the good; Med the med figure, Max the max). Empty for an
-	 * outpost, another faction's colony, or a lever at None. {@code load} is what the convoy would
-	 * carry, AID_COMMODITIES order; null when nothing sails. Each part's amount is the shortfall.
-	 */
-	public static List<Part> transferShortfall(MarketAPI target, int[] levers, float[] load) {
-		List<Part> out = new ArrayList<Part>();
-		if (target == null || !target.isPlayerOwned() || levers == null) return out;
-		if (!ThreatIncConfig.aidRequestsEnabled()) return out;
-		List<ThreatNeeds.Need> needs = ThreatNeeds.of(target);
-		for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length && i < levers.length; i++) {
-			int tier = levers[i];
-			if (tier <= 0) continue;
-			String good = ThreatReserves.AID_COMMODITIES[i];
-			float need = needOf(needs, good, tier);
-			float sent = load != null && i < load.length ? load[i] : 0f;
-			// short: under the colony's need of it, or nothing of it to send at all from any colony of the
-			// player's (2026-10-29 night: a world with no need on the ledger could never ask - "once i request
-			// marines at haven i cant request marines at arkoman")
-			boolean short_ = need > 0f ? sent + 0.5f < need : sent < 1f;
-			if (!short_) continue;
-			Part p = new Part();
-			p.good = good;
-			p.tier = tier;
-			p.amount = Math.max(0f, need - sent);
-			out.add(p);
-		}
+	/** The offers under a call, open and at sea, oldest first. */
+	public static List<Offer> offersFor(Call c) {
+		List<Offer> out = new ArrayList<Offer>();
+		if (c == null) return out;
+		for (Offer o : offers()) if (c.targetId.equals(o.targetId) && c.good.equals(o.good)) out.add(o);
+		Collections.sort(out, new Comparator<Offer>() {
+			public int compare(Offer a, Offer b) { return Long.compare(a.offeredAt, b.offeredAt); }
+		});
 		return out;
 	}
 
-	/**
-	 * What a Deploy leaves short: the task force, when the fleet the Hulls lever makes (what it adds
-	 * over what is deployed already) is under the colony's fleets need at the lever's tier - the
-	 * relief a request's task force is. Empty with no fleets need, the lever at None, or an outpost.
-	 */
-	public static List<Part> deployShortfall(ThreatDeploy.Plan d) {
-		List<Part> out = new ArrayList<Part>();
-		if (d == null || d.target == null || d.target.market == null || !d.target.market.isPlayerOwned()) return out;
-		if (!ThreatIncConfig.aidRequestsEnabled()) return out;
-		int tier = ThreatDeploy.hullsTier(d.levers);
-		if (tier <= 0) return out;
-		ThreatNeeds.Need n = ThreatNeeds.fleets(d.target.market);
-		if (n == null) return out;
-		float need = n.tier(tier);
-		float adds = d.ok() ? Math.max(0f, d.targetPts - d.livePts) : 0f;
-		if (need <= 0f || adds + 0.5f >= need) return out;
-		Part p = new Part();
-		p.good = ThreatNeeds.FLEETS;
-		p.tier = tier;
-		p.amount = need - adds;
-		out.add(p);
+	/** The offers at sea whose call was toggled off (still on the table, with Cancel), oldest first. */
+	public static List<Offer> strays() {
+		List<Offer> out = new ArrayList<Offer>();
+		for (Offer o : offers()) {
+			if (o.atSea() && callAt(o.targetId, o.good) == null) out.add(o);
+		}
+		Collections.sort(out, new Comparator<Offer>() {
+			public int compare(Offer a, Offer b) { return Long.compare(a.offeredAt, b.offeredAt); }
+		});
 		return out;
 	}
 
-	/** The colony's largest need of the good at the tier (1 Med, 2 Max), 0 with none. */
-	public static float needOf(List<ThreatNeeds.Need> needs, String good, int tier) {
-		float most = 0f;
-		if (needs == null || good == null) return 0f;
-		for (ThreatNeeds.Need n : needs) {
-			if (!good.equals(n.good)) continue;
-			most = Math.max(most, n.tier(tier));
+	public static Offer offerById(String id) {
+		if (id == null) return null;
+		for (Offer o : offers()) if (id.equals(o.id)) return o;
+		return null;
+	}
+
+	/** The faction's offer under the call: the open one, or the one at sea (one at a time a faction). */
+	protected static Offer offerBy(Call c, String factionId) {
+		for (Offer o : offers()) {
+			if (o.delivered) continue;
+			if (c.targetId.equals(o.targetId) && c.good.equals(o.good) && factionId.equals(o.factionId)) return o;
 		}
-		return most;
+		return null;
 	}
 
-	/** "marines, fuel and a task force" - what the parts are, no figures (the user, 2026-10-29 night: "keep all the text simple"). */
-	public static String shortText(List<Part> parts) {
-		List<String> bits = new ArrayList<String>();
-		if (parts != null) for (Part p : parts) bits.add(goodLabel(p));
-		return bits.isEmpty() ? "nothing" : ThreatWarBoard.join(bits);
-	}
-
-	/** "any marines that can be spared and some spare fuel" - what the parts call for. */
-	public static String askText(List<Part> parts) {
-		List<String> bits = new ArrayList<String>();
-		if (parts != null) for (Part p : parts) bits.add(askLabel(p));
-		return bits.isEmpty() ? "nothing" : ThreatWarBoard.join(bits);
-	}
-
-	/** "marines" / "a task force" - the part's good alone. */
-	public static String goodLabel(Part p) {
-		if (p == null) return "";
-		if (p.isFleets()) return "a task force";
-		return ThreatReserves.label(p.good);
-	}
-
-	/**
-	 * What one part calls for, in the tier's words (the user, 2026-10-30: "when you call for max
-	 * marines the request should be like Call for any marines that can be spared ... if med then
-	 * ... call for some spare reserves"): Max "any marines that can be spared", Med "some spare
-	 * marines"; the task force "any task force that can be spared" / "a modest task force".
-	 */
-	public static String askLabel(Part p) {
-		if (p == null) return "";
-		if (p.isFleets()) return p.tier >= 2 ? "any task force that can be spared" : "a modest task force";
-		String good = ThreatReserves.label(p.good);
-		return p.tier >= 2 ? "any " + good + " that can be spared" : "some spare " + good;
-	}
-
-	/** "320 marines" / "900 fleet points" - the part's amount. */
-	public static String amountText(Part p) {
-		if (p == null) return "";
-		if (p.isFleets()) return Misc.getWithDGS(Math.round(p.amount)) + " fleet points";
-		return Misc.getWithDGS(ThreatHulls.shown(p.good, p.amount)) + " " + ThreatReserves.label(p.good);
-	}
-
-	// ------------------------------------------------------------------
-	// the daily check
-	// ------------------------------------------------------------------
-
-	/** Days between one faction's looks at a request (aidRequestCheckDays, at least half a day). */
+	/** Days between one faction's looks at a call (aidRequestCheckDays, at least half a day). */
 	public static float checkDays() {
 		return Math.max(0.5f, ThreatIncConfig.aidRequestCheckDays());
 	}
 
-	/** Days until the faction looks at the request again; 0 when it has never looked. */
-	public static float nextCheckIn(Request r, FactionAPI helper) {
-		if (r == null || helper == null) return 0f;
-		Long last = r.checkedAt().get(helper.getId());
-		if (last == null) return 0f;
-		return Math.max(0f, checkDays() - Global.getSector().getClock().getElapsedDaysSince(last));
+	/**
+	 * Days between THIS faction's looks: the check days, stretched by how beset it is (the user,
+	 * 2026-10-31: "the speed in which a faction responds to offer should be determined by how preoccupied
+	 * they are with the war") - x (1 + besetness x aidRequestBesetDelay): at 3, a faction with half its
+	 * worlds under the Threat looks every 2.5 days instead of 1.
+	 */
+	public static float checkDays(FactionAPI helper) {
+		return checkDays() * (1f + besetness(helper) * Math.max(0f, ThreatIncConfig.aidRequestBesetDelay()));
 	}
 
-	/** Each candidate faction whose day has come looks at every open part ({@link #tryAccept}); the reason it could not is kept for the board. */
-	protected static void check(Request r, MarketAPI market, Random random) {
-		if (!r.anyOpen()) return;
-		long now = Global.getSector().getClock().getTimestamp();
-		for (FactionAPI helper : candidates()) {
-			Long last = r.checkedAt().get(helper.getId());
-			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last) < checkDays()) continue;
-			r.checkedAt().put(helper.getId(), now);
-			for (Part p : new ArrayList<Part>(r.parts())) {
-				if (!p.open()) continue;
-				String why = tryAccept(r, market, p, helper, random);
-				if (why != null) {
-					// the reason is the log's and debug mode's, never the player's (an SOS, 2026-10-29 night)
-					p.reasons().put(helper.getId(), why);
-					ThreatIncConfig.log("Aid request: " + helper.getId() + " cannot take " + p.good + " for "
-							+ market.getName() + " - " + why);
-				}
-			}
-		}
+	/** Days until the faction looks at the call again; 0 when it has never looked. */
+	public static float nextCheckIn(Call c, FactionAPI helper) {
+		if (c == null || helper == null) return 0f;
+		Long last = c.checkedAt().get(helper.getId());
+		if (last == null) return 0f;
+		return Math.max(0f, checkDays(helper) - Global.getSector().getClock().getElapsedDaysSince(last));
 	}
 
 	/**
-	 * One faction's look at one open part: it accepts when it has the capacity - the tier's share
-	 * of what its colony sparing the most of the good spares (Max all, Med half), at least
-	 * {@link #minSpare}; the task force that share of its free hulls, at least a fleet - and the
-	 * whole-number price fits the standing it can take without dropping the player below
-	 * Favourable (an ask over the budget is cut to it). The convoy or guard sails now. Returns why it
-	 * could not, or null on acceptance.
+	 * Each candidate faction whose day has come looks at the call: one that declined it, or has an
+	 * offer at sea under it, looks no further; else it quotes ({@link #quote}) - a new offer goes on
+	 * the table with a notice, a standing one takes the fresh figures, and one it can no longer make
+	 * is withdrawn.
 	 */
-	protected static String tryAccept(Request r, MarketAPI market, Part p, FactionAPI helper, Random random) {
+	protected static void check(Call c, ThreatBases.Base target, Random random) {
+		long now = Global.getSector().getClock().getTimestamp();
+		for (FactionAPI helper : candidates()) {
+			Long last = c.checkedAt().get(helper.getId());
+			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last) < checkDays(helper)) continue;
+			c.checkedAt().put(helper.getId(), now);
+			if (c.declined().contains(helper.getId())) continue;
+			Offer have = offerBy(c, helper.getId());
+			if (have != null && have.accepted()) continue;
+			Quote q = quote(helper, c, target);
+			if (q == null || !q.ok()) {
+				if (have != null) {
+					// the faction needs it itself now (the user, 2026-10-31: "if they suddenly need those marines they should recall the offer")
+					offers().remove(have);
+					ThreatIncConfig.log("Aid offer withdrawn: " + helper.getId() + " " + c.good + " for " + target.name()
+							+ " - " + (q != null ? q.why : "no quote"));
+					ThreatNotice.titled("Offer Withdrawn").icon(helper)
+							.line("%s withdraws its offer of %s to %s", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(have)),
+									targetNotice(target))
+							.send();
+				} else if (q != null) {
+					// the reason is the log's and debug mode's, never the player's (an SOS, 2026-10-29 night)
+					ThreatIncConfig.log("Aid call: " + helper.getId() + " cannot offer " + c.good + " for "
+							+ target.name() + " - " + q.why);
+				}
+				continue;
+			}
+			if (have == null) {
+				have = new Offer();
+				have.id = c.targetId + ":" + c.good + ":" + helper.getId() + ":" + now;
+				have.targetId = c.targetId;
+				have.good = c.good;
+				have.factionId = helper.getId();
+				have.offeredAt = now;
+				offers().add(have);
+				fill(have, q);
+				ThreatIncConfig.log("Aid offered: " + helper.getId() + " " + (int) have.amount + " " + c.good + " from "
+						+ have.fromName + " to " + target.name() + ", ETA " + (int) Math.ceil(have.etaDays)
+						+ " d, standing -" + have.price);
+				ThreatNotice.titled("Aid Offered").icon(helper)
+						.line("%s offers %s from %s to %s", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(have)),
+								ThreatNotice.market(q.donor), targetNotice(target))
+						.line("ETA %s days", ThreatNotice.hl("" + (int) Math.ceil(have.etaDays)))
+						.line("Standing with %s %s on receipt", ThreatNotice.faction(helper), ThreatNotice.hl("-" + have.price))
+						.send();
+			} else {
+				fill(have, q);
+			}
+		}
+	}
+
+	/** What a faction would send: the donor, the amount, the price and the passage. */
+	protected static class Quote {
+		MarketAPI donor;
+		float amount;
+		int price;
+		float etaDays;
+		String why;
+
+		boolean ok() { return donor != null && amount > 0f; }
+	}
+
+	/**
+	 * One faction's quote on a call: all that its colony sparing the most of the good in reach
+	 * spares ({@link #donors}), at least {@link #minSpare}, cut to the standing the player can spend
+	 * with it without dropping below Favourable; nothing while its besetness outweighs the player's
+	 * standing ({@link #willingness}). {@code why} says why not.
+	 */
+	protected static Quote quote(FactionAPI helper, Call c, ThreatBases.Base target) {
+		Quote q = new Quote();
+		if (helper == null || c == null || target == null) {
+			q.why = "no target";
+			return q;
+		}
 		if (willingness(helper) <= 0f) {
-			int[] c = besetCount(helper);
-			return c[0] + " of " + c[1] + " worlds beset by the Threat, past your standing";
+			int[] bc = besetCount(helper);
+			q.why = bc[0] + " of " + bc[1] + " worlds beset by the Threat, past your standing";
+			return q;
 		}
-		float budget = (float) Math.floor(budget(helper));
-		float per = pricePerUnit(market, p.good, p.tier);
-		if (p.isFleets()) {
-			MarketAPI base = ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
-			if (base == null) return "no base in reach";
-			float spare = ThreatHulls.enabled() ? ThreatHulls.freeFP(helper.getId())
-					: ThreatFleetOrders.guardNeed(market);
-			float fp = (float) Math.floor(ThreatConvoys.share(p.tier) * spare);
-			float min = (float) Math.ceil(ThreatDeploy.minPoints());
-			if (fp < min) {
-				return (p.tier >= 2 ? "the " : "half of the ") + Misc.getWithDGS((int) spare)
-						+ " fleet points its navy has free is under a fleet's " + Misc.getWithDGS((int) min);
-			}
-			if (priceOf(fp, per) > budget) {
-				fp = per > 0f ? (float) Math.floor(budget / per) : fp;
-				if (fp < min) return "would take you below Favourable";
-			}
-			float before = ThreatFleetOrders.guardPointsFor(market.getId());
-			ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuardPoints(helper, market, base, fp);
-			if (o == null) return "no fleet could be raised at " + base.getName();
-			o.requestId = r.id;
-			float sailed = Math.max(0f, ThreatFleetOrders.guardPointsFor(market.getId()) - before);
-			if (sailed <= 0f && o.fleet != null) sailed = o.fleet.getFleetPoints();
-			accept(r, market, p, helper, sailed, base, priceOf(sailed, per));
-			return null;
+		if (goodOffReason(target, c.good) != null) {
+			q.why = goodOffReason(target, c.good);
+			return q;
 		}
-		int idx = ThreatAid.index(p.good);
-		if (idx < 0) return "not a good a convoy carries";
-		List<MarketAPI> donors = donors(helper, market, p.good);
+		if (ThreatNeeds.FLEETS.equals(c.good)) return quoteFleet(q, helper, target);
+		List<MarketAPI> donors = donors(helper, target.hyperLoc(), c.good);
 		if (donors.isEmpty()) {
-			return "no colony in reach spares " + Misc.getWithDGS((int) minSpare(p.good)) + " or more";
+			q.why = "no colony in reach holds a surplus of " + Misc.getWithDGS((int) minSpare(c.good)) + " or more";
+			return q;
 		}
 		MarketAPI donor = donors.get(0);
-		float spare = ThreatConvoys.spare(donor, p.good);
-		float amount = (float) Math.floor(ThreatConvoys.share(p.tier) * spare);
-		if (amount < minSpare(p.good)) {
-			return "half of the " + Misc.getWithDGS(ThreatHulls.shown(p.good, spare)) + " " + donor.getName()
-					+ " spares is under " + Misc.getWithDGS((int) minSpare(p.good));
+		float amount = (float) Math.floor(offerSpare(donor, c.good));
+		if (ThreatIncConfig.debugMode()) {
+			StringBuilder sb = new StringBuilder();
+			for (MarketAPI d : donors) sb.append(sb.length() > 0 ? ", " : "").append(d.getName()).append(" ").append((int) offerSpare(d, c.good));
+			ThreatIncConfig.log("Aid quote donors for " + c.good + " (" + helper.getId() + "): " + sb);
 		}
-		if (priceOf(amount, per) > budget) {
-			amount = per > 0f ? (float) Math.floor(budget / per) : amount;
-			if (amount < minSpare(p.good)) return "would take you below Favourable";
+		if (amount < minSpare(c.good)) {
+			q.why = "the " + Misc.getWithDGS(ThreatHulls.shown(c.good, amount)) + " " + donor.getName()
+					+ " holds above its keep is under " + Misc.getWithDGS((int) minSpare(c.good));
+			return q;
 		}
-		float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
-		load[idx] = amount;
-		ThreatConvoys.Convoy c = ThreatConvoys.dispatch(donor, market, helper, load, random, Factions.PLAYER, false);
-		if (c == null) return "no convoy could be raised at " + donor.getName();
-		float carried = Commodities.SHIPS.equals(p.good) ? c.ships : ThreatConvoys.carried(c)[idx];
-		if (carried < 1f) return "nothing could be loaded at " + donor.getName();
-		c.requestId = r.id;
-		accept(r, market, p, helper, carried, donor, priceOf(carried, per));
-		return null;
+		float budget = (float) Math.floor(budget(helper));
+		int price = priceFor(target, c.good, amount);
+		if (price > budget) {
+			// the amount the standing buys: the price is linear in the amount (a cap only lowers it)
+			amount = (float) Math.floor(amount * budget / price);
+			price = priceFor(target, c.good, amount);
+			while (amount >= minSpare(c.good) && price > budget) {
+				amount = (float) Math.floor(amount * 0.95f);
+				price = priceFor(target, c.good, amount);
+			}
+			if (amount < minSpare(c.good)) {
+				q.why = "would take you below Favourable";
+				return q;
+			}
+		}
+		q.donor = donor;
+		q.amount = amount;
+		q.price = price;
+		q.etaDays = eta(ThreatBases.of(donor), target);
+		return q;
 	}
 
-	/** The whole-number standing price of an amount at a rate a unit: at least 1 for anything sent. */
-	protected static int priceOf(float amount, float per) {
-		if (amount <= 0f || per <= 0f) return 0;
-		return Math.max(1, Math.round(amount * per));
+	/**
+	 * A faction's quote on a call for a DEFENCE FLEET (the user, 2026-10-31: "extra request toggle for
+	 * fleet, which is a request for defence fleet"): a guard from its base in reach of the target
+	 * (ThreatFleetOrders.pickBase) of the fleet points its navy has free (ThreatHulls.freeFP; with
+	 * hulls off, what threatens the target, ThreatFleetOrders.guardNeed), no more than the base's depot
+	 * provisions for the passage (sortiePayableFP), at least a fleet (ThreatDeploy.minPoints), cut to
+	 * the standing budget at the Max rate of aidRepGuardArrived a point.
+	 */
+	protected static Quote quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target) {
+		MarketAPI base = ThreatFleetOrders.pickBase(helper, target.hyperLoc());
+		if (base == null) {
+			q.why = "no base in reach";
+			return q;
+		}
+		float spare = ThreatHulls.enabled() ? ThreatHulls.freeFP(helper.getId()) : ThreatFleetOrders.guardNeed(target.market);
+		float payable = ThreatFleetOrders.sortiePayableFP(base, target.hyperLoc());
+		float fp = (float) Math.floor(Math.min(spare, payable));
+		float min = (float) Math.ceil(ThreatDeploy.minPoints());
+		if (fp < min) {
+			q.why = "the " + Misc.getWithDGS((int) spare) + " fleet points its navy has free (" + base.getName() + " provisions "
+					+ Misc.getWithDGS((int) payable) + ") is under a fleet's " + Misc.getWithDGS((int) min);
+			return q;
+		}
+		float budget = (float) Math.floor(budget(helper));
+		// a guard's price is flat (aidRepGuardArrived - what the player's own guard earns), whatever its size
+		int price = priceFor(target, ThreatNeeds.FLEETS, fp);
+		if (price > budget) {
+			q.why = "would take you below Favourable";
+			return q;
+		}
+		q.donor = base;
+		q.amount = fp;
+		q.price = price;
+		q.etaDays = eta(ThreatBases.of(base), target);
+		return q;
 	}
 
-	/** The part is the faction's: what sails, from where, the ETA and the price it will cost on receipt; the notice. */
-	protected static void accept(Request r, MarketAPI market, Part p, FactionAPI helper, float amount, MarketAPI from, int price) {
-		p.factionId = helper.getId();
-		p.amount = amount;
-		p.fromName = from.getName();
-		p.fromMarketId = from.getId();
-		p.acceptedAt = Global.getSector().getClock().getTimestamp();
-		p.etaDays = eta(from, market);
-		p.price = price;
-		p.reasons().clear();
-		ThreatIncConfig.log("Aid request accepted: " + helper.getId() + " sends " + (int) amount + " " + p.good
-				+ " from " + from.getName() + " to " + market.getName() + ", ETA " + (int) Math.ceil(p.etaDays)
-				+ " d, standing -" + price + " on receipt");
-		ThreatNotice.titled("Call Answered").icon(helper)
-				.line("%s sends %s from %s to %s", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(p)),
-						ThreatNotice.market(from), ThreatNotice.market(market))
-				.line("ETA %s days", ThreatNotice.hl("" + (int) Math.ceil(p.etaDays)))
-				.line("Standing with %s %s on receipt", ThreatNotice.faction(helper), ThreatNotice.hl("-" + price))
-				.send();
+	protected static void fill(Offer o, Quote q) {
+		o.fromMarketId = q.donor.getId();
+		o.fromName = q.donor.getName();
+		o.amount = q.amount;
+		o.price = q.price;
+		o.etaDays = q.etaDays;
 	}
 
-	/** Days a convoy or fleet from one colony to another is estimated at: the passage at the board's pace (ThreatReach.days) and a day in-system. */
+	/** The market whose prices value the goods: the target's, or the player's colony nearest an outpost or front. */
+	protected static MarketAPI priceMarket(ThreatBases.Base target) {
+		if (target == null) return null;
+		if (target.market != null && target.market.isPlayerOwned()) return target.market;
+		MarketAPI best = null;
+		float bestLy = Float.MAX_VALUE;
+		Vector2f at = target.hyperLoc();
+		for (MarketAPI m : Misc.getPlayerMarkets(false)) {
+			if (m.getStarSystem() == null) continue;
+			float ly = at != null ? Misc.getDistanceLY(m.getLocationInHyperspace(), at) : 0f;
+			if (ly < bestLy) {
+				bestLy = ly;
+				best = m;
+			}
+		}
+		return best != null ? best : target.market;
+	}
+
+	/**
+	 * The player accepts the offer: it is quoted afresh (the faction's spare and the player's
+	 * standing move) and sails now - a convoy to a colony or outpost (ThreatConvoys.dispatch), a
+	 * supply run to a front (ThreatConvoys.aidFrontRun) - carrying the offer's id; what was loaded is
+	 * the amount, its price charged on receipt. Null on success, else why it could not (the offer is
+	 * then withdrawn, with a notice).
+	 */
+	public static String accept(Offer o, Random random) {
+		if (o == null || o.accepted()) return "Not an open offer.";
+		ThreatBases.Base target = resolveTarget(o.targetId);
+		FactionAPI helper = Global.getSector().getFaction(o.factionId);
+		Call c = callAt(o.targetId, o.good);
+		String why = null;
+		if (target == null || helper == null) why = "the target or the sender is gone";
+		else if (c == null) why = "the call was withdrawn";
+		else {
+			Quote q = quote(helper, c, target);
+			if (!q.ok()) why = q.why;
+			else {
+				fill(o, q);
+				int idx = ThreatAid.index(o.good);
+				float carried = 0f;
+				MarketAPI donor = q.donor;
+				if (o.isFleets()) {
+					// a defence fleet: the helper's guard of the quoted points, carrying the offer's id for
+					// onGuardArrived (ThreatFleetOrders.poll); what sailed is the amount
+					float before = ThreatFleetOrders.guardPointsFor(target.id());
+					ThreatFleetOrders.Order ord = ThreatFleetOrders.dispatchGuardPoints(helper, target, donor, o.amount);
+					if (ord == null) why = "no fleet could be raised at " + donor.getName();
+					else {
+						ord.requestId = o.id;
+						carried = Math.max(0f, ThreatFleetOrders.guardPointsFor(target.id()) - before);
+						if (carried <= 0f && ord.fleet != null) carried = ord.fleet.getFleetPoints();
+						if (carried <= 0f) carried = o.amount;
+					}
+				} else if (KIND_FRONT.equals(kindOf(target))) {
+					float[] load = { Commodities.MARINES.equals(o.good) ? o.amount : 0f,
+							Commodities.HAND_WEAPONS.equals(o.good) ? o.amount : 0f };
+					ThreatConvoys.Convoy run = ThreatConvoys.aidFrontRun(ThreatBases.of(donor), target.market, helper,
+							load, random);
+					if (run == null) why = "no supply run could be raised at " + donor.getName();
+					else {
+						run.requestId = o.id;
+						float[] sent = ThreatConvoys.carried(run);
+						carried = Commodities.MARINES.equals(o.good) ? sent[0] : sent[1];
+					}
+				} else {
+					float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
+					load[idx] = o.amount;
+					ThreatConvoys.Convoy conv = ThreatConvoys.dispatch(ThreatBases.of(donor), target, helper, load, random,
+							Factions.PLAYER, false);
+					if (conv == null) why = "no convoy could be raised at " + donor.getName();
+					else {
+						conv.requestId = o.id;
+						carried = Commodities.SHIPS.equals(o.good) ? conv.ships : ThreatConvoys.carried(conv)[idx];
+					}
+				}
+				if (why == null && carried < 1f) why = "nothing could be loaded at " + donor.getName();
+				if (why == null) {
+					o.amount = carried;
+					o.price = priceFor(target, o.good, carried);
+					o.acceptedAt = Global.getSector().getClock().getTimestamp();
+					ThreatIncConfig.log("Aid accepted: " + helper.getId() + " sends " + (int) carried + " " + o.good + " from "
+							+ donor.getName() + " to " + target.name() + ", ETA " + (int) Math.ceil(o.etaDays)
+							+ " d, standing -" + o.price + " on receipt");
+					ThreatNotice.titled("Aid Sails").icon(helper)
+							.line("%s sends %s from %s to %s", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(o)),
+									ThreatNotice.market(donor), targetNotice(target))
+							.line("ETA %s days", ThreatNotice.hl("" + (int) Math.ceil(o.etaDays)))
+							.line("Standing with %s %s on receipt", ThreatNotice.faction(helper), ThreatNotice.hl("-" + o.price))
+							.send();
+					return null;
+				}
+			}
+		}
+		offers().remove(o);
+		ThreatIncConfig.log("Aid offer lapsed: " + o.factionId + " " + o.good + " for " + o.targetId + " - " + why);
+		ThreatNotice n = ThreatNotice.titled("Offer Lapsed").icon(helper != null ? helper : Global.getSector().getPlayerFaction());
+		if (helper != null && target != null) {
+			n.line("%s can no longer send %s to %s", ThreatNotice.faction(helper), ThreatReserves.label(o.good),
+					targetNotice(target));
+		} else {
+			n.line("The offer of %s is gone", ThreatReserves.label(o.good));
+		}
+		n.send();
+		return why;
+	}
+
+	/** The player rejects the offer: it goes, and the faction offers nothing more on the call until it is toggled again. */
+	public static boolean reject(Offer o) {
+		if (o == null || o.accepted()) return false;
+		offers().remove(o);
+		Call c = callAt(o.targetId, o.good);
+		if (c != null && !c.declined().contains(o.factionId)) c.declined().add(o.factionId);
+		ThreatIncConfig.log("Aid offer rejected: " + o.factionId + " " + (int) o.amount + " " + o.good + " for " + o.targetId);
+		return true;
+	}
+
+	/** The player cancels an accepted offer at sea: the convoy turns home, nothing is charged, the faction offers nothing more on the call until it is toggled again. */
+	public static boolean cancel(Offer o) {
+		if (o == null || !o.atSea()) return false;
+		FactionAPI helper = Global.getSector().getFaction(o.factionId);
+		ThreatConvoys.Convoy conv = convoyFor(o);
+		ThreatFleetOrders.Order ord = conv == null ? orderFor(o) : null;
+		if (conv != null) ThreatConvoys.returnHome(conv);
+		if (ord != null) ThreatFleetOrders.recall(ord);
+		offers().remove(o);
+		Call c = callAt(o.targetId, o.good);
+		if (c != null && !c.declined().contains(o.factionId)) c.declined().add(o.factionId);
+		ThreatIncConfig.log("Aid cancelled: " + o.factionId + " " + (int) o.amount + " " + o.good + " for " + o.targetId
+				+ (conv == null && ord == null ? " (nothing at sea)" : ""));
+		ThreatBases.Base target = resolveTarget(o.targetId);
+		ThreatNotice n = ThreatNotice.titled("Aid Cancelled").icon(helper != null ? helper : Global.getSector().getPlayerFaction());
+		if (helper != null) {
+			n.line("%s's %s for %s turns home", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(o)),
+					target != null ? targetNotice(target) : ThreatNotice.hl(o.targetId));
+		}
+		n.send();
+		return true;
+	}
+
+	/** As below, between two colonies. */
 	public static float eta(MarketAPI from, MarketAPI to) {
-		if (from == null || to == null || from.getStarSystem() == null || to.getStarSystem() == null) return 1f;
-		float ly = Misc.getDistanceLY(from.getStarSystem().getLocation(), to.getStarSystem().getLocation());
+		return eta(ThreatBases.of(from), ThreatBases.of(to));
+	}
+
+	/** Days a convoy from one base to another is estimated at: the passage at the board's pace (ThreatReach.days) and a day in-system. */
+	public static float eta(ThreatBases.Base from, ThreatBases.Base to) {
+		if (from == null || to == null || from.hyperLoc() == null || to.hyperLoc() == null) return 1f;
+		float ly = Misc.getDistanceLY(from.hyperLoc(), to.hyperLoc());
 		return ThreatReach.days(ly) + 1f;
 	}
 
-	/** Days until an accepted part is due, 0 once overdue. */
-	public static float etaLeft(Part p) {
-		if (p == null || p.open()) return 0f;
-		return Math.max(0f, p.etaDays - Global.getSector().getClock().getElapsedDaysSince(p.acceptedAt));
+	/** Days until an accepted offer is due, 0 once overdue. */
+	public static float etaLeft(Offer o) {
+		if (o == null || !o.accepted()) return 0f;
+		return Math.max(0f, o.etaDays - Global.getSector().getClock().getElapsedDaysSince(o.acceptedAt));
+	}
+
+	/** "defence fleet" for the fleets call, else the good's label (never "fleet points" - the user, 2026-10-31). */
+	public static String goodLabel(String good) {
+		return ThreatNeeds.FLEETS.equals(good) ? "defence fleet" : ThreatReserves.label(good);
+	}
+
+	/** "320 marines" / "a defence fleet of 900 FP" - the offer's amount. */
+	public static String amountText(Offer o) {
+		if (o == null) return "";
+		if (o.isFleets()) return "a defence fleet of " + Misc.getWithDGS(Math.round(o.amount)) + " FP";
+		return Misc.getWithDGS(ThreatHulls.shown(o.good, o.amount)) + " " + ThreatReserves.label(o.good);
+	}
+
+	/** "Hegemony: 1,568 marines from Ilm" - an offer on the table. */
+	public static String offerText(Offer o) {
+		if (o == null) return "";
+		return ThreatWarState.displayName(o.factionId) + ": " + amountText(o) + " from " + o.fromName;
 	}
 
 	// ------------------------------------------------------------------
 	// receipt, loss, the price
 	// ------------------------------------------------------------------
 
-	/** An answering faction's convoy landed at the player's colony: the part is delivered and its price charged. True when the convoy was one. */
-	public static boolean onConvoyLanded(ThreatConvoys.Convoy c, MarketAPI base) {
-		if (c == null || c.requestId == null || base == null) return false;
-		Request r = byId(c.requestId);
-		if (r == null) return false;
-		Part p = partAtSea(r, c.factionId, goodOf(c));
-		if (p == null) return false;
-		deliver(r, p, base);
+	/** An answering faction's convoy landed at the player's base (a colony, an outpost, or a front's hive world): the offer is delivered and its price charged. True when the convoy was one. */
+	public static boolean onConvoyLanded(ThreatConvoys.Convoy c, ThreatBases.Base base) {
+		if (c == null || c.requestId == null) return false;
+		Offer o = offerAtSea(c.requestId, c.factionId, goodOf(c));
+		if (o == null) return false;
+		deliver(o, base);
 		return true;
 	}
 
-	/** An answering faction's guard reached the player's colony: the part is delivered and its price charged. */
+	/** An answering faction's guard reached the player's colony (an older save's task force): the offer is delivered and its price charged. */
 	public static void onGuardArrived(ThreatFleetOrders.Order o) {
 		if (o == null || o.requestId == null) return;
-		Request r = byId(o.requestId);
-		if (r == null) return;
-		Part p = partAtSea(r, o.factionId, ThreatNeeds.FLEETS);
-		if (p == null) return;
-		deliver(r, p, Global.getSector().getEconomy().getMarket(r.marketId));
+		Offer offer = offerAtSea(o.requestId, o.factionId, ThreatNeeds.FLEETS);
+		if (offer == null) return;
+		deliver(offer, resolveTarget(offer.targetId));
 	}
 
-	/** The good a request's convoy carries: the one aboard. */
+	/** The good a convoy carries: the one aboard. */
 	protected static String goodOf(ThreatConvoys.Convoy c) {
 		if (c.ships > 0f) return Commodities.SHIPS;
 		if (c.marines > 0f) return Commodities.MARINES;
@@ -638,39 +835,38 @@ public class ThreatAidRequests {
 		return null;
 	}
 
-	protected static Part partAtSea(Request r, String factionId, String good) {
-		for (Part p : r.parts()) {
-			if (p.atSea() && p.factionId.equals(factionId) && good != null && good.equals(p.good)) return p;
+	/** The offer at sea a convoy or order answers: by its id, or (an older save's request id) by the sender and the good. */
+	protected static Offer offerAtSea(String requestId, String factionId, String good) {
+		for (Offer o : offers()) {
+			if (!o.atSea() || !requestId.equals(o.id)) continue;
+			if (o.factionId.equals(factionId) && (good == null || good.equals(o.good))) return o;
+		}
+		for (Offer o : offers()) {
+			if (o.atSea() && requestId.equals(o.id) && o.factionId.equals(factionId)) return o;
 		}
 		return null;
 	}
 
-	/** The part landed: its price is charged, the notice sent; a request whose last part is in is done. */
-	protected static void deliver(Request r, Part p, MarketAPI base) {
-		p.delivered = true;
-		FactionAPI helper = Global.getSector().getFaction(p.factionId);
-		charge(helper, p.price);
-		ThreatIncConfig.log("Aid request delivered: " + p.factionId + " " + (int) p.amount + " " + p.good + " at "
-				+ (base != null ? base.getName() : r.marketId) + ", standing -" + p.price);
+	/** The offer landed: its price is charged, the notice sent, and it leaves the table. */
+	protected static void deliver(Offer o, ThreatBases.Base base) {
+		o.delivered = true;
+		offers().remove(o);
+		FactionAPI helper = Global.getSector().getFaction(o.factionId);
+		charge(helper, o.price);
+		ThreatIncConfig.log("Aid delivered: " + o.factionId + " " + (int) o.amount + " " + o.good + " at "
+				+ (base != null ? base.name() : o.targetId) + ", standing -" + o.price);
 		ThreatNotice n = ThreatNotice.titled("Aid Landed").icon(helper);
 		if (base != null) {
-			n.line("%s from %s at %s", ThreatNotice.hl(amountText(p)), ThreatNotice.faction(helper), ThreatNotice.market(base));
+			n.line("%s from %s at %s", ThreatNotice.hl(amountText(o)), ThreatNotice.faction(helper), targetNotice(base));
 		} else {
-			n.line("%s from %s", ThreatNotice.hl(amountText(p)), ThreatNotice.faction(helper));
+			n.line("%s from %s", ThreatNotice.hl(amountText(o)), ThreatNotice.faction(helper));
 		}
-		if (p.price > 0) n.line("Standing with %s %s", ThreatNotice.faction(helper), ThreatNotice.hl("-" + p.price));
+		if (o.price > 0) n.line("Standing with %s %s", ThreatNotice.faction(helper), ThreatNotice.hl("-" + o.price));
 		n.send();
-		if (r.done()) {
-			requests().remove(r);
-			if (!r.withdrawn && base != null) {
-				ThreatNotice.titled("Call Answered In Full").icon(base.getFaction())
-						.line("Every part of %s's call has landed", ThreatNotice.market(base)).send();
-			}
-		}
 	}
 
 	/**
-	 * Standing charged for a part received: a whole number of points off the relationship, never
+	 * Standing charged for an offer received: a whole number of points off the relationship, never
 	 * below Favourable (a player already under it loses nothing more), set straight on the faction
 	 * so vanilla shows no message and plays no sound (the user, 2026-10-29: "whole number amount
 	 * only! and remove the decrement faction rep sound").
@@ -686,59 +882,93 @@ public class ThreatAidRequests {
 		helper.setRelationship(Factions.PLAYER, after);
 	}
 
-	/** A part accepted whose convoy or fleet is no longer at sea and never landed: nothing is charged, the part reopens. */
-	protected static void settleLost(Request r, MarketAPI market) {
-		for (Part p : r.parts()) {
-			if (!p.atSea()) continue;
-			boolean found = p.isFleets() ? orderFor(r.id, p.factionId) != null : convoyFor(r.id, p.factionId) != null;
-			if (found) continue;
-			FactionAPI helper = Global.getSector().getFaction(p.factionId);
-			ThreatIncConfig.log("Aid request part lost: " + p.factionId + " " + (int) p.amount + " " + p.good + " for "
-					+ market.getName());
-			ThreatNotice.titled("Aid Lost").bad().icon(market.getFaction())
-					.line("%s's %s for %s was lost on the way", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(p)),
-							ThreatNotice.market(market))
-					.send();
-			p.factionId = null;
-			p.amount = 0f;
-			p.fromName = null;
-			p.fromMarketId = null;
-			p.acceptedAt = 0L;
-			p.etaDays = 0f;
-			p.price = 0;
-			if (r.withdrawn) r.parts().remove(p);
-		}
+	/** An accepted offer whose convoy or fleet is no longer at sea and never landed: nothing is charged, the offer goes; the faction may offer again. */
+	protected static void settleLost(Offer o) {
+		boolean found = o.isFleets() ? orderFor(o) != null : convoyFor(o) != null;
+		if (found) return;
+		offers().remove(o);
+		FactionAPI helper = Global.getSector().getFaction(o.factionId);
+		ThreatBases.Base target = resolveTarget(o.targetId);
+		ThreatIncConfig.log("Aid lost: " + o.factionId + " " + (int) o.amount + " " + o.good + " for " + o.targetId);
+		ThreatNotice n = ThreatNotice.titled("Aid Lost").bad()
+				.icon(target != null && target.market != null ? target.market.getFaction() : Global.getSector().getPlayerFaction());
+		n.line("%s's %s for %s was lost on the way", ThreatNotice.faction(helper), ThreatNotice.hl(amountText(o)),
+				target != null ? targetNotice(target) : ThreatNotice.hl(o.targetId));
+		n.send();
 	}
 
-	protected static ThreatConvoys.Convoy convoyFor(String requestId, String factionId) {
+	protected static ThreatConvoys.Convoy convoyFor(Offer o) {
 		for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
-			if (requestId.equals(c.requestId) && factionId.equals(c.factionId)) return c;
+			if (o.id.equals(c.requestId) && o.factionId.equals(c.factionId)) return c;
 		}
 		return null;
 	}
 
-	protected static ThreatFleetOrders.Order orderFor(String requestId, String factionId) {
-		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
-			if (requestId.equals(o.requestId) && factionId.equals(o.factionId)) return o;
+	protected static ThreatFleetOrders.Order orderFor(Offer o) {
+		for (ThreatFleetOrders.Order ord : ThreatFleetOrders.all()) {
+			if (o.id.equals(ord.requestId) && o.factionId.equals(ord.factionId)) return ord;
 		}
 		return null;
+	}
+
+	/**
+	 * The whole-number standing an amount of a good costs the player when a faction sends it to the
+	 * target: ThreatAid.standingFor at the target's price market - the figure the player would EARN
+	 * sending the same (the user, 2026-10-31: "parity on rep for sending and requesting") - at
+	 * least 1 for anything sent.
+	 */
+	protected static int priceFor(ThreatBases.Base target, String good, float amount) {
+		if (amount <= 0f) return 0;
+		return Math.max(1, Math.round(ThreatAid.standingFor(priceMarket(target), good, amount)));
+	}
+
+	/**
+	 * An older save's requests (2026-10-23 to 2026-10-30) become calls and offers: an open part a
+	 * standing call on its world, a part at sea an accepted offer carrying the request's id (its
+	 * convoy or fleet carries the same), a delivered one nothing. The old list is emptied.
+	 */
+	protected static void migrateOld() {
+		List<Request> old = requests();
+		if (old.isEmpty()) return;
+		long now = Global.getSector().getClock().getTimestamp();
+		for (Request r : new ArrayList<Request>(old)) {
+			migrate(r);
+			for (Part p : r.parts()) {
+				if (p.delivered || p.isFleets() && p.open()) continue;
+				if (p.open()) {
+					if (!r.withdrawn && callAt(r.marketId, p.good) == null) {
+						Call c = new Call();
+						c.targetId = r.marketId;
+						c.kind = KIND_COLONY;
+						c.good = p.good;
+						c.since = r.since;
+						calls().add(c);
+					}
+					continue;
+				}
+				Offer o = new Offer();
+				o.id = r.id;
+				o.targetId = r.marketId;
+				o.good = p.good;
+				o.factionId = p.factionId;
+				o.fromMarketId = p.fromMarketId;
+				o.fromName = p.fromName;
+				o.amount = p.amount;
+				o.etaDays = p.etaDays;
+				o.price = p.price;
+				o.offeredAt = p.acceptedAt != 0L ? p.acceptedAt : now;
+				o.acceptedAt = p.acceptedAt != 0L ? p.acceptedAt : now;
+				offers().add(o);
+			}
+		}
+		ThreatIncConfig.log("Aid requests migrated: " + old.size() + " request(s) -> " + calls().size() + " call(s), "
+				+ offers().size() + " offer(s)");
+		old.clear();
 	}
 
 	// ------------------------------------------------------------------
 	// candidates, prices, standing
 	// ------------------------------------------------------------------
-
-	/** The price multiplier of a tier: Min 1.0, Med 1.25, Max 1.5 (decision 3). */
-	public static float askPrice(int tier) {
-		return tier >= 2 ? ThreatIncConfig.aidAskPriceMax() : tier == 1 ? ThreatIncConfig.aidAskPriceMed()
-				: ThreatIncConfig.aidAskPriceMin();
-	}
-
-	/** Standing points one unit of the good costs when a faction sends it to the player's market at the tier. */
-	public static float pricePerUnit(MarketAPI market, String good, int tier) {
-		if (ThreatNeeds.FLEETS.equals(good)) return ThreatIncConfig.aidRepGuardArrived() / 100f * askPrice(tier);
-		return ThreatAid.valueAt(market, good, 1f) / Math.max(1f, ThreatIncConfig.aidRepPerCredits()) * askPrice(tier);
-	}
 
 	/** Standing points the player can spend with the faction before dropping below Favourable. */
 	public static float budget(FactionAPI helper) {
@@ -819,26 +1049,56 @@ public class ThreatAidRequests {
 	}
 
 	/**
-	 * The helper's colonies in reach of the player's colony that spare {@link #minSpare} or more
-	 * of the good, most spare first. An NPC helper reaches as far as its colony's fuel pays
-	 * (ThreatConvoys.stockReachLY).
+	 * The helper's colonies in reach of the target holding a SURPLUS of the good (the user, 2026-10-31:
+	 * "factions should only make offers from surplus colonies ... if they are short on the requested
+	 * commodity they dont respond at all"): its reserve of the good in the white state - no deficit, no
+	 * shortage cover, not exhausted - and offerSpare of minSpare or more; the most
+	 * spare first. An NPC helper reaches as far as its colony's fuel pays (ThreatConvoys.stockReachLY).
 	 */
-	protected static List<MarketAPI> donors(FactionAPI helper, MarketAPI needy, String good) {
+	protected static List<MarketAPI> donors(FactionAPI helper, Vector2f at, String good) {
 		List<MarketAPI> out = new ArrayList<MarketAPI>();
-		if (helper == null || needy == null || needy.getStarSystem() == null) return out;
+		if (helper == null || at == null) return out;
 		final String g = good;
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
-			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
-					needy.getStarSystem().getLocation()) > ThreatConvoys.stockReachLY(donor)) continue;
-			if (ThreatConvoys.spare(donor, good) >= minSpare(good)) out.add(donor);
+			if (Misc.getDistanceLY(donor.getLocationInHyperspace(), at) > ThreatConvoys.stockReachLY(donor)) continue;
+			if (!holdsSurplus(donor, good)) continue;
+			if (offerSpare(donor, good) >= minSpare(good)) out.add(donor);
 		}
 		Collections.sort(out, new Comparator<MarketAPI>() {
 			public int compare(MarketAPI a, MarketAPI b) {
-				return Float.compare(ThreatConvoys.spare(b, g), ThreatConvoys.spare(a, g));
+				return Float.compare(offerSpare(b, g), offerSpare(a, g));
 			}
 		});
 		return out;
+	}
+
+	/** Whether the colony's reserve of the good reads as a surplus - the white state of the reserve key (no deficit, no cover, not exhausted); hulls always. */
+	public static boolean holdsSurplus(MarketAPI donor, String good) {
+		if (Commodities.SHIPS.equals(good)) return true;
+		ThreatReserves.CommodityStatus st = ThreatReserves.status(donor, good);
+		if (st == null) return ThreatReserves.stock(donor.getId(), good) > 0f;
+		return !st.exhausted && !st.stockpilesOff && !st.covering && st.deficit <= 0;
+	}
+
+	/**
+	 * What a colony can OFFER of a good: its stock above its own keep (ThreatReserves.monthsBasis x
+	 * donorKeepFraction, never under the garrison's floor; a forward base's feeding credit for
+	 * supplies; a world under a front what ThreatConvoys.frontWorldSpare allows; hulls the port's
+	 * spare units). The siege it may be staging for is NOT held back (ThreatConvoys.spare holds the
+	 * staging bank and target, which left Ilm with 4,721 marines offering 216 from Ailmar - the user,
+	 * 2026-10-31: "why on earth would they send from a colony with no marines when they have one with
+	 * 5k"): an offer the player accepts is the faction's choice to spend it.
+	 */
+	public static float offerSpare(MarketAPI donor, String good) {
+		if (donor == null || good == null) return 0f;
+		if (Commodities.SHIPS.equals(good)) return ThreatHulls.spareUnits(donor);
+		if (ThreatGroundFronts.hasFront(donor)) return ThreatConvoys.frontWorldSpare(donor, good);
+		float keep = ThreatReserves.monthsBasis(donor, good) * ThreatIncConfig.donorKeepFraction();
+		ThreatReserves.CommodityStatus st = ThreatReserves.status(donor, good);
+		if (st != null) keep = Math.max(keep, st.floor);
+		if (Commodities.SUPPLIES.equals(good)) keep += ThreatFeeding.credit(donor);
+		return Math.max(0f, ThreatReserves.stock(donor.getId(), good) - keep);
 	}
 
 	/** An older save's request read as parts: one good at a tier (2026-10-23), or levers and a Fleet lever (2026-10-28 / 29). */

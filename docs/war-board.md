@@ -26,8 +26,9 @@ is the layout it implements.
    sorting top producers by priority" -> "just new second last column on the threat colony board,
    Notes" -> "notes should be updated by what scout finds ... Scout lost / Size 8 Fuel Production /
    Low strata mass (8000) / Isolated ... things of tactical value"): the ledger's **Notes** column
-   (`Cols.NOTES`; the table lived 15:09-15:24) and **Age** after it (`Cols.AGE`: days since the newest of
-   the player's report and a lost party, `ageText`). Every note reads the player's report of the system
+   (`Cols.NOTES`; the table lived 15:09-15:24), the note ending with its age "(25d)" (`ageText`: days since
+   the player's report, `Report.age`, or a newer lost party; the Age column of 16:00-17:50, `Cols.AGE`, is 0
+   width - it read "-" on every row for a reason never found). Every note reads the player's report of the system
    (`ThreatIntel.report(PLAYER, ...)`, the newest of the player's own and every Cooperative faction's;
    written daily for every observer with eyes there, `ThreatIntel.advanceDay`, and by a scout home) -
    never the live world. **The cell (16:30, the user: "Each entry should read Worlds: x, Mass: y Remark:
@@ -74,7 +75,7 @@ is the layout it implements.
    column was removed for space; the reason opens the row tooltip. Clicking a row selects the
    system (`tableRowClicked` with a String id).
 4. **Selected system heading**, then that system's **Ground fronts table** (2026-09-05, shared
-   with the faction view - `ThreatWarBoard.addFronts(rows, tableFaction, showSystem)`; the
+   with the faction view - `ThreatWarBoard.addFronts(rows, tableFaction)` - the System column went 2026-10-30 evening; the
    hive view passes `frontRowsIn(selected)` and no System column, a faction view passes
    `frontRowsFor(factionId)` - its own landings plus the swarm's landings on its worlds - with
    one). Shown only while the selection has a front; other systems' fronts show as crests in
@@ -95,7 +96,7 @@ is the layout it implements.
    armaments, burn and days; losses and why; the next counter-attack's figures and outcome
    (repelled / costs N marines and a stratum / overrun); the push in progress or what one
    would cost; what the front wants brought. Click = the colony screen (`ROW_MARKET`).
-   **A front the player can order takes two rows** (user's layout, 2026-09-06): the entry,
+   **A front the player can order took two rows until 2026-10-30 evening** (user's layout, 2026-09-06; one row since, its stance toggle in an Actions column - "The Domain table" below): the entry,
    then an empty row - same tooltip, same click - that its buttons float over, left to right:
    **Push** / **Dig in** (whichever the front is not doing - a front that lands able to hold
    is already pushing, `ThreatGroundFronts.autoPush`; `BUTTON_PUSH` / `BUTTON_ENTRENCH`
@@ -139,23 +140,71 @@ is the layout it implements.
    button and long colony tooltip were removed the same day for that reason: vanilla's UI to
    maintain, not ours.
 
-All floating buttons (Map, Colony, Push / Dig in, Support, Defend, Pull out, Supply) are created after
+All floating buttons (Map, Colony, the stance toggle, Defend, Deploy, Transfer, Outpost) are created after
 everything else and anchored to siblings (the table panel, the cards); see platform trap 1 and 2.
+
+**The Domain table and the Actions column (2026-10-30 evening, the user: "colony reserves tables
+should just be renamed to Domain ... add worlds we are attacking in the colony reserves table ... if
+threat are eliminated the entry can stay with an outpost button ... get rid of the outpost table ...
+move the push/hold button to actions column right most side ... remove the system column entirely").**
+The colonies table is headed **Domain** and holds, after the colonies: the hive worlds the player's
+landings attack (`ThreatFactionView.attackedRows`; Military "Front", Def the hive's strata figure,
+Marines / Arms the landing's, Status the line's state word, Fleet the points deployed over the hive,
+the row tooltip the front's arithmetic; **Deploy** = `ThreatDeploy.plan` with the hive
+as its target - built at the nearest colony at the Hulls lever, loaded at the others, a guard order
+over the hive that `ThreatGroundFronts.guardOverHive` makes besiege like a Support sortie
+(`tickSupport`) and that `ThreatFleetOrders.guardOrder` records with no recipient, so `stagedAt`
+counts it for the Fleet cell; **Transfer** = the front's supply run, `BUTTON_SUPPLY` at
+the Marines / Arms levers), then the purged worlds in reach (Military "Purged", Status the outpost's
+price, an **Outpost** button - the "Purged worlds in reach" table under the board is gone), then the
+outposts, then Total; `tableRows` counts them all for the floating buttons' offsets. The fronts table
+lost its System column and the second row under each of the player's fronts (`Fronts.buttonRows`),
+and gained an **Actions** column on the faction tabs holding ONE button a row: the player's landing's
+order - Push while it holds or regroups, Hold while it pushes; the label is the action, not the state (the user, 21:00) - (no strength gate: `pushRefusal`
+refuses only when nothing is left to take); the own colony's defenders' stance the same way; an
+ally's Defend at the Fleet lever, which is drawn only for such a row. Supply, Support, Defend and
+Pull out went from the fronts. Every lever is ONE button reading its tier; pressing it sets the next
+round the ladder (`addTierSelector`). **21:00:** Deploy's cap is the Hulls lever's share of `fleetMaxFP`
+(Med 1,200, Max 2,400); the player's supply run loads at whichever colony has the most of what the front
+wants, at any range (`ThreatConvoys.pickFrontBase` - the nearest base alone greyed Transfer); **Recall**
+sits left of Transfer in the Staging group (`BUTTON_RECALL_ALL`, `ThreatFactionView.recallAll`): a
+colony row's calls home every fleet order based there (`Order.baseMarketId`), the expeditions and task
+forces raised there (`ThreatPurgeFGI.sourceBase`, `ThreatResponseIntel.baseName`) and the convoys from
+it; a Front row's lifts the front (`ThreatConvoys.pullOutFront`) and recalls the fleets over the hive
+(`Order.targetId`). The fleets table keeps its per-fleet Recall. **2026-10-30 (the user, on Ogre's
+retreating front: "recall should send convoy here to retrieve marines and arms"):** the lift sails the
+evacuation convoy AT ONCE from the nearest base (`pickFrontBase`, pickup) and marks the front
+`withdrawRequested`; it waits at the hive's door while the orbit is contested (`frontRunWaitDays` at
+most, then home) and lifts the front whole when it lands. Before, a contested orbit or any convoy
+already bound there refused the order outright, and the player's fronts had no planner pass to retry
+it (`planLogistics` skips the player). Only an evacuation convoy already on its way greys the Recall
+(`pullOutBlockReason`); the tooltip and confirm read `pullOutText` - "An evacuation convoy from Haven
+lifts the 288 marines and 101 heavy armaments off Ogre. It waits at the door while the orbit is
+contested, 30 days at most." A supply run landing on a player front no longer clears
+`withdrawRequested` (`ThreatGroundFronts.resupply`; an NPC front's dry-front withdrawal still is).
 
 **Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
 fleet sized based on hulls modifier ... then the attack button is available assuming the staged
-fleet has enough supplies and fuel"; `ThreatDeploy`). A colony row of the player's holds **Deploy**
-(was Fleet) and **Transfer** (was Supplies). Deploy builds a fleet over the colony from its own free
-hulls at the Hulls lever (None / half / all of its free points plus what is deployed; greyed at None
-with nothing deployed) and loads it at the other four levers - marines to its berths and arms to
-its holds, fuel and supplies as figures aboard (`ThreatReturns.MEM_FUEL_ABOARD`, the supplies
-hold) - drawn from the colony's reserve. The button reads **Redeploy** while a fleet is deployed
-and resizes it to the levers as they stand: ships come off as hulls (`reabsorb`, smallest first,
-the ledger's commitment and health baseline scaled with them), goods the fleet no longer holds or
-the lever no longer sends go back to the reserve (`load`); at Hulls None the fleet keeps its
-ships and only the goods are reloaded - Redeploy never recalls (the user, 2026-10-30; the fleets
-table's Recall dissolves it, `ThreatFleetOrders.fold`). An outpost's Deploy builds at the nearest colony and sails
-there. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
+fleet has enough supplies and fuel"; `ThreatDeploy`). A colony row of the player's held **Deploy** (was Fleet) and **Transfer** (was
+Supplies) until 2026-10-31 evening, when Deploy went (the user: "get rid of deploy button and just add
+the fleet as an extra toggle"): the Domain's sixth lever, **Fleet** (`ThreatIncursionIntel.LEVER_DOMAIN_FLEET`,
+None by default), makes **Transfer** the Deploy when set - on a colony, an outpost or a hive row alike
+(`ThreatFactionView.fleetLeverSet`; the prompt and the order run `ThreatDeploy` instead of the convoy or
+supply run) - and `ThreatDeploy.plan` is sized by it, the Hulls lever being the convoy's hull cargo only;
+the Actions column holds Recall and Transfer. Every press of Deploy (now Transfer at the Fleet lever) raises a NEW fleet over the row
+from a colony's free hulls at the Hulls lever (None / half / all of its free points, at most the
+lever's share of one fleet, `fleetMaxFP`; greyed at None) and loads it at the other four levers -
+marines to its berths and arms to its holds, fuel and supplies as figures aboard
+(`ThreatReturns.MEM_FUEL_ABOARD`, the supplies hold) - drawn from that colony's reserve (`load`).
+Fleets deployed there already are left alone: the Staging group's Recall folds them home
+(`ThreatFleetOrders.fold`). The **Redeploy** that resized and reloaded the deployed fleet (`reabsorb`,
+2026-10-29 to 2026-10-30) is gone - the user, 2026-10-30 22:00: "it should never redeploy/reprovision,
+just let the player deploy new instances. if they want to amend one already deployed they can recall
+etc. so the redeploy logic was an overcomplicaiton". The source is the row's colony while its own free
+hulls at the lever make the smallest fleet, else the nearest colony's that do (`ThreatDeploy.nearestSource`;
+the user, 2026-10-30: "cant deploy to arkoman despite having 5k+ hulls at haven" - Arkoman had no hulls,
+Haven 5,449), the fleet built and loaded there and sailed over; an outpost's or a hive's row always
+the nearest. **Attack** on a hive row sails the fleet deployed at the nearest colony with everything
 aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` deployed: the goods come
 off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
 nothing), greyed with the figures while nothing is deployed, the fuel aboard is under the passage
@@ -163,34 +212,56 @@ or the supplies under the expedition's deposit and hold (`attackBlockFacts`). Th
 Fuel / Marines ladders went. The NPC tabs' "Hive systems in reach" table and its Hunt went ("we
 dont need to see that table at all").
 
-**The call for aid (2026-10-29 evening, the user: "i want to rework the request and aid system";
-`ThreatAidRequests`, docs/war-effort-rework.md 3).** No Request button anywhere. A Transfer or
-Deploy whose load at the levers is under what the colony needs (a good's convoy load under the
-colony's need at the lever's tier, `ThreatAidRequests.transferShortfall`; a Deploy's fleet under
-the fleets need, `deployShortfall` - "deploy would be for a relief task force") says so in its own
-intel confirm box (`ThreatFactionView.addOrderPrompt`; the user, 2026-10-30: "use this kind of dialog
-not the full screen one"; vanilla's `CampaignUIAPI.showConfirmDialog` draws nothing over the intel
-screen): "Short of marines: Confirm also calls for any marines that can be spared", and Confirm sails
-the order and logs the call; a button that would send nothing confirms the call alone ("{World} is
-short of marines. / Call for aid?");
-a button that would send nothing yet leaves the colony short stays pressable and opens the dialog
-alone. The request is one a world, a part a good, each part its own call (2026-10-30, so different
-factions can answer each) standing until it lands or is withdrawn; the confirm box and the notice
-word the call by the lever's tier (`ThreatAidRequests.askLabel`: Max "any marines that can be
-spared", Med "some spare marines").
-**Requests for aid** is a table at the top of every faction tab (`ThreatFactionView.addRequests`;
-nothing drawn with none). Since 2026-10-30 (the user: "each factions requests table should only show
-their requests") the player's tab lists the player's calls and an NPC faction's tab its own: its
-colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`) - World, Asked (purpose and
-good), Answer (the convoy at sea with the good and whose it is, `convoysWith`; a task force bound
-for a fleets need; else waiting), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a
-convoy of that good alone at its lever, Med when None, from the player's colony sparing the most -
-`ThreatAid.quoteAid` through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever).
-The player's: World, Asked (all or half of what one colony of each faction spares),
-Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on every
-row (one call a row; off once that part is answered). The player's tab shows every faction's answer, an NPC tab that faction's own
-(its part sailing, another's taken, or its last reason and when it looks again). The colony rows'
-Transfer and Deploy tooltips end with the shortfall when there is one. An ally's colony rows hold
+**The calls and the offers (2026-10-31, the user: "these are just on/off toggles. when toggle
+active that counts as you asking the sector for the given commodity. the table then will have
+responses from other factions which you can accept or ignore"; `ThreatAidRequests`,
+docs/war-effort-rework.md 3).** No Request button and no shortfall prompt: under the **Requests for
+aid** heading of the player's tab sits a toggle row (`ThreatFactionView.addRequestButtons`, floated
+into the row reserved under the heading) - **Colony** reads the Domain entry the toggles are for
+and cycles the next (the player's colonies, then the hive worlds their landings attack, then their
+outposts, `requestTargets`; `ThreatIncursionIntel.requestTarget`), then **Fuel / Supplies / Marines /
+Arms / Hulls / Fleet** (Fleet since 2026-10-31 evening: a call for a defence fleet, `ThreatNeeds.FLEETS` -
+a faction's guard of the points its navy has free, `ThreatAidRequests.quoteFleet`, sailed by
+`ThreatFleetOrders.dispatchGuardPoints` on Accept), each a button reading On or Off for that entry (`BUTTON_REQ_TOGGLE` ->
+`ThreatAidRequests.toggle`, no Confirm; a front's Fuel, Supplies and Hulls and an outpost's Hulls are
+off with the reason, `goodOffReason`). On is a standing call (`Call`): "Distress Call - {World}
+calls for marines"; off withdraws it and drops its open offers. Every faction at Favourable or
+better looks once a day on its own clock and puts an **offer** on the table (`Offer`, `quote`: all
+that its colony sparing the most in reach spares, at least `aidRequestMinSpare`, cut to the standing
+the player can spend with it; "Aid Offered" notice with the ETA and the price). Since 2026-10-31
+evening (the user: "factions should only make offers from surplus colonies ... the speed in which a
+faction responds to offer should be determined by how preoccupied they are with the war") a colony
+offers only with its reserve of the good in the white state - no deficit, no cover, not exhausted
+(`holdsSurplus`) - and offers what it holds above its own keep, `offerSpare` (monthsBasis x
+donorKeepFraction, the garrison floor, a forward base's feeding credit for supplies; not the staging
+bank `ThreatConvoys.spare` keeps, which had Ilm with 4,721 marines offering 216 from Ailmar); an
+offer the faction can no longer make is withdrawn ("Offer Withdrawn"); a beset faction looks less
+often - its check days x (1 + besetness x `aidRequestBesetDelay`). The table
+(`addRequests` / `addOfferRow`): World, Commodity, Age (days the call has stood), Answer ("Hegemony:
+1,568 marines from Ilm" in the faction's colour; no row at all for a call nobody has answered - the
+toggles say what is asked), Standing (charged on receipt), ETA (the quoted passage on an open offer,
+the time left once accepted) and **Actions**: **Accept** and **Dismiss** on an offer, **Cancel** on
+one at sea. The Colony button clears every call as it moves on (`clearCalls`). Accept (`BUTTON_REQ_ACCEPT`, a Confirm with the figures) quotes it
+afresh and sails it now - a convoy to a colony or outpost (`ThreatConvoys.dispatch` with the base),
+a supply run to a front (`ThreatConvoys.aidFrontRun`, the player's own cover opening its door) -
+carrying the offer's id; Dismiss (`BUTTON_REQ_REJECT`, no Confirm) clears it and the faction offers
+nothing more on that call until it is toggled again (`Call.declined`); Cancel (`BUTTON_REQ_CANCEL`)
+turns the convoy home, nothing charged. A landed offer leaves the table ("Aid Landed", the standing
+charged); with the call still on the faction may offer again - several offers of one good stand
+together, from different factions or in turn. An offer whose call was toggled off still sails and
+keeps its Cancel (`strays`). Since 2026-10-30 (the user: "each factions requests table should only
+show their requests"; the same table as the player's since 2026-10-31, "other human faction request
+boards should have the same table as player one") an NPC faction's tab lists its own needs instead:
+its colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`), one row a world x good (the
+most urgent need of the good) - World, Commodity, Age (days the shortage has stood,
+`ThreatAidRequests.shortageSince`), Answer (the convoy at sea with the good and whose it is,
+`convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - NPC-to-NPC aid
+charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
+alone at its lever, Med when None, from the player's colony sparing the most - `ThreatAid.quoteAid`
+through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever). Until 2026-10-31 a
+request was logged from a Transfer or Deploy short of the colony's needs in the order's own confirm
+box, one a world with a part a good in the lever's tier words, and the first faction with the
+capacity sailed on its own; that flow, its Withdraw and the task-force part are gone. An ally's colony rows hold
 no buttons any more (the Defend at every hull free and the Aid convoy went); its sieged world's
 front row holds **Defend** at the Fleet lever instead (`BUTTON_AID_DEFEND` ->
 `ThreatAid.quoteDefend(market, fleetTier)`). The fronts' Reinforce and Request went: a Transfer
@@ -234,7 +305,7 @@ all"; `ThreatFactionView.addFrontLevers` / `addColonyLevers`, one `addLever` a g
 ground fronts only **Fleet** since 2026-10-29 evening ("remove resource selectors from ground
 fronts table"; Marines and Arms sat there until then), over the colonies **Fuel**, **Supplies**,
 **Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
-all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`). The Fleet lever is Support / Defend's
+all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`); since 2026-10-30 evening a lever is ONE button reading its tier, pressed it sets the next round the ladder. The Fleet lever is Support / Defend's
 outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
 ladders), for the player's own fronts and the Defend of an ally's sieged world alike; the colonies'
 five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms

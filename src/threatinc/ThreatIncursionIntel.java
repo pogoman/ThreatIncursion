@@ -78,12 +78,19 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	 */
 	protected int[] levers;
 
+	/** The Domain entry the Requests toggles read (its reserve key; ThreatFactionView.requestTarget), set by the Colony button (2026-10-31). */
+	protected String requestTarget;
+
+	public String requestTarget() {
+		return requestTarget;
+	}
+
 	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
 			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6,
-			LEVER_FRONT_FLEET = 7;
-	protected static final int LEVER_COUNT = 8;
-	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max. */
-	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2 };
+			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8;
+	protected static final int LEVER_COUNT = 9;
+	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max, the Domain's Fleet (2026-10-31: Transfer deploys a fleet with it set) None. */
+	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2, 0 };
 
 	public int lever(int which) {
 		if (levers == null || levers.length < LEVER_COUNT) {
@@ -109,10 +116,14 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_FRONT_FLEET) };
 	}
 
-	/** The colonies table's levers in ThreatReserves.AID_COMMODITIES order: marines, arms, fuel, supplies, hulls. */
+	/**
+	 * The colonies table's levers in ThreatReserves.AID_COMMODITIES order - marines, arms, fuel, supplies,
+	 * hulls - then the Fleet lever (2026-10-31: None, Transfer sends a convoy; Med / Max, Transfer deploys a
+	 * fleet of half / all the source's free hulls carrying the goods, ThreatDeploy).
+	 */
 	public int[] colonyLevers() {
 		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_COLONY_FUEL),
-				lever(LEVER_COLONY_SUPPLIES), lever(LEVER_COLONY_HULLS) };
+				lever(LEVER_COLONY_SUPPLIES), lever(LEVER_COLONY_HULLS), lever(LEVER_DOMAIN_FLEET) };
 	}
 
 	public int getSiegeTier() {
@@ -345,8 +356,6 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	@Override
 	public boolean doesButtonHaveConfirmDialog(Object buttonId) {
 		if (buttonId instanceof String && ThreatFactionView.isOrderButton((String) buttonId)) {
-			// a Transfer or Deploy that would send nothing yet leaves the colony short confirms the
-			// call for aid alone (ThreatFactionView.addOrderPrompt)
 			return true;
 		}
 		return super.doesButtonHaveConfirmDialog(buttonId);
@@ -401,23 +410,36 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			rerenderInPlace(ui);
 			return;
 		}
-		if (ThreatFactionView.isOrderButton(id)) {
-			// THE CALL FOR AID (2026-10-29 evening; 2026-10-30 in the intel confirm box - the one box that
-			// draws over the intel screen: CampaignUIAPI.showConfirmDialog showed nothing there, and the
-			// user wants no full-screen dialog): what a Transfer or Deploy leaves short at the player's
-			// colony is read before the order sails (the need is net of what is at sea); the button's
-			// Confirm (ThreatFactionView.addOrderPrompt said so) sails the order AND logs the call - a
-			// button that would send nothing confirms the call alone
-			java.util.List<ThreatAidRequests.Part> shorts = ThreatFactionView.shortfallFor(id, this);
-			com.fs.starfarer.api.campaign.econ.MarketAPI shortMarket = ThreatFactionView.shortfallMarket(id);
-			String result = ThreatFactionView.promptOnly(id, this) ? "call-only"
-					: ThreatFactionView.executeOrder(id, this);
-			if (!shorts.isEmpty() && shortMarket != null
-					&& ThreatAidRequests.requestOffReason(shortMarket) == null) {
-				result += ThreatAidRequests.request(shortMarket, shorts) != null ? ", called for aid" : ", call refused";
+		// THE REQUESTS TOGGLES (2026-10-31): the Colony button sets the entry, a good's button flips its call,
+		// Reject clears an offer - none with a Confirm, each a re-render in place
+		if (id.startsWith(ThreatFactionView.BUTTON_REQ_TARGET)) {
+			// the calls are the one entry's: moving on withdraws them all (the user, 2026-10-31)
+			ThreatAidRequests.clearCalls();
+			requestTarget = id.substring(ThreatFactionView.BUTTON_REQ_TARGET.length());
+			rerenderInPlace(ui);
+			return;
+		}
+		if (id.startsWith(ThreatFactionView.BUTTON_REQ_TOGGLE)) {
+			String rest = id.substring(ThreatFactionView.BUTTON_REQ_TOGGLE.length());
+			int colon = rest.indexOf(':');
+			if (colon > 0) {
+				ThreatBases.Base target = ThreatAidRequests.resolveTarget(rest.substring(colon + 1));
+				boolean on = ThreatAidRequests.toggle(target, rest.substring(0, colon));
+				ThreatIncConfig.log("Board call " + rest + " -> " + (on ? "on" : "off"));
 			}
-			ThreatIncConfig.log("Board order " + id + " -> " + result
-					+ (shorts.isEmpty() ? "" : ", short of " + ThreatAidRequests.shortText(shorts)));
+			rerenderInPlace(ui);
+			return;
+		}
+		if (id.startsWith(ThreatFactionView.BUTTON_REQ_REJECT)) {
+			String offerId = id.substring(ThreatFactionView.BUTTON_REQ_REJECT.length());
+			boolean done = ThreatAidRequests.reject(ThreatAidRequests.offerById(offerId));
+			ThreatIncConfig.log("Board offer rejected " + offerId + " -> " + done);
+			rerenderInPlace(ui);
+			return;
+		}
+		if (ThreatFactionView.isOrderButton(id)) {
+			String result = ThreatFactionView.executeOrder(id, this);
+			ThreatIncConfig.log("Board order " + id + " -> " + result);
 			rerenderInPlace(ui);
 			return;
 		}

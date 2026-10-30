@@ -634,7 +634,10 @@ public class ThreatGroundFronts {
 		}
 		front.armaments += armaments;
 		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
-		front.withdrawRequested = false;
+		// an NPC front marked for withdrawal because it ran dry fights on once resupplied; the player's
+		// Recall stands until the evacuation convoy lifts it (2026-10-30: a supply run landing first
+		// would have cancelled the order)
+		if (!front.isPlayerOwned()) front.withdrawRequested = false;
 		if (front.armaments > 0f) {
 			front.dryTimestamp = 0;
 			front.finalPush = false;
@@ -1462,9 +1465,9 @@ public class ThreatGroundFronts {
 		float coverD;
 		float pressure;
 		if (isHiveTarget(market)) {
-			// a hive's troops are its strata, in vanilla's figure already (ThreatStrata); the count asked is extra
-			float troops = forLanding ? 0f : count;
-			d = MarketCMD.getDefenderStr(market, true) + troops;
+			// a hive's troops are its strata, in vanilla's figure already (ThreatStrata); the count asked
+			// is the whole of them, as a colony's is its armed marines (the tooltip's "Needs N troops")
+			d = forLanding ? MarketCMD.getDefenderStr(market, true) : count;
 			coverD = 1f;
 			pressure = d * hiveCounterAttackPace(market);
 		} else {
@@ -2034,15 +2037,8 @@ public class ThreatGroundFronts {
 		if (front == null || market == null) return ThreatNotice.Reason.of("No front there");
 		if (STANCE_PUSH.equals(front.stance)) return ThreatNotice.Reason.of("Already pushing");
 		if (front.strataHeld >= market.getSize()) return ThreatNotice.Reason.of("Nothing left to take");
-		float eff = effectiveStrength(front);
-		float need = holdRequirement(market);
-		if (eff < need) {
-			ThreatNotice.Reason reason = ThreatNotice.Reason.of(
-					"Too weak to push: %s effective of the %s needed to hold",
-					Misc.getWithDGS(Math.round(eff)), Misc.getWithDGS(Math.round(need)));
-			if (isDry(front)) reason.line("Out of armaments");
-			return reason;
-		}
+		// no strength gate since 2026-10-30 evening (the user: "i can push and hold whenever i want", as
+		// a colony's defenders can): a push too weak to hold is the player's to order and the line's to answer
 		return null;
 	}
 
@@ -2537,7 +2533,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		boolean hive = isHiveTarget(market);
 		String layer = layerName(market);
 		String Layer = Character.toUpperCase(layer.charAt(0)) + layer.substring(1);
-		String layers = hive ? "strata" : "districts";
+		String layers = layerPlural(market);
 		String held = "" + front.strataHeld, total = "" + market.getSize();
 		ThreatNotice n = ThreatNotice.titled(Layer + (taken ? " Taken" : " Retaken"));
 		if (taken) {
@@ -5255,9 +5251,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * the front does the rest.
 	 * A DEFEND fleet (2026-09-07) slices only while {@link #defendBombards}.
 	 */
+	/**
+	 * The player's Deploy over a hive its landing attacks (the Domain table's attacked-world row,
+	 * 2026-10-30 evening): a guard order whose target is a Threat world. It besieges like a Support
+	 * sortie - and stays a guard so the Domain row's Fleet cell reads it (ThreatFleetOrders.stagedAt).
+	 */
+	protected static boolean guardOverHive(ThreatFleetOrders.Order o) {
+		if (o == null || !ThreatFleetOrders.KIND_GUARD.equals(o.kind) || o.targetId == null) return false;
+		return ThreatIncData.resolveColonyMarket(o.targetId) != null;
+	}
+
 	protected static void tickSupport(float elapsedDays) {
 		for (ThreatFleetOrders.Order o : new ArrayList<ThreatFleetOrders.Order>(ThreatFleetOrders.all())) {
-			boolean support = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind);
+			boolean support = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind) || guardOverHive(o);
 			boolean defend = ThreatFleetOrders.KIND_DEFEND.equals(o.kind);
 			if ((!support && !defend) || o.fleet == null) continue;
 			if (!o.fleet.isAlive() || o.fleet.isExpired()) continue; // the orders poll culls it
@@ -5595,6 +5601,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static String layerName(MarketAPI market) {
 		if (market == null) return "stratum";
 		return Theatre.of(market).layer();
+	}
+
+	/** "strata" on a hive, "districts" on a colony. */
+	public static String layerPlural(MarketAPI market) {
+		return "stratum".equals(layerName(market)) ? "strata" : layerName(market) + "s";
 	}
 
 	/** A player's or faction's front is gone: the surviving positions were overrun. */

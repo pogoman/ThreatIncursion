@@ -113,6 +113,14 @@ the row tooltip names the hive a base stocks for and the four targets.
   stock convoys bring for a voyage stays spendable and the voyage can spend it, while hunts and donors
   still leave the siege's and the relay's.
 
+**Nothing of the player's sails unordered (the user, 2026-10-30: "turn off the random supply convoys for
+player. nothing moves unless player orders it").** `planLogistics` skips the player's faction
+(knob `threatinc_playerAutoConvoys`, false): no staging convoy to a player base, no relief or front
+run, no outpost return, no feeding convoy, no Support sortie for a player front. The board's Supplies,
+Reinforce, Deploy and Fleet orders move the player's stock and hulls; an NPC faction answering a
+Request still sails its own convoy. The paragraphs below describe the player's staging as the
+planner ran it before, and run again only with the knob on.
+
 A player base
 stages for the nearest hive the PLAYER HAS FOUND (`ThreatIncData.discoveredSystems`), at
 any range, as the Siege button has none for the player; until 2026-09-05 evening it took
@@ -255,9 +263,11 @@ jump-point, waits while `orbitContested` (up to `frontRunWaitDays`, then home), 
 in, lands cargo via `resupply`, and goes home on the tracked return leg. An NPC
 front that is dry AND below grind strength sets `withdrawRequested`; the next
 planner pass sends an EVACUATION run that lifts the front off (`withdraw`) and
-carries it home into the base reserve. Board: **Supply**, **Pull out** and **Escort**
-on the faction view's hive rows (own front only) and on the war board's Fronts table
-rows; the hive card carries no second copy.
+carries it home into the base reserve. The player's lift is the Domain row's **Recall**
+(`pullOutFront`, 2026-10-30): the evacuation convoy sails at once from the nearest base and waits
+at the door while the orbit is contested (`frontRunWaitDays` at most) - the player's fronts have
+no planner pass (`planLogistics` skips the player), so nothing is deferred. (Board Supply / Pull out /
+Escort buttons went 2026-10-30 evening; `war-board.md` "Recall".)
 
 
 ## Feeding convoys (2026-10-18)

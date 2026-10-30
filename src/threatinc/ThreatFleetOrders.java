@@ -1805,9 +1805,13 @@ public class ThreatFleetOrders {
 	 * depot pays for, guardDays over the world, then home. Null when nothing could be built.
 	 */
 	public static Order dispatchGuardPoints(FactionAPI faction, MarketAPI market, MarketAPI base, float points) {
-		if (faction == null || market == null || base == null || points <= 0f) return null;
-		ThreatBases.Base target = ThreatBases.of(market);
-		if (target == null || target.entity() == null || target.hyperLoc() == null) return null;
+		return dispatchGuardPoints(faction, ThreatBases.of(market), base, points);
+	}
+
+	/** As above over either kind of base - a colony, an outpost, or the hive world of the player's front (a call for a defence fleet, 2026-10-31). */
+	public static Order dispatchGuardPoints(FactionAPI faction, ThreatBases.Base target, MarketAPI base, float points) {
+		if (faction == null || target == null || base == null || points <= 0f) return null;
+		if (target.entity() == null || target.hyperLoc() == null) return null;
 		List<CampaignFleetAPI> fleets = buildSortie(base, faction, points, target.hyperLoc(), false,
 				"a guard of " + target.name());
 		if (fleets == null) return null;
@@ -1830,7 +1834,12 @@ public class ThreatFleetOrders {
 				1000f, "returning to " + base.getName());
 		Order o = record(fleet, faction, KIND_GUARD, base, target.id(), target.name(), days);
 		o.aid = aid;
-		if (!faction.getId().equals(target.factionId())) o.recipientFactionId = target.factionId();
+		// a recipient is the ally whose world the guard holds; a hive the player attacks (the Domain row's
+		// Deploy, 2026-10-30 evening) has none, so stagedAt counts the fleet for the Fleet cell
+		if (!faction.getId().equals(target.factionId())
+				&& !com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT.equals(target.factionId())) {
+			o.recipientFactionId = target.factionId();
+		}
 		return o;
 	}
 
