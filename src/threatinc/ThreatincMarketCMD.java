@@ -760,61 +760,21 @@ public class ThreatincMarketCMD extends MarketCMD {
 		}
 	}
 
-	/**
-	 * A day of tactical bombardment, before it is flown: each fortification's
-	 * condition now and after the day, the shield's, the ships the return fire
-	 * would take by name, the unrest the day raises, the fuel. The same
-	 * figures {@link ThreatGroundFronts#siegeSlice} writes on the confirm.
-	 */
+	/** Over a hive the tactical bombardment is the strata day ({@link #strataBombardPrompt}); a human world's is vanilla's (v3, the user, 2026-10-27). */
 	@Override
 	protected void bombardTactical() {
-		if (!ThreatIncConfig.enabled()) {
+		if (!ThreatIncConfig.enabled() || !isThreatTarget()) {
 			super.bombardTactical();
 			return;
 		}
-		if (!isThreatTarget()) { // v3 (the user, 2026-10-27): a human world is bombarded as vanilla does it
-			super.bombardTactical();
-			return;
-		}
-		temp.bombardType = BombardType.TACTICAL;
-		temp.willBecomeHostile.clear();
-		temp.willBecomeHostile.add(faction);
-		temp.bombardmentTargets.clear();
-		if (!ThreatGroundFronts.bombardable(market)) {
-			text.addPara("There is nothing here for a tactical bombardment to suppress.");
-			addBombardNeverMindOption();
-			return;
-		}
-		Color h = Misc.getHighlightColor();
-		Color bad = Misc.getNegativeHighlightColor();
-		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
-		List<Industry> forts = theatre.fortifications(market);
-		temp.bombardmentTargets.addAll(forts);
-		// recomputed on every entry (see the class doc on the never-mind reset)
-		temp.bombardCost = tacticalFuel();
-		ThreatGroundFronts.BombardDay day = ThreatGroundFronts.bombardDay(playerFleet.getFleetPoints(), market, false);
-
-		text.addPara("A day of tactical bombardment:");
-		for (Industry ind : forts) {
-			text.addPara("    " + ind.getCurrentName() + " %s to %s", h, pct(theatre.condition(market, ind)),
-					pct(ThreatGroundFronts.conditionAfterDay(market, ind, day.rate, day.through)));
-		}
-		if (day.shieldNow >= 0f) {
-			text.addPara("    " + ThreatShield.get(market).getCurrentName() + " %s to %s, turning aside %s of the day.",
-					h, pct(day.shieldNow), pct(day.shieldAfter), pct(ThreatShield.absorb(market)));
-		}
-		for (String line : ThreatGroundFronts.lossLines(playerFleet, day.returnFire)) text.addPara(line, bad);
-		if (day.unrest > 0) text.addPara("Unrest raised to %s.", h, "" + day.unrest);
-		int fuel = (int) playerFleet.getCargo().getFuel();
-		text.addPara("The bombardment requires %s fuel. You have %s fuel.", h,
-				"" + temp.bombardCost, "" + fuel);
-		addBombardConfirmOptions();
-		gateConfirm(fuel >= temp.bombardCost);
+		strataBombardPrompt();
 	}
 
 	/**
-	 * The bombardment menu over a hive (phase D, docs/strata-are-the-threat.md 6): one bombardment,
-	 * strata for fuel, one line per fact - no tactical, no saturation, no return fire, no unrest.
+	 * The bombardment menu over a hive (phase D, docs/strata-are-the-threat.md 6, v3 docs/suppression-balance.md 10):
+	 * the tactical bombardment is a day of strata for fuel ({@link #strataBombardPrompt}), the saturation one THE SAT
+	 * BOMB ({@link #satBombPrompt}, knob satBombEnabled; off, the strata day is the one "Prepare a bombardment").
+	 * One line per option, no return fire, no unrest.
 	 */
 	protected void strataBombardMenu() {
 		Color h = Misc.getHighlightColor();
@@ -822,28 +782,53 @@ public class ThreatincMarketCMD extends MarketCMD {
 		float fp = playerFleet.getFleetPoints();
 		ThreatGroundFronts.BombardDay day = ThreatGroundFronts.bombardDay(fp, market, true);
 		int fuel = (int) playerFleet.getCargo().getFuel();
+		boolean sat = ThreatSatBomb.enabled();
 		text.addPara("Strata: %s, size %s.", h, ThreatStrata.fmt(day.strataNow), "" + market.getSize());
-		text.addPara("A day of bombardment by your %s fleet points razes %s strata for %s fuel.", h,
+		text.addPara("A day of " + (sat ? "tactical " : "") + "bombardment by your %s fleet points razes %s strata for %s fuel.", h,
 				Misc.getWithDGS((int) fp), ThreatStrata.fmt(day.strata), Misc.getWithDGS(Math.round(day.fuel)));
+		int satPrice = sat ? Math.round(ThreatSatBomb.price(market, fp)) : 0;
+		if (sat) {
+			String names = ThreatSatBomb.targetNames(market);
+			if (names.length() > 0) {
+				text.addPara("A saturation bombardment razes %s strata and disrupts " + names + " for %s days, for %s fuel.", h,
+						ThreatStrata.fmt(ThreatSatBomb.strata(market, fp)), "" + (int) ThreatSatBomb.disruptDays(), Misc.getWithDGS(satPrice));
+			} else {
+				text.addPara("A saturation bombardment razes %s strata for %s fuel.", h,
+						ThreatStrata.fmt(ThreatSatBomb.strata(market, fp)), Misc.getWithDGS(satPrice));
+			}
+		}
 		text.addPara("You have %s fuel.", h, Misc.getWithDGS(fuel));
 		boolean ready = bombardReady();
 		if (!ready) text.addPara("Your forces will be able to organize another bombardment within a day or so.");
 		options.clearOptions();
-		options.addOption("Prepare a bombardment", BOMBARD_SATURATION);
+		if (sat) {
+			options.addOption("Prepare a tactical bombardment", BOMBARD_TACTICAL);
+			options.addOption("Prepare a saturation bombardment", BOMBARD_SATURATION);
+		} else {
+			options.addOption("Prepare a bombardment", BOMBARD_SATURATION);
+		}
 		options.addOption("Go back", RAID_GO_BACK);
 		options.setShortcut(RAID_GO_BACK, org.lwjgl.input.Keyboard.KEY_ESCAPE, false, false, false, true);
 		// state after shape (CLAUDE.md "Option panels")
 		boolean debug = DebugFlags.MARKET_HOSTILITIES_DEBUG;
+		String why = null;
 		if (!ready) {
-			options.setEnabled(BOMBARD_SATURATION, false);
-			options.setTooltip(BOMBARD_SATURATION, LOCKED);
+			why = LOCKED;
 		} else if (!temp.canBombard && !debug) {
-			options.setEnabled(BOMBARD_SATURATION, false);
-			options.setTooltip(BOMBARD_SATURATION, "Defending fleets must be dealt with before bombarding.");
+			why = "Defending fleets must be dealt with before bombarding.";
 		} else if (day.strata <= 0f) {
-			options.setEnabled(BOMBARD_SATURATION, false);
-			options.setTooltip(BOMBARD_SATURATION, "Nothing left to raze.");
+			why = "Nothing left to raze.";
 		} else if (fuel < Math.max(1, Math.round(ThreatGroundFronts.fuelPerStratum())) && !debug) {
+			why = "Not enough fuel.";
+		}
+		if (why != null) {
+			options.setEnabled(BOMBARD_SATURATION, false);
+			options.setTooltip(BOMBARD_SATURATION, why);
+			if (sat) {
+				options.setEnabled(BOMBARD_TACTICAL, false);
+				options.setTooltip(BOMBARD_TACTICAL, why);
+			}
+		} else if (sat && fuel < Math.max(1, satPrice) && !debug) {
 			options.setEnabled(BOMBARD_SATURATION, false);
 			options.setTooltip(BOMBARD_SATURATION, "Not enough fuel.");
 		}
@@ -890,7 +875,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 	}
 
 	protected void strataBombardPrompt() {
-		temp.bombardType = BombardType.SATURATION;
+		temp.bombardType = BombardType.TACTICAL; // the strata day (phase D); the hive's SATURATION is the sat bomb
 		temp.willBecomeHostile.clear();
 		temp.willBecomeHostile.add(faction);
 		temp.bombardmentTargets.clear();
@@ -906,7 +891,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		}
 		temp.bombardCost = Math.max(0, Math.round(strata * ThreatGroundFronts.fuelPerStratum()));
 		float left = day.strataNow - strata;
-		text.addPara("A day of bombardment:");
+		text.addPara(ThreatSatBomb.enabled() ? "A day of tactical bombardment:" : "A day of bombardment:");
 		if (left <= 0f) {
 			text.addPara("    " + market.getName() + " is destroyed.", bad);
 		} else {
@@ -1043,6 +1028,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 					new RepActionEnvelope(RepActions.CUSTOM, impact, null, text, true, true), curr.getId());
 		}
 		boolean satBomb = saturation && isThreatTarget() && ThreatSatBomb.enabled();
+		boolean strataDay = isThreatTarget() && !satBomb; // phase D's day: strata for the prompt's fuel, no atrocity
 		if (saturation && !satBomb) countAtrocity(); // the sat bomb on a hive is no atrocity (the user, 2026-10-27)
 		if (!isThreatTarget() && market.hasCondition(Conditions.HABITABLE) && !market.hasCondition(Conditions.POLLUTION)) {
 			market.addCondition(Conditions.POLLUTION);
@@ -1060,13 +1046,16 @@ public class ThreatincMarketCMD extends MarketCMD {
 			strataRazed = out[0];
 			disrupted = (int) out[1];
 			destroyed = out[2] > 0f;
-		} else if (saturation) {
+		} else if (strataDay) {
 			// over a hive the fuel is the prompt's price (phase D): strata for fuel, and no more than paid
-			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, isThreatTarget() ? cost : fuelAboard, true, false,
-					defence, Factions.PLAYER, reason);
+			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, cost, true, false, defence, Factions.PLAYER, reason);
 			loss = out[0];
 			destroyed = out[3] > 0f;
-			if (isThreatTarget() && ThreatGroundFronts.fuelPerStratum() > 0f) strataRazed = out[1] / ThreatGroundFronts.fuelPerStratum();
+			if (ThreatGroundFronts.fuelPerStratum() > 0f) strataRazed = out[1] / ThreatGroundFronts.fuelPerStratum();
+		} else if (saturation) {
+			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, fuelAboard, true, false, defence, Factions.PLAYER, reason);
+			loss = out[0];
+			destroyed = out[3] > 0f;
 		} else {
 			loss = ThreatGroundFronts.siegeSlice(fp, market, 1f, true, false, defence, reason);
 		}

@@ -8,6 +8,8 @@ threatinc_bombardTacticalSel,DialogOptionSelected,"$option == mktBombardTactical
 !ThreatincNexCMD yields",ThreatincMarketCMD bombardTactical,,,"Override: a day of tactical bombardment on any world - each fortification's condition now and after, the ships the return fire takes, the fuel (docs/suppression-balance.md v2)"
 threatinc_bombardMenuSel,DialogOptionSelected,"$option == mktBombard score:1000
 !ThreatincNexCMD yields",ThreatincMarketCMD bombardMenu,,,"Override: the bombardment menu on any world - fuel a day for each kind, and the once-a-day lock both share"
+threatinc_bombardNeverMindSel,DialogOptionSelected,"$option == mktBombardNeverMind score:1000
+!ThreatincNexCMD yields",ThreatincMarketCMD bombardNeverMind,,,"Override: Never mind on a bombardment prompt re-enters OUR bombardment menu. Without it vanilla's rule ran a plain MarketCMD, whose menu priced a hive at its ground-defence strength (33,021 fuel over Marad, the user, 2026-10-30)"
 threatinc_marketPostOpen,MarketPostOpen,"$hasMarket
 $faction.id == threat score:1000","$tradeMode = NONE 0
 FireBest MarketPostDock","Your $shipOrFleet goes into orbit around $marketName. There is no port authority. No docking clearance is granted or refused - no channel opens at all. Across the world below, the fabrication strata pulse on without pause. To the hive, your fleet is not a visitor; it is material that has not yet been processed.",,"Override: hive worlds conduct no civilian business - trade mode forced to NONE (kills trade, bar, and the smuggler docking flow; MarketPostOpen fires best-scoring rule). Military options remain."
