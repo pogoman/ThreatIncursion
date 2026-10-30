@@ -1932,3 +1932,13 @@ brackets - the same saves on the keep-progress jar; a ran its 2,900 days, b / c 
   stands as a Defend fleet over the donor until absorbed. Count flat from w2,219 on a, so a nuisance, not
   a drain; the fix would size the shift to the fuel the passage can pay (`ThreatBudding.shift` /
   `spawn`). 0 exceptions on the three saves from the older jar. hw323 (set B) follows.
+
+**ROUND 90 VERDICT (17:50; the user, 17:48: "dont need to do more rounds if balance looks ok" - hw323 stopped
+before it started, tasks ThreatIncSeeds40 / WatchSeeds40 disabled):** the 2026-10-30 strategy layer holds
+the balance on set A from the pre-opening snapshots, read like-for-like against the same saves on the
+keep-progress jar: hives at or above (296 / 227 / 303 vs 273 / 227 / 294), the swarm's consumption up and
+the defenders' retakes down, campaigns launched at the old pace with a shorter wait (51-85 d vs 69-102),
+the parallel staging path live (3.3-4.1k lines), the back line no longer desized by its shifts (81 / 209 /
+121 drops vs 470-710) and starvations down (4 / 4 / 7 vs 21 / 9 / 7); 0 exceptions on saves from the older
+jar. Set B untested. Open: a shift swarm of the donor's whole amount (5.4k FP) held on fuel stands as
+defence (23 / 8 / 10 a game).
