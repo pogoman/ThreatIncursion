@@ -10,20 +10,18 @@ import java.util.Map;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
-import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
-import com.fs.starfarer.api.ui.Alignment;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * TACTICAL OBJECTIVES (the user, 2026-10-30 15:00: "above this table we have tactical objectives
- * table sorting top producers by priority and listing known information like size, sat bomb fuel
- * required and last known strata"). The table above the ledger: what to hit and why, among the
- * systems the player knows. Availability is a broadcast of the largest single source
+ * TACTICAL OBJECTIVES (the user, 2026-10-30 15:00: "tactical objectives table sorting top producers by
+ * priority"; 15:30: "get rid of tactical table and just new second last column on the threat colony
+ * board, Notes, which indicates the objective if relevant"). The ledger's Notes column and its row
+ * tooltip lines: what to hit and why, among the systems the player knows. Availability is a broadcast of the largest single source
  * (hive-economy.md), so the objective per resource is the largest known holder of its producer -
  * a mine, a refinery, a fuel plant - and the row says what breaks when it is taken offline: every
  * importer left to the next-largest known source, counted as starving (two or more units short, or
@@ -45,72 +43,56 @@ public class ThreatObjectives {
 		String why;
 	}
 
-	public static void add(final ThreatIncursionIntel intel, TooltipMakerAPI main, float width, float opad,
-			List<ThreatWarBoard.Entry> entries) {
-		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
-		Color dark = threat.getDarkUIColor(), bright = threat.getBrightUIColor();
-		Color h = Misc.getHighlightColor(), gray = Misc.getGrayColor(), text = Misc.getTextColor();
-		main.addSectionHeading("Tactical objectives", bright, dark, Alignment.MID, opad);
-		List<Row> rows = rows(entries);
-		if (rows.isEmpty()) {
-			main.addPara("Nothing known to strike at yet.", gray, opad);
-			return;
+	/**
+	 * The ledger's Notes column (the user, 2026-10-30 15:30: "get rid of tactical table and just new second last
+	 * column on the threat colony board, Notes, which indicates the objective if relevant"): system id -> its
+	 * worlds' objectives, best first.
+	 */
+	public static Map<String, List<Row>> bySystem(List<ThreatWarBoard.Entry> entries) {
+		Map<String, List<Row>> result = new HashMap<String, List<Row>>();
+		for (Row r : rows(entries)) {
+			List<Row> list = result.get(r.entry.systemId);
+			if (list == null) {
+				list = new ArrayList<Row>();
+				result.put(r.entry.systemId, list);
+			}
+			list.add(r);
 		}
-		float tw = width - 24f;
-		float[] frac = { .15f, .14f, .13f, .07f, .05f, .12f, .11f, .08f, .15f };
-		String[] names = { "Objective", "World", "System", "Distance", "Size", "Strata", "Sat bomb fuel", "Disrupted", "Effect" };
-		List<Object> columns = new ArrayList<Object>();
-		float[] w = new float[frac.length];
-		for (int i = 0; i < frac.length; i++) {
-			w[i] = (float) Math.floor(tw * frac[i]);
-			columns.add(names[i]);
-			columns.add(w[i]);
+		return result;
+	}
+
+	/** The cell: the objectives, best first - "Strike staging, Top fuel plant"; "-" with none. */
+	public static String noteText(List<Row> rows) {
+		if (rows == null || rows.isEmpty()) return "-";
+		StringBuilder b = new StringBuilder();
+		for (Row r : rows) {
+			if (b.length() > 0) b.append(", ");
+			b.append(r.objective);
 		}
-		main.beginTable2(threat, ThreatWarBoard.ROW_H, true, true, columns.toArray());
-		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(3, "Light-years to the nearest major inhabited world.");
-		main.addTableHeaderTooltip(4, "The world's size as your scouts last saw it.");
-		main.addTableHeaderTooltip(5, "The world's strata as your scouts last saw it, and days since.");
-		main.addTableHeaderTooltip(6, "Fuel a saturation bombardment by your fleet costs here.");
-		main.addTableHeaderTooltip(7, "Days the bomb keeps the world's industries offline.");
-		main.addTableHeaderTooltip(8, "What the hive loses while the world is offline.");
+		return b.toString();
+	}
+
+	/** True when a note names a strike staging: the cell takes the Threat's colour. */
+	public static boolean staging(List<Row> rows) {
+		if (rows == null) return false;
+		for (Row r : rows) if (r.score >= 100f) return true;
+		return false;
+	}
+
+	/** The row tooltip's lines, one objective each: the world, why, what breaks, the bomb's price for the player's fleet. */
+	public static void addTooltip(TooltipMakerAPI tooltip, List<Row> rows, float pad) {
+		if (rows == null || rows.isEmpty()) return;
 		CampaignFleetAPI player = Global.getSector().getPlayerFleet();
 		float fp = player != null ? player.getFleetPoints() : 0f;
-		boolean bomb = ThreatSatBomb.enabled();
-		for (final Row r : rows) {
-			ThreatIntel.Report seen = ThreatWarBoard.seenOver(r.entry.seen, r.world);
-			float strata = seen != null ? seen.worldStrata(r.world.getId()) : -1f;
-			int size = seen != null ? seen.worldSize(r.world.getId()) : -1;
-			List<Object> cells = new ArrayList<Object>();
-			ThreatWarBoard.cell(cells, Alignment.LMID, r.score >= 100f ? bright : h, r.objective);
-			ThreatWarBoard.cell(cells, Alignment.LMID, bright, main.shortenString(r.world.getName(), w[1] - 10f));
-			ThreatWarBoard.cell(cells, Alignment.LMID, text, main.shortenString(r.entry.displayName(), w[2] - 10f));
-			ThreatWarBoard.cell(cells, Alignment.MID, text, r.entry.coreLY >= 0f ? (int) Math.ceil(r.entry.coreLY) + " ly" : "-");
-			ThreatWarBoard.cell(cells, Alignment.MID, size > 0 ? h : gray, size > 0 ? "" + size : "?");
-			ThreatWarBoard.cell(cells, Alignment.MID, strata >= 0f ? text : gray, strata >= 0f ? ThreatIntel.figure(seen, strata) : "Unknown");
-			ThreatWarBoard.cell(cells, Alignment.MID, bomb && fp > 0f ? h : gray,
-					bomb && fp > 0f ? Misc.getWithDGS(Math.round(ThreatSatBomb.price(r.world, fp))) : "-");
-			ThreatWarBoard.cell(cells, Alignment.MID, bomb ? text : gray, bomb ? (int) ThreatSatBomb.disruptDays() + " d" : "-");
-			ThreatWarBoard.cell(cells, Alignment.LMID, text, main.shortenString(r.effect, w[8] - 10f));
-			main.addRow(cells.toArray());
-			final float bombFP = fp;
-			main.addTooltipToAddedRow(new TooltipMakerAPI.TooltipCreator() {
-				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-				public float getTooltipWidth(Object tooltipParam) { return 440f; }
-				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-					tooltip.addPara(r.why, 0f);
-					tooltip.addPara(r.effect, 4f);
-					if (ThreatSatBomb.enabled() && bombFP > 0f) {
-						tooltip.addPara("A saturation bombardment by your fleet (" + (int) bombFP + " FP) razes "
-								+ Misc.getWithDGS(Math.round(ThreatSatBomb.strata(r.world, bombFP))) + " strata and keeps the world's industries offline "
-								+ (int) ThreatSatBomb.disruptDays() + " days.", 4f);
-					}
-				}
-			}, TooltipMakerAPI.TooltipLocation.LEFT, false);
-			main.setIdForAddedRow(r.entry.systemId);
+		Color h = Misc.getHighlightColor();
+		for (Row r : rows) {
+			tooltip.addPara(r.objective + ": %s. " + r.why + " " + r.effect + ".", pad, h, r.world.getName());
+			if (ThreatSatBomb.enabled() && fp > 0f) {
+				tooltip.addPara("A saturation bombardment by your fleet costs %s fuel here, razes %s strata and keeps the world's industries offline %s days.",
+						2f, h, Misc.getWithDGS(Math.round(ThreatSatBomb.price(r.world, fp))),
+						Misc.getWithDGS(Math.round(ThreatSatBomb.strata(r.world, fp))), "" + (int) ThreatSatBomb.disruptDays());
+			}
 		}
-		main.addTable("None", -1, 0f);
-		main.addSpacer(opad);
 	}
 
 	/** The rows, best first: the campaign's stagings, then each resource's top producer and the next. */

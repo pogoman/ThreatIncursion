@@ -22,17 +22,17 @@ is the layout it implements.
    is literally true, and cutting a hive's fuel can push the phase back.
 2. **Totals strip** (custom panel, label/value pairs): known systems, hive worlds, swarm fleet
    sighted, expeditions out, sieges in, hives burned. Mass and missions went 2026-10-30.
-3. **Tactical objectives** (`ThreatObjectives.add`, 2026-10-30 15:00; the user: "tactical objectives
-   table sorting top producers by priority and listing known information like size sat bomb fuel
-   required and last known strata"): above the ledger, the campaign's staging systems
+3. **Objectives** (`ThreatObjectives`, 2026-10-30 15:00; the user: "tactical objectives table sorting
+   top producers by priority"; 15:30: "get rid of tactical table and just new second last column on
+   the threat colony board, Notes, which indicates the objective if relevant"): the ledger's **Notes**
+   column (second last, `Cols.NOTES`; the table lived 15:09-15:24) names the system's objectives, best
+   first - the campaign's staging systems
    (`ThreatOffensive.savingStagings`, "Strike staging", bill and gathered), then each resource's top
-   and next-largest KNOWN producer (fuel plant, refinery, mine) - Objective, World, System, Distance,
-   Size and Strata as the scouts last saw them (`ThreatIntel.Report.worldSize` / `worldStrata`, recorded
-   with the report), Sat bomb fuel for the player's fleet (`ThreatSatBomb.price`), Disrupted days, and
-   Effect: what breaks when the world is offline - every known importer left to the next-largest known
+   and next-largest KNOWN producer (fuel plant, refinery, mine) ("Top fuel plant", "Next refinery", "Top
+   mine"); the row tooltip adds a line an objective (`addTooltip`): the world, why, what breaks and the
+   sat bomb's fuel / strata / days for the player's fleet (`ThreatSatBomb.price`). What breaks when the world is offline - every known importer left to the next-largest known
    source counted starving (two or more units short by `ThreatColonyManager.coreDemand`, or no source
-   left) or holding (one short). Sorted by effect (starve x3 + hold, fuel +1); a row click selects the
-   system. Availability is a broadcast of the largest single source (hive-economy.md), which is why
+   left) or holding (one short). Sorted by effect (starve x3 + hold, fuel +1). Availability is a broadcast of the largest single source (hive-economy.md), which is why
    the largest producer is the objective and the next-largest the follow-up.
    **Ledger**: stock table, one row per known system, **nearest first** (`Entry.coreLY`, never seen a
    core last, then score). **Since 2026-10-30 (the user: "a lot of the information here should not be
@@ -43,7 +43,7 @@ is the layout it implements.
    Strata line reads the report's strata, never the live figure), System, Worlds (a count), Strikes (count), Activity (crests, drawn: every siege
    expedition, task force, intercept, Support or Defend sortie, front run and ground front against
    the system - as many as fit the column, the rest in the row tooltip), Supply (commodity icons,
-   drawn, what the scouts saw it produce), Core (ly), **Actions** (since 2026-10-30 13:30: Attack, the
+   drawn, what the scouts saw it produce), Notes (above), **Actions** (since 2026-10-30 13:30: Attack, the
    player board's order - the fleet deployed at the nearest player colony sails against the system,
    `IncursionManager.attackBase` / `attackBlockReason` - and Map, which selects the system on the map;
    `ThreatWarBoard.addLedgerButtons`, floated after the front buttons; the player tab's own "Known

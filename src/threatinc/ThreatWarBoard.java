@@ -894,8 +894,6 @@ public class ThreatWarBoard {
 		// under its heading
 		Fronts fronts = addFronts(intel, main, width, opad, frontRows(),
 				Global.getSector().getFaction(Factions.THREAT), true);
-		// what to hit and why, above the ledger (the user, 2026-10-30: "tactical objectives table")
-		ThreatObjectives.add(intel, main, width, opad, entries);
 		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
 		nameWidths.clear();
 		List<Object[]> cards = new ArrayList<Object[]>();
@@ -2058,7 +2056,7 @@ public class ThreatWarBoard {
 	// ---- the ledger ----
 
 	protected static final int RANK = 0, SYSTEM = 1, THREAT = 2, WORLDS = 3, MASS = 4, VIT = 5,
-			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11, FLOW = 12, ACT = 13;
+			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, NOTES = 11, FLOW = 12, ACT = 13;
 	protected static final int COLS = 14;
 
 	/** Column widths (and their offsets within a row) for a given table width. */
@@ -2081,10 +2079,10 @@ public class ThreatWarBoard {
 			// Map, 64 + 46 px and their gaps
 			// DISTANCE FIRST (the user, 2026-10-30): the first column is light-years to the core, the ledger
 			// sorted nearest first; the priority score and the Swarm fleet column are gone (0 width), the
-			// objectives table above says what to hit
+			// Notes column (15:30, in the old Core (ly) slot) says what to hit
 			float[] frac = narrow
-					? new float[] {.08f, .27f, 0f, .08f, 0f, 0f, 0f, 0f, .08f, .17f, .19f, 0f, 0f, .13f}
-					: new float[] {.08f, .31f, 0f, .08f, 0f, 0f, 0f, 0f, .08f, .17f, .17f, 0f, 0f, .11f};
+					? new float[] {.08f, .22f, 0f, .07f, 0f, 0f, 0f, 0f, .07f, .15f, .14f, .14f, 0f, .13f}
+					: new float[] {.08f, .25f, 0f, .07f, 0f, 0f, 0f, 0f, .07f, .15f, .14f, .13f, 0f, .11f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2134,10 +2132,11 @@ public class ThreatWarBoard {
 
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
+		final Map<String, List<ThreatObjectives.Row>> notes = ThreatObjectives.bySystem(entries);
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
 		String[] names = {"Distance", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
-				"Reach", "Strikes", "Activity", "Supply", "Core", "Flow", "Actions"};
+				"Reach", "Strikes", "Activity", "Supply", "Notes", "Flow", "Actions"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
 			if (!c.has(i)) continue;
@@ -2173,10 +2172,8 @@ public class ThreatWarBoard {
 						+ "point.", 0f);
 			}
 		});
-		if (c.has(CORE)) {
-			main.addTableHeaderTooltip(c.visibleIndex(CORE), "Light-years to the nearest major "
-					+ "inhabited world.");
-		}
+		if (c.has(NOTES)) main.addTableHeaderTooltip(c.visibleIndex(NOTES), "What a world here is to the hive: the staging of "
+				+ "its next strike, or the largest producer of a resource your scouts know of. Details in the row tooltip.");
 
 		final List<Object> rowObjects = new ArrayList<Object>();
 		final List<Entry> rowEntries = new ArrayList<Entry>();
@@ -2230,8 +2227,12 @@ public class ThreatWarBoard {
 					e.outbound.isEmpty() ? "-" : "" + e.outbound.size());
 			cell(cells, Alignment.MID, gray, e.inbound.isEmpty() ? "-" : ""); // crests by the overlay
 			cell(cells, Alignment.MID, gray, e.supplies.isEmpty() ? "-" : ""); // icons by the overlay
-			if (c.has(CORE)) {
-				cell(cells, Alignment.MID, text, e.coreLY >= 0f ? (int) Math.ceil(e.coreLY) + " ly" : "-");
+			// NOTES (the user, 2026-10-30 15:30): the system's objectives - a strike staging, a top producer (ThreatObjectives)
+			if (c.has(NOTES)) {
+				List<ThreatObjectives.Row> rows = notes.get(e.systemId);
+				String note = ThreatObjectives.noteText(rows);
+				cell(cells, Alignment.LMID, ThreatObjectives.staging(rows) ? bright : "-".equals(note) ? gray : h,
+						main.shortenString(note, c.w[NOTES] - 2f * CELL_PAD));
 			}
 			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
 			if (c.has(FLOW)) cell(cells, Alignment.LMID, e.flow != null ? h : gray,
@@ -2244,6 +2245,7 @@ public class ThreatWarBoard {
 				public float getTooltipWidth(Object tooltipParam) { return 440f; }
 				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 					addRowTooltip(tooltip, e, c.narrow);
+					ThreatObjectives.addTooltip(tooltip, notes.get(e.systemId), 10f);
 				}
 			}, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(e.systemId);
