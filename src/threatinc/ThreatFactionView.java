@@ -81,6 +81,8 @@ public class ThreatFactionView {
 	public static final String BUTTON_ENTRENCH = "threatinc_board_entrench:";
 	/** Player aid: a task force from a player colony guards another faction's colony (payload: factionId:marketId). */
 	public static final String BUTTON_AID_DEFEND = "threatinc_board_aiddefend:";
+	/** The Send button on an NPC faction's need row (2026-10-30): "factionId:marketId:good" - a convoy of the good at its lever, or Defend for a fleets need. */
+	public static final String BUTTON_AID_NEED = "threatinc_board_aidneed:";
 	/** Withdraws the player's request for aid for a world (the Requests table, 2026-10-29 evening). */
 	public static final String BUTTON_WITHDRAW = "threatinc_board_withdraw:";
 	/** Player aid: a task force from a player colony holds a hive system's door (payload: factionId:systemId). */
@@ -986,8 +988,13 @@ public class ThreatFactionView {
 		List<String> marketIds = new ArrayList<String>();
 		List<String> goods = new ArrayList<String>();
 		List<Integer> firstRows = new ArrayList<Integer>();
-		/** Why the row's Withdraw is off (the part sails or has landed), null while it is open. */
+		/** Why the row's button is off, null while it can be pressed. */
 		List<String> offReasons = new ArrayList<String>();
+		/** The button's tooltip while it can be pressed (the needs table). */
+		List<String> helps = new ArrayList<String>();
+		/** An NPC faction's needs table (2026-10-30): the rows hold Send (BUTTON_AID_NEED), not Withdraw. */
+		boolean aid;
+		String factionId;
 	}
 
 	protected static final float WITHDRAW_W = SMALL_BUTTON_W + 22f;
@@ -1004,10 +1011,7 @@ public class ThreatFactionView {
 	 */
 	protected static Requests addRequests(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
 			float opad, final FactionAPI faction, final boolean own) {
-		if (!own) {
-			addFactionNeeds(intel, main, width, opad, faction);
-			return null;
-		}
+		if (!own) return addFactionNeeds(intel, main, width, opad, faction);
 		List<ThreatAidRequests.Request> requests = ThreatAidRequests.open();
 		if (requests.isEmpty()) return null;
 		Color dark = faction.getDarkUIColor();
@@ -1126,16 +1130,25 @@ public class ThreatFactionView {
 	 * colonies' needs on the ledger (ThreatNeeds.of - what the allies' goods pass and the player's
 	 * dock hand-over answer), a row a need - World, Asked (the purpose and the good), Answer (the
 	 * convoy at sea with the good and whose it is, a task force bound for a fleets need, else
-	 * waiting), ETA. The row tooltip is the need's figures and every convoy sailing. Nothing drawn
-	 * with no need.
+	 * waiting), ETA, and a Send button (the user, 2026-10-30: "i see no way to send aid for the
+	 * need?" - BUTTON_AID_NEED: a convoy of that good alone at the colonies table's lever for it,
+	 * Med when the lever is at None, from the player's colony sparing the most, ThreatAid.quoteAid;
+	 * a fleets need sends Defend at the fronts' Fleet lever, as BUTTON_AID_DEFEND). The row tooltip
+	 * is the need's figures and every convoy sailing. Nothing drawn with no need.
 	 */
-	protected static void addFactionNeeds(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
+	protected static Requests addFactionNeeds(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
 			float opad, final FactionAPI faction) {
 		List<Object[]> rows = new ArrayList<Object[]>();
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			for (ThreatNeeds.Need n : ThreatNeeds.of(m)) rows.add(new Object[] { m, n });
 		}
-		if (rows.isEmpty()) return;
+		if (rows.isEmpty()) return null;
+		int[] levers = intel.colonyLevers();
+		int[] frontLevers = intel.frontLevers();
+		ThreatNotice.Reason blocked = ThreatAid.canAid(faction);
+		Requests out = new Requests();
+		out.aid = true;
+		out.factionId = faction.getId();
 		Color dark = faction.getDarkUIColor();
 		Color bright = faction.getBrightUIColor();
 		Color h = Misc.getHighlightColor();
@@ -1143,18 +1156,19 @@ public class ThreatFactionView {
 		Color text = Misc.getTextColor();
 		main.addSectionHeading("Requests for aid", bright, dark, Alignment.MID, opad);
 		float tw = width - 24f;
-		String[] names = {"World", "Asked", "Answer", "ETA"};
-		float[] frac = {.16f, .34f, .40f, .10f};
+		String[] names = {"World", "Asked", "Answer", "ETA", ""};
+		float[] frac = {.16f, .32f, .36f, .07f, .09f};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < names.length; i++) {
 			columns.add(names[i]);
 			columns.add((float) Math.floor(tw * frac[i]));
 		}
-		main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
+		out.table = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
 		main.addTableHeaderTooltip(1, "What the world calls for, by purpose.");
 		main.addTableHeaderTooltip(2, "What sails to answer it; waiting until something does.");
 		main.addTableHeaderTooltip(3, "Days until it lands.");
+		int rowIndex = 0;
 		for (Object[] row : rows) {
 			final MarketAPI m = (MarketAPI) row[0];
 			final ThreatNeeds.Need n = (ThreatNeeds.Need) row[1];
@@ -1189,8 +1203,29 @@ public class ThreatFactionView {
 			ThreatWarBoard.cell(cells, Alignment.LMID, answerColor,
 					main.shortenString(answer, (float) Math.floor(tw * frac[2]) - 10f));
 			ThreatWarBoard.cell(cells, Alignment.MID, etaColor, eta);
+			ThreatWarBoard.cell(cells, Alignment.MID, gray, ""); // Send sits here
 			main.addRow(cells.toArray());
 			main.setIdForAddedRow(ROW_MARKET + m.getId());
+			// the Send button's state: the gate on the button, the reason as its tooltip while off
+			String off = blocked != null ? ThreatNotice.text(blocked) : null;
+			String help;
+			if (n.isFleets()) {
+				ThreatAid.Quote q = ThreatAid.quoteDefend(m, frontLevers.length > 2 ? frontLevers[2] : 0);
+				if (off == null && !q.ok()) off = ThreatNotice.text(q.reason);
+				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
+						+ q.source.getName() + " to take the orbit, at the Fleet lever." : "Sends a task force to take the orbit.";
+			} else {
+				ThreatAid.Quote q = ThreatAid.quoteAid(m, needLevers(n.good, levers));
+				if (off == null && !q.ok()) off = ThreatNotice.text(q.reason);
+				help = q.ok() ? "Sends " + aidCargo(q) + " from " + q.source.getName() + ", at the " + ThreatReserves.label(n.good)
+						+ " lever." : "Sends a convoy of " + ThreatReserves.label(n.good) + ".";
+			}
+			out.marketIds.add(m.getId());
+			out.goods.add(n.good);
+			out.firstRows.add(rowIndex);
+			out.offReasons.add(off);
+			out.helps.add(help);
+			rowIndex++;
 			main.addTooltipToAddedRow(new TooltipCreator() {
 				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
 				public float getTooltipWidth(Object tooltipParam) { return 460f; }
@@ -1209,8 +1244,29 @@ public class ThreatFactionView {
 				}
 			}, TooltipLocation.BELOW);
 		}
+		out.rowCount = rowIndex;
 		main.addTable("None", -1, 0f);
 		main.addSpacer(opad);
+		return out;
+	}
+
+	/**
+	 * The colonies table's levers cut to one good for a need row's Send (2026-10-30): that good's
+	 * lever, Med when it stands at None, every other at None.
+	 */
+	protected static int[] needLevers(String good, int[] levers) {
+		int[] single = new int[ThreatReserves.AID_COMMODITIES.length];
+		int i = ThreatAid.index(good);
+		if (i >= 0) single[i] = levers != null && i < levers.length && levers[i] > 0 ? levers[i] : 1;
+		return single;
+	}
+
+	/** A Send on a fleets need is the fronts' Defend (BUTTON_AID_DEFEND); any other id passes through. */
+	protected static String[] aidNeedParts(String[] parts) {
+		if (parts == null || !BUTTON_AID_NEED.equals(parts[0])) return parts;
+		String[] wt = withdrawTarget(parts[2]);
+		if (ThreatNeeds.FLEETS.equals(wt[1])) return new String[] {BUTTON_AID_DEFEND, parts[1], wt[0]};
+		return parts;
 	}
 
 	/** The convoys at sea to the market carrying some of the good, whoever sent them. */
@@ -1243,7 +1299,7 @@ public class ThreatFactionView {
 		return Math.max(0f, days);
 	}
 
-	/** The Withdraw button on each call's row, floated in last (platform traps 1 and 2); off once the part is answered. */
+	/** The Withdraw button on each call's row - Send on an NPC faction's need rows - floated in last (platform traps 1 and 2); off with its reason as the tooltip. */
 	protected static void addWithdrawButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Requests requests) {
 		if (requests == null || requests.table == null) return;
 		for (int i = 0; i < requests.marketIds.size(); i++) {
@@ -1251,10 +1307,16 @@ public class ThreatFactionView {
 			int row = requests.firstRows.get(i);
 			String off = requests.offReasons.get(i);
 			float up = (requests.rowCount - row) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
-			ButtonAPI withdraw = intel.addGenericButton(main, WITHDRAW_W, "Withdraw",
-					BUTTON_WITHDRAW + Factions.PLAYER + ":" + marketId + ":" + requests.goods.get(i));
-			withdraw.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f);
-			disableWith(main, withdraw, off == null, off, "Withdraws this call.");
+			ButtonAPI button;
+			if (requests.aid) {
+				button = intel.addGenericButton(main, SMALL_BUTTON_W + 8f, "Send",
+						BUTTON_AID_NEED + requests.factionId + ":" + marketId + ":" + requests.goods.get(i));
+			} else {
+				button = intel.addGenericButton(main, WITHDRAW_W, "Withdraw",
+						BUTTON_WITHDRAW + Factions.PLAYER + ":" + marketId + ":" + requests.goods.get(i));
+			}
+			button.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f);
+			disableWith(main, button, off == null, off, requests.aid ? requests.helps.get(i) : "Withdraws this call.");
 		}
 	}
 
@@ -2073,7 +2135,7 @@ public class ThreatFactionView {
 				|| id.startsWith(BUTTON_DEFEND)
 				|| id.startsWith(BUTTON_PUSH) || id.startsWith(BUTTON_ENTRENCH)
 				|| id.startsWith(BUTTON_OUTPOST)
-				|| id.startsWith(BUTTON_AID_DEFEND)
+				|| id.startsWith(BUTTON_AID_DEFEND) || id.startsWith(BUTTON_AID_NEED)
 				|| id.startsWith(BUTTON_AID_STRIKE) || id.startsWith(BUTTON_MOBILISE)
 				|| id.startsWith(BUTTON_STAND_DOWN)
 				|| id.startsWith(BUTTON_DEFEND_PUSH) || id.startsWith(BUTTON_DEFEND_ENTRENCH)
@@ -2086,7 +2148,7 @@ public class ThreatFactionView {
 				BUTTON_RECALL,
 				BUTTON_DETACH,
 				BUTTON_SUPPLY, BUTTON_PULLOUT, BUTTON_SUPPORT, BUTTON_DEFEND, BUTTON_PUSH, BUTTON_ENTRENCH,
-				BUTTON_OUTPOST, BUTTON_AID_DEFEND,
+				BUTTON_OUTPOST, BUTTON_AID_DEFEND, BUTTON_AID_NEED,
 				BUTTON_AID_STRIKE, BUTTON_MOBILISE, BUTTON_STAND_DOWN,
 				BUTTON_DEFEND_PUSH, BUTTON_DEFEND_ENTRENCH, BUTTON_WITHDRAW};
 		for (String p : prefixes) {
@@ -2126,6 +2188,7 @@ public class ThreatFactionView {
 
 	/** The order's own confirm text, by button. */
 	protected static void addOrderPromptBody(TooltipMakerAPI prompt, String id, String[] parts, ThreatIncursionIntel intel) {
+		parts = aidNeedParts(parts);
 		int siegeTier = intel != null ? intel.getSiegeTier() : 0;
 		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0, 0};
 		int[] levers = intel != null ? intel.colonyLevers() : new int[ThreatReserves.AID_COMMODITIES.length];
@@ -2254,6 +2317,12 @@ public class ThreatFactionView {
 					+ "blocks the swarm from seeding the world again until it is destroyed"
 					+ (base == null ? " - but no base in reach can pay for it right now." : "."),
 					0f, h, cost);
+		} else if (BUTTON_AID_NEED.equals(parts[0])) {
+			// SEND on an NPC faction's need row (2026-10-30): a convoy of that good alone at its lever
+			String[] wt = withdrawTarget(parts[2]);
+			MarketAPI target = wt[0] != null ? Global.getSector().getEconomy().getMarket(wt[0]) : null;
+			ThreatAid.Quote q = ThreatAid.quoteAid(target, needLevers(wt[1], levers));
+			aidPrompt(prompt, target, q, who, h);
 		} else if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			// DEFEND an ally's sieged world at the fronts' Fleet lever (2026-10-29 evening): match the swarm
@@ -2555,6 +2624,7 @@ public class ThreatFactionView {
 		int[] frontLevers = intel != null ? intel.frontLevers() : new int[] {0, 0, 0};
 		int[] levers = intel != null ? intel.colonyLevers() : new int[ThreatReserves.AID_COMMODITIES.length];
 		Random random = new Random();
+		parts = aidNeedParts(parts);
 		FactionAPI faction = Global.getSector().getFaction(parts[1]);
 		if (faction == null) return null;
 		// the player's own war footing, by choice alone
@@ -2569,6 +2639,12 @@ public class ThreatFactionView {
 			return "stand-down";
 		}
 		// the player's aid to another faction (docs/player-aid.md): no order authority needed
+		if (BUTTON_AID_NEED.equals(parts[0])) {
+			// SEND on a need row (2026-10-30): a convoy of that good alone at its lever (a fleets need became Defend above)
+			String[] wt = withdrawTarget(parts[2]);
+			MarketAPI target = wt[0] != null ? Global.getSector().getEconomy().getMarket(wt[0]) : null;
+			return target != null && ThreatAid.dispatchAid(target, needLevers(wt[1], levers), random) ? "aid-need" : null;
+		}
 		if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			// at the fronts' Fleet lever (2026-10-29 evening), as the player's own Defend
 			return ThreatAid.dispatchDefend(Global.getSector().getEconomy().getMarket(parts[2]),

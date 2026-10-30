@@ -145,7 +145,10 @@ nothing drawn with none). Since 2026-10-30 (the user: "each factions requests ta
 their requests") the player's tab lists the player's calls and an NPC faction's tab its own: its
 colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`) - World, Asked (purpose and
 good), Answer (the convoy at sea with the good and whose it is, `convoysWith`; a task force bound
-for a fleets need; else waiting), ETA (`convoyEta`). The player's: World, Asked (all or half of what one colony of each faction spares),
+for a fleets need; else waiting), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a
+convoy of that good alone at its lever, Med when None, from the player's colony sparing the most -
+`ThreatAid.quoteAid` through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever).
+The player's: World, Asked (all or half of what one colony of each faction spares),
 Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on every
 row (one call a row; off once that part is answered). The player's tab shows every faction's answer, an NPC tab that faction's own
 (its part sailing, another's taken, or its last reason and when it looks again). The colony rows'
