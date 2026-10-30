@@ -15,6 +15,7 @@ import com.fs.starfarer.api.campaign.RepLevel;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
+import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -52,6 +53,10 @@ public final class ThreatIntel {
 
 	public static final String KEY_REPORTS = "threatinc_intelReports";
 	public static final String KEY_LAST_CENSUS = "threatinc_intelLastCensus";
+	/** Observer -> system id -> the day a party of theirs sent there was lost (the board's "Scout lost" note, 2026-10-30). */
+	public static final String KEY_LOST = "threatinc_intelLost";
+	/** The producers a hive world may run, recorded in a report (Report.made): the board's "Size 8 fuel production" note. */
+	protected static final String[] PRODUCERS = { Industries.FUELPROD, Industries.REFINING, Industries.MINING };
 
 	public static final String EYES = "eyes";
 	public static final String SCOUT = "scout";
@@ -71,6 +76,8 @@ public final class ThreatIntel {
 		 * two worlds counts at both.
 		 */
 		public Map<String, float[]> worlds = new LinkedHashMap<String, float[]>();
+		/** Hive market id -> its producer industries when seen (PRODUCERS, comma-joined); null in a report from before 2026-10-30. */
+		public Map<String, String> made = new LinkedHashMap<String, String>();
 		/** Threat fleet points within the contest radius of any hive world, each fleet once. */
 		public float nearFP;
 		public int nearFleets;
@@ -107,6 +114,12 @@ public final class ThreatIntel {
 		public float worldStaging(String marketId) {
 			float[] w = worlds.get(marketId);
 			return w != null && w.length > 4 ? w[4] : 0f;
+		}
+
+		/** The world's producer industries when seen (industry ids), none when not recorded. */
+		public String[] worldMade(String marketId) {
+			String s = made != null ? made.get(marketId) : null;
+			return s == null || s.isEmpty() ? new String[0] : s.split(",");
 		}
 
 		/** The swarms over the strongest world it saw. */
@@ -195,6 +208,15 @@ public final class ThreatIntel {
 		// user, 2026-10-30 15:45: a "Strike staging" note "unless a scout has detected [it] ... fog of war")
 		for (MarketAPI hive : hives) r.worlds.put(hive.getId(), new float[] { 0f, 0f, ThreatStrata.of(hive), hive.getSize(),
 				ThreatColonyManager.staged(hive.getId()) + ThreatBudding.strikeInbound(hive) });
+		for (MarketAPI hive : hives) {
+			StringBuilder b = new StringBuilder();
+			for (String ind : PRODUCERS) {
+				if (!hive.hasIndustry(ind)) continue;
+				if (b.length() > 0) b.append(',');
+				b.append(ind);
+			}
+			r.made.put(hive.getId(), b.toString());
+		}
 		for (CampaignFleetAPI fleet : system.getFleets()) {
 			if (!swarmFleet(fleet)) continue;
 			float fp = fleet.getFleetPoints();
@@ -531,6 +553,33 @@ public final class ThreatIntel {
 		return best;
 	}
 
+	/** A party of the observer's sent to the system was lost on the way (ThreatScouts): marked today, for the board's Notes. */
+	public static void markLost(String observer, String systemId) {
+		if (observer == null || systemId == null) return;
+		Map<String, Map<String, Float>> all = ThreatIncData.map(KEY_LOST);
+		Map<String, Float> mine = all.get(observer);
+		if (mine == null) {
+			mine = new LinkedHashMap<String, Float>();
+			all.put(observer, mine);
+		}
+		mine.put(systemId, today());
+	}
+
+	/** The newest day a party of the observer's or a sharer's was lost on its way to the system, -1 never. */
+	public static float lostDay(String observer, String systemId) {
+		if (observer == null || systemId == null) return -1f;
+		Map<String, Map<String, Float>> all = ThreatIncData.map(KEY_LOST);
+		float best = -1f;
+		List<String> who = new ArrayList<String>(sharersOf(observer));
+		who.add(observer);
+		for (String o : who) {
+			Map<String, Float> theirs = all.get(o);
+			Float d = theirs != null ? theirs.get(systemId) : null;
+			if (d != null && d > best) best = d;
+		}
+		return best;
+	}
+
 	public static Report report(String observer, StarSystemAPI system) {
 		return system != null ? report(observer, system.getId()) : null;
 	}
@@ -597,6 +646,7 @@ public final class ThreatIntel {
 	/** A new campaign (ThreatColonyManager.resetIncursion): every report goes. */
 	public static void reset() {
 		Global.getSector().getPersistentData().remove(KEY_REPORTS);
+		Global.getSector().getPersistentData().remove(KEY_LOST);
 		Global.getSector().getPersistentData().remove(KEY_LAST_CENSUS);
 		forget();
 	}

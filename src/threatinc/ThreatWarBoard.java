@@ -948,6 +948,16 @@ public class ThreatWarBoard {
 					BUTTON_MAP + e.systemId);
 			map.getPosition().belowRight(ledger.table, -up)
 					.setXAlignOffset(-6f - ThreatFactionView.SMALL_BUTTON_W - 10f - 6f);
+			// SCOUT (the user, 2026-10-30 16:00: "lets add it back here: scout button"): a party from the nearest colony
+			// that can raise one; what it sees is the row's Notes when it is home (ThreatScouts.playerRecon)
+			com.fs.starfarer.api.ui.ButtonAPI scout = intel.addGenericButton(main, ThreatFactionView.SMALL_BUTTON_W, "Scout",
+					ThreatFactionView.BUTTON_SCOUT + Factions.PLAYER + ":" + e.systemId);
+			scout.getPosition().belowRight(ledger.table, -up)
+					.setXAlignOffset(-6f - ThreatFactionView.SMALL_BUTTON_W - 10f - 6f - MAP_BUTTON_W - 6f);
+			String scoutWhy = e.system != null ? ThreatScouts.scoutOffReason(e.system) : "No target.";
+			ThreatFactionView.disableWith(main, scout, scoutWhy == null, scoutWhy != null ? scoutWhy : "",
+					"Sends a scouting party of " + (int) ThreatIncConfig.scoutFleetPoints()
+					+ " fleet points from your nearest colony that can raise one. What it sees is this row's Notes once it is home.");
 		}
 	}
 
@@ -2036,7 +2046,7 @@ public class ThreatWarBoard {
 	// ---- the ledger ----
 
 	protected static final int RANK = 0, SYSTEM = 1, THREAT = 2, WORLDS = 3, MASS = 4, VIT = 5,
-			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, NOTES = 11, FLOW = 12, ACT = 13;
+			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, NOTES = 11, AGE = 12, ACT = 13;
 	protected static final int COLS = 14;
 
 	/** Column widths (and their offsets within a row) for a given table width. */
@@ -2061,8 +2071,8 @@ public class ThreatWarBoard {
 			// sorted nearest first; the priority score and the Swarm fleet column are gone (0 width), the
 			// Notes column (15:30, in the old Core (ly) slot) says what to hit
 			float[] frac = narrow
-					? new float[] {.08f, .22f, 0f, .07f, 0f, 0f, 0f, 0f, .07f, .15f, .14f, .14f, 0f, .13f}
-					: new float[] {.08f, .25f, 0f, .07f, 0f, 0f, 0f, 0f, .07f, .15f, .14f, .13f, 0f, .11f};
+					? new float[] {.07f, .13f, 0f, .06f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .19f, .06f, .19f}
+					: new float[] {.07f, .15f, 0f, .06f, 0f, 0f, 0f, 0f, .06f, .12f, .12f, .20f, .06f, .16f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2113,10 +2123,11 @@ public class ThreatWarBoard {
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
 		final Map<String, List<ThreatObjectives.Row>> notes = ThreatObjectives.bySystem(entries);
+		final List<Entry> all = entries;
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
 		String[] names = {"Distance", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
-				"Reach", "Strikes", "Activity", "Supply", "Notes", "Flow", "Actions"};
+				"Reach", "Strikes", "Activity", "Supply", "Notes", "Age", "Actions"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
 			if (!c.has(i)) continue;
@@ -2130,7 +2141,7 @@ public class ThreatWarBoard {
 		if (c.has(MASS)) main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
 		if (c.has(VIT)) main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
-		if (c.has(FLOW)) main.addTableHeaderTooltip(c.visibleIndex(FLOW), "Swarm on the move: a fleet budding, one being absorbed, or a shift to another world.");
+		if (c.has(AGE)) main.addTableHeaderTooltip(c.visibleIndex(AGE), "Days since the last look at the system - your scouts', an ally's or your own - or since a party sent there was lost.");
 		if (c.has(SWARMS)) main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Threat fleet points last seen in the "
 				+ "system, and days since.");
 		if (c.has(REACH)) main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
@@ -2209,14 +2220,15 @@ public class ThreatWarBoard {
 			cell(cells, Alignment.MID, gray, e.supplies.isEmpty() ? "-" : ""); // icons by the overlay
 			// NOTES (the user, 2026-10-30 15:30): the system's objectives - a strike staging, a top producer (ThreatObjectives)
 			if (c.has(NOTES)) {
-				List<ThreatObjectives.Row> rows = notes.get(e.systemId);
-				String note = ThreatObjectives.noteText(rows);
-				cell(cells, Alignment.LMID, ThreatObjectives.staging(rows) ? bright : "-".equals(note) ? gray : h,
-						main.shortenString(note, c.w[NOTES] - 2f * CELL_PAD));
+				List<String> lines = ThreatObjectives.lines(e, notes.get(e.systemId), all);
+				cell(cells, Alignment.LMID, ThreatObjectives.noteColor(lines, bright, h, gray, neg),
+						main.shortenString(ThreatObjectives.noteText(lines), c.w[NOTES] - 2f * CELL_PAD));
 			}
 			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
-			if (c.has(FLOW)) cell(cells, Alignment.LMID, e.flow != null ? h : gray,
-					e.flow != null ? main.shortenString(e.flow, c.w[FLOW] - 2f * CELL_PAD) : "-");
+			if (c.has(AGE)) {
+				String age = ThreatObjectives.ageText(e);
+				cell(cells, Alignment.MID, "-".equals(age) ? gray : text, age);
+			}
 			cell(cells, Alignment.MID, gray, ""); // Attack + Map float here (addLedgerButtons)
 
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
@@ -2225,7 +2237,7 @@ public class ThreatWarBoard {
 				public float getTooltipWidth(Object tooltipParam) { return 440f; }
 				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 					addRowTooltip(tooltip, e, c.narrow);
-					ThreatObjectives.addTooltip(tooltip, notes.get(e.systemId), 10f);
+					ThreatObjectives.addTooltip(tooltip, e, notes.get(e.systemId), all, 10f);
 				}
 			}, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(e.systemId);
@@ -2380,27 +2392,11 @@ public class ThreatWarBoard {
 		tooltip.addSpacer(10f);
 		String title = e.system.getNameWithNoType();
 		if (e.isColony()) {
-			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds")
-					+ ", mass " + e.mass;
+			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds");
 		}
 		tooltip.addPara(title, Global.getSector().getFaction(Factions.THREAT).getBrightUIColor(), 6f);
 		tooltip.addPara(e.chip + " - " + e.reason, e.reasonColor, 4f);
-		if (e.isColony()) {
-			// its worlds' growth, then one line per world losing a size
-			int[] states = new int[3];
-			for (MarketAPI m : e.markets) states[fedState(m) - STARVING]++;
-			List<String> split = new ArrayList<String>();
-			if (states[GROWING - STARVING] > 0) split.add(states[GROWING - STARVING] + " growing");
-			if (states[HOLDING - STARVING] > 0) split.add(states[HOLDING - STARVING] + " holding");
-			if (states[0] > 0) split.add(states[0] + " starving");
-			tooltip.addPara(join(split) + ".", text, 4f);
-			for (MarketAPI m : e.markets) {
-				if (fedState(m) != STARVING) continue;
-				tooltip.addPara(m.getName() + " is starving: size %s in ~%s d.", 4f, text,
-						Misc.getNegativeHighlightColor(), "" + (m.getSize() - 1),
-						"" + Math.max(1, (int) ThreatColonyManager.daysToLoseSize(m)));
-			}
-		}
+		// no growth states or starving lines since 2026-10-30 16:00: live figures; the Notes lines below carry the report
 		if (!e.supplies.isEmpty()) {
 			tooltip.addPara("Makes:", text, 6f);
 			List<String> ids = new ArrayList<String>(e.supplies);

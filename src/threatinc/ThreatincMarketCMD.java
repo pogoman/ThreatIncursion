@@ -74,7 +74,9 @@ public class ThreatincMarketCMD extends MarketCMD {
 	// ground-front options (docs/ground-war.md); each id has a rules.csv row
 	public static final String GROUND_OPS = "threatincGroundOps";
 	public static final String GROUND_DEPLOY = "threatincGroundDeploy";
+	public static final String GROUND_DEPLOY_HALF = "threatincGroundDeployHalf";
 	public static final String GROUND_RESUPPLY = "threatincGroundResupply";
+	public static final String GROUND_RESUPPLY_HALF = "threatincGroundResupplyHalf";
 	public static final String GROUND_WITHDRAW = "threatincGroundWithdraw";
 	public static final String GROUND_PUSH = "threatincGroundPush";
 	public static final String GROUND_ENTRENCH = "threatincGroundEntrench";
@@ -96,9 +98,13 @@ public class ThreatincMarketCMD extends MarketCMD {
 		if ("groundOps".equals(command)) {
 			groundOps();
 		} else if ("groundDeploy".equals(command)) {
-			groundDeploy();
+			groundDeploy(1f);
+		} else if ("groundDeployHalf".equals(command)) {
+			groundDeploy(0.5f);
 		} else if ("groundResupply".equals(command)) {
-			groundResupply();
+			groundResupply(1f);
+		} else if ("groundResupplyHalf".equals(command)) {
+			groundResupply(0.5f);
 		} else if ("groundWithdraw".equals(command)) {
 			groundWithdraw();
 		} else if ("groundPush".equals(command)) {
@@ -415,8 +421,8 @@ public class ThreatincMarketCMD extends MarketCMD {
 			float upkeepDay = ThreatGroundFronts.dailyUpkeep(marines);
 			int arms = (int) playerFleet.getCargo()
 					.getCommodityQuantity(Commodities.HAND_WEAPONS);
-			text.addPara("A landing commits every marine and every heavy armament "
-					+ "aboard to the surface - a persistent front that keeps fighting "
+			text.addPara("A landing puts all or half the marines aboard on the "
+					+ "surface with the heavy armaments they need - a persistent front that keeps fighting "
 					+ "after you break orbit. The hive is %s strata deep with the "
 					+ "Fabrication Core at the center: order pushes to take it stratum "
 					+ "by stratum, and destroy the Core to eradicate the colony. Each "
@@ -432,20 +438,22 @@ public class ThreatincMarketCMD extends MarketCMD {
 					Misc.getWithDGS(grindNeed), Misc.getWithDGS(marines),
 					Misc.getWithDGS(arms), String.format("%.1f", upkeepDay));
 
-			options.addOption("Land ground forces", GROUND_DEPLOY);
+			// all or half the marines, each with the armaments they need (2026-10-30)
+			int half = marinesToLand(0.5f);
+			int minMarines = (int) ThreatIncConfig.frontMinMarines();
+			options.addOption("Land all marines (" + Misc.getWithDGS(marines) + ") with "
+					+ Misc.getWithDGS(armsToLand(null, marines)) + " heavy armaments", GROUND_DEPLOY);
+			options.addOption("Land half the marines (" + Misc.getWithDGS(half) + ") with "
+					+ Misc.getWithDGS(armsToLand(null, half)) + " heavy armaments", GROUND_DEPLOY_HALF);
 			if (!temp.canRaid) {
-				options.setEnabled(GROUND_DEPLOY, false);
-				options.setTooltip(GROUND_DEPLOY,
-						"Defending fleets must be dealt with before landing ground forces.");
-			} else if (marines < (int) ThreatIncConfig.frontMinMarines()) {
-				options.setEnabled(GROUND_DEPLOY, false);
-				options.setTooltip(GROUND_DEPLOY, "Too few marines aboard to hold any "
-						+ "ground (need at least "
-						+ (int) ThreatIncConfig.frontMinMarines() + ").");
+				for (String id : new String[] {GROUND_DEPLOY, GROUND_DEPLOY_HALF}) {
+					options.setEnabled(id, false);
+					options.setTooltip(id,
+							"Defending fleets must be dealt with before landing ground forces.");
+				}
 			} else {
-				int toll = Math.round(ThreatGroundFronts.dropLoss(market, marines));
-				if (toll > 0) options.setTooltip(GROUND_DEPLOY, "The batteries will take about "
-						+ Misc.getWithDGS(toll) + " of the " + Misc.getWithDGS(marines) + " marines on the drop.");
+				gateLanding(GROUND_DEPLOY, marines, minMarines);
+				gateLanding(GROUND_DEPLOY_HALF, half, minMarines);
 			}
 		} else if (!front.isPlayerOwned()) {
 			String owner = "An expeditionary force";
@@ -524,12 +532,18 @@ public class ThreatincMarketCMD extends MarketCMD {
 			} else {
 				options.addOption("Break off the assault and entrench", GROUND_ENTRENCH);
 			}
-			options.addOption("Transfer all marines and heavy armaments to the front",
-					GROUND_RESUPPLY);
-			if (marines <= 0 && arms <= 0) {
+			// all or half the marines aboard, with the armaments the army on the
+			// ground then needs for playerFrontSupplyDays less what it holds (2026-10-30)
+			int half = marinesToLand(0.5f);
+			options.addOption(transferLabel(front, marines, "all marines"), GROUND_RESUPPLY);
+			if (marines > 1) {
+				options.addOption(transferLabel(front, half, "half the marines"), GROUND_RESUPPLY_HALF);
+			}
+			if (marines <= 0 && armsToLand(front, 0) <= 0) {
 				options.setEnabled(GROUND_RESUPPLY, false);
-				options.setTooltip(GROUND_RESUPPLY,
-						"No marines or heavy armaments aboard.");
+				options.setTooltip(GROUND_RESUPPLY, arms <= 0
+						? "No marines or heavy armaments aboard."
+						: "The front holds the heavy armaments its marines need.");
 			}
 			options.addOption("Withdraw the ground forces", GROUND_WITHDRAW);
 		}
@@ -539,11 +553,54 @@ public class ThreatincMarketCMD extends MarketCMD {
 				false, false, false, true);
 	}
 
-	protected void groundDeploy() {
-		// re-validate: the option can be reached with stale temp state
-		int marines = (int) playerFleet.getCargo().getMarines();
-		int arms = (int) playerFleet.getCargo()
+	/** Marines a share of the hold lands: all of them (share 1) or half (the user, 2026-10-30). */
+	protected int marinesToLand(float share) {
+		int aboard = (int) playerFleet.getCargo().getMarines();
+		return share >= 1f ? aboard : aboard / 2;
+	}
+
+	/**
+	 * Heavy armaments that go down with a landing of this many marines: what the
+	 * army on the ground will then be (the front's marines, if one stands, plus
+	 * the landing) burns over playerFrontSupplyDays, less what the front already
+	 * holds, and never more than the hold carries (the user, 2026-10-30: the arms
+	 * match the marines, or what the marines already down there need).
+	 */
+	protected int armsToLand(ThreatGroundFronts.GroundFront front, int landing) {
+		int aboard = (int) playerFleet.getCargo()
 				.getCommodityQuantity(Commodities.HAND_WEAPONS);
+		float army = landing + (front == null ? 0f : front.marines);
+		float want = ThreatGroundFronts.landingSupply(army, ThreatIncConfig.playerFrontSupplyDays())
+				- (front == null ? 0f : front.armaments);
+		return Math.max(0, Math.min(aboard, Math.round(want)));
+	}
+
+	/** "Transfer all marines (1,200) and 1,200 heavy armaments to the front"; with no marines aboard, the armaments alone. */
+	protected String transferLabel(ThreatGroundFronts.GroundFront front, int marines, String which) {
+		int arms = armsToLand(front, marines);
+		if (marines <= 0) return "Transfer " + Misc.getWithDGS(arms) + " heavy armaments to the front";
+		return "Transfer " + which + " (" + Misc.getWithDGS(marines) + ") and "
+				+ Misc.getWithDGS(arms) + " heavy armaments to the front";
+	}
+
+	/** A landing option's state: greyed under frontMinMarines, else its tooltip is the batteries' toll. */
+	protected void gateLanding(String id, int marines, int minMarines) {
+		if (marines < minMarines) {
+			options.setEnabled(id, false);
+			options.setTooltip(id, "Too few marines to hold any ground (need at least "
+					+ minMarines + ").");
+			return;
+		}
+		int toll = Math.round(ThreatGroundFronts.dropLoss(market, marines));
+		if (toll > 0) options.setTooltip(id, "The batteries will take about "
+				+ Misc.getWithDGS(toll) + " of the " + Misc.getWithDGS(marines) + " marines on the drop.");
+	}
+
+	/** The landing, of all (share 1) or half the marines aboard with the armaments they need ({@link #armsToLand}). */
+	protected void groundDeploy(float share) {
+		// re-validate: the option can be reached with stale temp state
+		int marines = marinesToLand(share);
+		int arms = armsToLand(null, marines);
 		if (!ThreatIncConfig.frontsEnabled() || !temp.canRaid
 				|| marines < (int) ThreatIncConfig.frontMinMarines()
 				|| ThreatGroundFronts.getFront(market.getId()) != null) {
@@ -602,11 +659,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 		groundOps();
 	}
 
-	protected void groundResupply() {
+	/** All (share 1) or half the marines aboard go down to the front, with the armaments the army then needs ({@link #armsToLand}). */
+	protected void groundResupply(float share) {
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-		int marines = (int) playerFleet.getCargo().getMarines();
-		int arms = (int) playerFleet.getCargo()
-				.getCommodityQuantity(Commodities.HAND_WEAPONS);
+		int marines = marinesToLand(share);
+		int arms = armsToLand(front, marines);
 		if (front == null || !front.isPlayerOwned() || (marines <= 0 && arms <= 0)) {
 			groundOps();
 			return;

@@ -22,17 +22,29 @@ is the layout it implements.
    is literally true, and cutting a hive's fuel can push the phase back.
 2. **Totals strip** (custom panel, label/value pairs): known systems, hive worlds, swarm fleet
    sighted, expeditions out, sieges in, hives burned. Mass and missions went 2026-10-30.
-3. **Objectives** (`ThreatObjectives`, 2026-10-30 15:00; the user: "tactical objectives table sorting
-   top producers by priority"; 15:30: "get rid of tactical table and just new second last column on
-   the threat colony board, Notes, which indicates the objective if relevant"): the ledger's **Notes**
-   column (second last, `Cols.NOTES`; the table lived 15:09-15:24) names the system's objectives, best
-   first - "Strike staging" where the player's report of a world recorded a strike massing
+3. **Notes and Age** (`ThreatObjectives`, 2026-10-30 15:00-16:00; the user: "tactical objectives table
+   sorting top producers by priority" -> "just new second last column on the threat colony board,
+   Notes" -> "notes should be updated by what scout finds ... Scout lost / Size 8 Fuel Production /
+   Low strata mass (8000) / Isolated ... things of tactical value"): the ledger's **Notes** column
+   (`Cols.NOTES`; the table lived 15:09-15:24) and **Age** after it (`Cols.AGE`: days since the newest of
+   the player's report and a lost party, `ageText`). Every note reads the player's report of the system
+   (`ThreatIntel.report(PLAYER, ...)`, the newest of the player's own and every Cooperative faction's;
+   written daily for every observer with eyes there, `ThreatIntel.advanceDay`, and by a scout home) -
+   never the live world. `lines`, best first: "Scout lost" (a party sent there lost since the last look,
+   `ThreatIntel.markLost` from `ThreatScouts.Sorties.onLost`), "Never scouted", then "Strike staging" where the player's report of a world recorded a strike massing
    (`ThreatIntel.Report.worldStaging`: staged + flying in for it when seen; never the offensive's live
    plan - 15:45, "kinda cheating. fog of war"; the Strikes column counts expeditions in flight, so a
    staging has a note and an empty Strikes cell until it sails), then each resource's top
-   and next-largest KNOWN producer (fuel plant, refinery, mine) ("Top fuel plant", "Next refinery", "Top
-   mine"); the row tooltip adds a line an objective (`addTooltip`): the world, why, what breaks and the
-   sat bomb's fuel / strata / days for the player's fleet (`ThreatSatBomb.price`). What breaks when the world is offline - every known importer left to the next-largest known
+   and next-largest KNOWN producer ("Top fuel plant (size 8)", "Next refinery (size 6)"), the system's
+   best producer as the report saw it ("Size 7 mining", `Report.made` / `bestMade`, unless an objective
+   names it), its strata mass ("Low strata mass (8,000)" under `LOW_MASS` 10,000, else "Strata mass
+   45,000") and "Isolated" (no other known hive system within `ISOLATED_LY` 8). Colours: a loss red, a
+   staging the Threat's, nothing known grey. The row tooltip (`addTooltip`) carries the notes, the loss,
+   the last look, each objective's reasoning and the sat bomb's fuel / strata / days for the player's
+   fleet (`ThreatSatBomb.price`); its live mass and growth / starving lines went. **Scout** floats on
+   every row beside Map and Attack (`addLedgerButtons`, `ThreatFactionView.BUTTON_SCOUT`: a party of
+   scoutFleetPoints from the nearest colony that can raise one, `ThreatScouts.playerRecon`; greyed with
+   `scoutOffReason`). What breaks when the world is offline - every known importer left to the next-largest known
    source counted starving (two or more units short by `ThreatColonyManager.coreDemand`, or no source
    left) or holding (one short). Sorted by effect (starve x3 + hold, fuel +1). Availability is a broadcast of the largest single source (hive-economy.md), which is why
    the largest producer is the objective and the next-largest the follow-up.

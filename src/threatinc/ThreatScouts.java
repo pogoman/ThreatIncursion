@@ -297,6 +297,17 @@ public class ThreatScouts {
 			return false;
 		}
 		protected void onLost(Scout s) {
+			// the board's "Scout lost" note (the user, 2026-10-30: "if scout destroyed that should be logged"): the
+			// system it was sent to look at is marked for its faction and told to the player for their own party
+			if (s.leadSystemId != null) {
+				ThreatIntel.markLost(s.factionId, s.leadSystemId);
+				if (Factions.PLAYER.equals(s.factionId)) {
+					StarSystemAPI to = ThreatScoutRoute.systemById(s.leadSystemId);
+					ThreatNotice.titled("Scouts Lost").bad().icon(Global.getSector().getPlayerFaction())
+							.line("The party sent to the " + (to != null ? to.getNameWithLowercaseType() : "hive") + " did not come back")
+							.send();
+				}
+			}
 			if (!s.patrol) return;
 			ThreatScoutRoute.lost(levelKey(s.factionId));
 			ThreatIncConfig.log("Patrol of " + s.factionId + " did not come back: patrols now "

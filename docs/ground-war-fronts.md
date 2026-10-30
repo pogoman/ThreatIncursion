@@ -111,7 +111,12 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
 ## The front (ThreatGroundFronts)
 
 Marines + heavy armaments landed on a hive world ("Ground operations" on the military
-options menu; commits everything aboard). Ticks on the colony poll at flat rates:
+options menu). Land / Transfer take **all or half the marines aboard**, each with the heavy
+armaments the army then on the ground burns over `playerFrontSupplyDays` (120 = 1 a marine)
+less what the front holds, never more than the hold carries (`ThreatincMarketCMD.marinesToLand`
+/ `armsToLand`; with no marines aboard the transfer is the armaments alone - the user,
+2026-10-30: "commit all marines or half ... arms should match the marines or ... what they
+need"). Ticks on the colony poll at flat rates:
 
 - **Supply**: armaments burn per MARINE per 30 days (`frontArmamentsPerMarinePer30Days`,
   0.25 - x`frontPushUpkeepMult` while

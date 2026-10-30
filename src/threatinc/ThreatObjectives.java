@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
@@ -18,21 +20,30 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * TACTICAL OBJECTIVES (the user, 2026-10-30 15:00: "tactical objectives table sorting top producers by
- * priority"; 15:30: "get rid of tactical table and just new second last column on the threat colony
- * board, Notes, which indicates the objective if relevant"). The ledger's Notes column and its row
- * tooltip lines: what to hit and why, among the systems the player knows. Availability is a broadcast of the largest single source
- * (hive-economy.md), so the objective per resource is the largest known holder of its producer -
- * a mine, a refinery, a fuel plant - and the row says what breaks when it is taken offline: every
- * importer left to the next-largest known source, counted as starving (two or more units short, or
- * no source left) or holding (one short) by the Core's own rule (ThreatColonyManager.coreDemand).
- * Then the next-largest as the follow-up. A sat bomb takes the plant offline for
- * satBombDisruptDays at ThreatSatBomb.price for the player's fleet. A world where the scouts saw a strike
- * massing (ThreatIntel.Report.worldStaging) heads the list: that is where the strike against the player buds.
- * Figures the scouts hold come from the player's report (ThreatIntel: strata and size as last seen);
- * the hive's industries show as the colony screen shows them.
+ * THE LEDGER'S NOTES (the user, 2026-10-30 15:00: "tactical objectives table sorting top producers by
+ * priority"; 15:30: "just new second last column on the threat colony board, Notes, which indicates the
+ * objective if relevant"; 16:00: "notes should be updated by what scout finds ... things of tactical value.
+ * If a system is strong then we need to know what it contributes the most of, if a system is weak we want
+ * to know how, so we can eliminate early"). Everything here reads the player's report of the system
+ * (ThreatIntel: what a scout, an allied fleet or the player's own fleet last saw there), never the live
+ * world. The notes, best first ({@link #lines}): "Scout lost" when a party sent there was lost since the
+ * last look (ThreatIntel.lostDay); "Never scouted"; "Strike staging" where the report recorded swarms
+ * massing for a strike; the system's objectives among the known producers ({@link #rows}: availability is
+ * a broadcast of the largest single source, hive-economy.md, so the largest known holder of a fuel plant,
+ * refinery or mine is "Top ..." and the next-largest "Next ...", with what breaks when it goes offline -
+ * every known importer left to the next-largest known source, starving at two or more units short by
+ * ThreatColonyManager.coreDemand, holding at one); the system's best producer ("Size 8 fuel production");
+ * its strata mass as seen ("Low strata mass (8,000)" under LOW_MASS); "Isolated" with no other known hive
+ * system within ISOLATED_LY. The Age column is days since the newest of the report and a loss
+ * ({@link #ageText}). The row tooltip spells each out and prices a saturation bombardment for the
+ * player's fleet (ThreatSatBomb).
  */
 public class ThreatObjectives {
+
+	/** Strata over a system's worlds under this read as a low mass (a size-5 world and change). */
+	public static final float LOW_MASS = 10000f;
+	/** No other known hive system within this many light-years: isolated. */
+	public static final float ISOLATED_LY = 8f;
 
 	protected static class Row {
 		String objective;
@@ -43,11 +54,7 @@ public class ThreatObjectives {
 		String why;
 	}
 
-	/**
-	 * The ledger's Notes column (the user, 2026-10-30 15:30: "get rid of tactical table and just new second last
-	 * column on the threat colony board, Notes, which indicates the objective if relevant"): system id -> its
-	 * worlds' objectives, best first.
-	 */
+	/** System id -> its worlds' objectives, best first. */
 	public static Map<String, List<Row>> bySystem(List<ThreatWarBoard.Entry> entries) {
 		Map<String, List<Row>> result = new HashMap<String, List<Row>>();
 		for (Row r : rows(entries)) {
@@ -61,38 +68,143 @@ public class ThreatObjectives {
 		return result;
 	}
 
-	/** The cell: the objectives, best first - "Strike staging, Top fuel plant"; "-" with none. */
-	public static String noteText(List<Row> rows) {
-		if (rows == null || rows.isEmpty()) return "-";
+	/** The system's notes, best first, from the player's report of it; empty only when nothing at all is known. */
+	public static List<String> lines(ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all) {
+		List<String> out = new ArrayList<String>();
+		float lost = ThreatIntel.lostDay(Factions.PLAYER, e.systemId);
+		float seenDay = e.seen != null ? e.seen.day : -1f;
+		if (lost >= 0f && lost > seenDay) out.add("Scout lost");
+		if (e.seen == null) {
+			if (out.isEmpty()) out.add("Never scouted");
+			return out;
+		}
+		Set<String> covered = new HashSet<String>();
+		if (rows != null) {
+			for (Row r : rows) {
+				if (r.score >= 100f) {
+					out.add(r.objective);
+					continue;
+				}
+				int size = sizeSeen(e, r.world);
+				out.add(r.objective + (size > 0 ? " (size " + size + ")" : ""));
+				covered.add(r.world.getId() + "|" + r.objective.substring(r.objective.indexOf(' ') + 1));
+			}
+		}
+		String best = bestMade(e, covered);
+		if (best != null) out.add(best);
+		float mass = 0f;
+		boolean any = false;
+		for (MarketAPI m : e.markets) {
+			ThreatIntel.Report s = ThreatWarBoard.seenOver(e.seen, m);
+			float st = s != null ? s.worldStrata(m.getId()) : -1f;
+			if (st < 0f) continue;
+			mass += st;
+			any = true;
+		}
+		if (any) out.add(mass < LOW_MASS ? "Low strata mass (" + n(mass) + ")" : "Strata mass " + n(mass));
+		if (isolated(e, all)) out.add("Isolated");
+		return out;
+	}
+
+	/** The cell: the notes joined; "-" with none. */
+	public static String noteText(List<String> lines) {
+		if (lines == null || lines.isEmpty()) return "-";
 		StringBuilder b = new StringBuilder();
-		for (Row r : rows) {
+		for (String l : lines) {
 			if (b.length() > 0) b.append(", ");
-			b.append(r.objective);
+			b.append(l);
 		}
 		return b.toString();
 	}
 
-	/** True when a note names a strike staging: the cell takes the Threat's colour. */
-	public static boolean staging(List<Row> rows) {
-		if (rows == null) return false;
-		for (Row r : rows) if (r.score >= 100f) return true;
-		return false;
+	/** The cell's colour: a lost party in the loss colour, a strike staging in the Threat's, nothing known grey, else the highlight. */
+	public static Color noteColor(List<String> lines, Color bright, Color h, Color gray, Color loss) {
+		if (lines == null || lines.isEmpty() || "Never scouted".equals(lines.get(0))) return gray;
+		if ("Scout lost".equals(lines.get(0))) return loss;
+		if (lines.contains("Strike staging")) return bright;
+		return h;
 	}
 
-	/** The row tooltip's lines, one objective each: the world, why, what breaks, the bomb's price for the player's fleet. */
-	public static void addTooltip(TooltipMakerAPI tooltip, List<Row> rows, float pad) {
+	/** The Age cell: days since the newest of the player's report and a lost party, "today", "-" never. */
+	public static String ageText(ThreatWarBoard.Entry e) {
+		float lost = ThreatIntel.lostDay(Factions.PLAYER, e.systemId);
+		float seenDay = e.seen != null ? e.seen.day : -1f;
+		float latest = Math.max(lost, seenDay);
+		if (latest < 0f) return "-";
+		int days = (int) Math.max(0f, ThreatPosture.today() - latest);
+		return days < 1 ? "today" : days + " d";
+	}
+
+	/** The row tooltip's lines: each note, each objective's reasoning and the bomb's price for the player's fleet. */
+	public static void addTooltip(TooltipMakerAPI tooltip, ThreatWarBoard.Entry e, List<Row> rows, List<ThreatWarBoard.Entry> all, float pad) {
+		List<String> lines = lines(e, rows, all);
+		Color h = Misc.getHighlightColor();
+		if (!lines.isEmpty()) tooltip.addPara("Notes: %s.", pad, h, noteText(lines));
+		float lost = ThreatIntel.lostDay(Factions.PLAYER, e.systemId);
+		float seenDay = e.seen != null ? e.seen.day : -1f;
+		if (lost >= 0f && lost > seenDay) {
+			tooltip.addPara("A scouting party sent there was lost %s days ago; nothing newer is known.", 4f, h,
+					"" + (int) Math.max(0f, ThreatPosture.today() - lost));
+		}
+		if (e.seen != null) tooltip.addPara("Last look " + ThreatIntel.when(e.seen) + ".", 4f);
 		if (rows == null || rows.isEmpty()) return;
 		CampaignFleetAPI player = Global.getSector().getPlayerFleet();
 		float fp = player != null ? player.getFleetPoints() : 0f;
-		Color h = Misc.getHighlightColor();
 		for (Row r : rows) {
-			tooltip.addPara(r.objective + ": %s. " + r.why + " " + r.effect + ".", pad, h, r.world.getName());
+			tooltip.addPara(r.objective + ": %s. " + r.why + " " + r.effect + ".", 4f, h, r.world.getName());
 			if (ThreatSatBomb.enabled() && fp > 0f) {
 				tooltip.addPara("A saturation bombardment by your fleet costs %s fuel here, razes %s strata and keeps the world's industries offline %s days.",
 						2f, h, Misc.getWithDGS(Math.round(ThreatSatBomb.price(r.world, fp))),
 						Misc.getWithDGS(Math.round(ThreatSatBomb.strata(r.world, fp))), "" + (int) ThreatSatBomb.disruptDays());
 			}
 		}
+	}
+
+	/** The world's size as the report saw it, 0 unknown. */
+	protected static int sizeSeen(ThreatWarBoard.Entry e, MarketAPI world) {
+		ThreatIntel.Report s = ThreatWarBoard.seenOver(e.seen, world);
+		return s != null ? s.worldSize(world.getId()) : 0;
+	}
+
+	/** "Size 8 fuel production": the largest producer the report saw in the system (fuel before metals before ore at a size), unless an objective line already names it. */
+	protected static String bestMade(ThreatWarBoard.Entry e, Set<String> covered) {
+		String bestWorld = null, bestInd = null;
+		int bestSize = 0, bestRank = 0;
+		for (MarketAPI m : e.markets) {
+			ThreatIntel.Report s = ThreatWarBoard.seenOver(e.seen, m);
+			if (s == null) continue;
+			int size = s.worldSize(m.getId());
+			for (String ind : s.worldMade(m.getId())) {
+				int rank = Industries.FUELPROD.equals(ind) ? 3 : Industries.REFINING.equals(ind) ? 2 : 1;
+				if (size > bestSize || (size == bestSize && rank > bestRank)) {
+					bestSize = size;
+					bestRank = rank;
+					bestWorld = m.getId();
+					bestInd = ind;
+				}
+			}
+		}
+		if (bestInd == null) return null;
+		String noun = Industries.FUELPROD.equals(bestInd) ? "fuel plant" : Industries.REFINING.equals(bestInd) ? "refinery" : "mine";
+		if (covered.contains(bestWorld + "|" + noun)) return null;
+		String what = Industries.FUELPROD.equals(bestInd) ? "fuel production" : Industries.REFINING.equals(bestInd) ? "refining" : "mining";
+		return (bestSize > 0 ? "Size " + bestSize + " " : "") + what;
+	}
+
+	/** No other known hive system within ISOLATED_LY, among at least two others. */
+	protected static boolean isolated(ThreatWarBoard.Entry e, List<ThreatWarBoard.Entry> all) {
+		if (e.system == null || all == null) return false;
+		int others = 0;
+		for (ThreatWarBoard.Entry o : all) {
+			if (o == e || !o.isColony() || o.system == null) continue;
+			others++;
+			if (Misc.getDistanceLY(e.system.getLocation(), o.system.getLocation()) <= ISOLATED_LY) return false;
+		}
+		return others >= 2;
+	}
+
+	protected static String n(float v) {
+		return Misc.getWithDGS(Math.round(v));
 	}
 
 	/** The rows, best first: the campaign's stagings, then each resource's top producer and the next. */

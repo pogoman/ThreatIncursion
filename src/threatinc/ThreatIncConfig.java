@@ -567,6 +567,8 @@ public class ThreatIncConfig {
 	public static float frontCheckpointDays() { return f("threatinc_frontCheckpointDays"); }
 	/** Days of armaments supply an NPC expedition's landing force carries. */
 	public static float npcFrontSupplyDays()  { return f("threatinc_npcFrontSupplyDays"); }
+	/** Days of armaments the player's landings and transfers size their heavy armaments to, for the army then on the ground (ThreatincMarketCMD.armsToLand). */
+	public static float playerFrontSupplyDays() { return f("threatinc_playerFrontSupplyDays"); }
 
 	// ---- colony vitality ----
 

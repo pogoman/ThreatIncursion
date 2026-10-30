@@ -760,6 +760,10 @@
 	# doctrine). Set days > 0 for the old regroup pause after every district.
 	"threatinc_frontCheckpointDays": 0,
 	"threatinc_npcFrontSupplyDays": 120,
+	# the player's ground operations land all or half the marines aboard with the heavy
+	# armaments the army then on the ground burns over these days, less what the front
+	# holds (120 = 1 armament a marine at the burn above)
+	"threatinc_playerFrontSupplyDays": 120,
 
 	# The strategy layer (docs/strategy-layer.md). NPC factions stay vanilla
 	# until the Threat strikes one of their colonies; that strike puts the
