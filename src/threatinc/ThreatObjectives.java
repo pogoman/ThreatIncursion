@@ -27,7 +27,7 @@ import com.fs.starfarer.api.util.Misc;
  * importer left to the next-largest known source, counted as starving (two or more units short, or
  * no source left) or holding (one short) by the Core's own rule (ThreatColonyManager.coreDemand).
  * Then the next-largest as the follow-up. A sat bomb takes the plant offline for
- * satBombDisruptDays at ThreatSatBomb.price for the player's fleet. The campaign's staging systems
+ * satBombDisruptDays at ThreatSatBomb.price for the player's fleet. A world where the scouts saw a strike
  * massing (ThreatIntel.Report.worldStaging) heads the list: that is where the strike against the player buds.
  * Figures the scouts hold come from the player's report (ThreatIntel: strata and size as last seen);
  * the hive's industries show as the colony screen shows them.
