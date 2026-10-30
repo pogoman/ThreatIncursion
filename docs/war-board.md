@@ -150,10 +150,10 @@ no buttons any more (the Defend at every hull free and the Aid convoy went); its
 front row holds **Defend** at the Fleet lever instead (`BUTTON_AID_DEFEND` ->
 `ThreatAid.quoteDefend(market, fleetTier)`). The fronts' Reinforce and Request went: a Transfer
 reinforces an own world. The colonies table's columns (2026-10-30): Colony, Size, Military, Def,
-**Hulls** (the colony's own free hulls), **Fleet** (the points deployed over it,
-`ThreatAidCapacity.stagedFP` - the Convoys column went; a colony's staging route and an outpost's
-forward-base / ships-home line are in the row tooltip), the four goods, Strikes, Status (widened)
-and the buttons column (narrowed to its two buttons).
+**Hulls** (the colony's own free hulls), the four goods, Strikes, Status (widened), **Fleet** (the
+points deployed over it, `ThreatAidCapacity.stagedFP`, after Status - the Convoys column went; a
+colony's staging route and an outpost's forward-base / ships-home line are in the row tooltip) and
+the buttons column (narrowed to its two buttons).
 
 **Load ladders** (2026-09-07, `ThreatFactionView.addTierSelector`, docs/player-aid.md): a table
 whose buttons move a quantity carries a **Min / Med / Max** selector in a row reserved under its

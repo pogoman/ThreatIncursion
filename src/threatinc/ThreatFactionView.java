@@ -371,15 +371,15 @@ public class ThreatFactionView {
 			// gaps): at .08 the Aid button used to overlap the Strikes column
 			// Needs (2026-10-23, ThreatNeeds): the colony's most urgent purpose; the player's own rows hold
 			// three buttons (Request + Supplies + Fleet = 186 px with gaps), an ally's two
-			// the user (2026-10-30): Hulls, then Fleet - the points deployed over the colony - where the
-			// Convoys column was (its staging route is in the row tooltip); the buttons column holds two
-			// buttons now (Deploy + Transfer = 136 px with gaps), so it narrows and Status widens
+			// the user (2026-10-30): Hulls, and Fleet - the points deployed over the colony - after Status;
+			// the Convoys column went (its staging route is in the row tooltip); the buttons column holds
+			// two buttons now (Deploy + Transfer = 136 px with gaps), so it narrows and Status widens
 			float[] frac = own
-					? new float[] {.11f, .04f, .07f, .06f, .07f, .07f, .06f, .06f, .06f, .06f, .04f, .16f, .14f}
-					: new float[] {.13f, .04f, .07f, .06f, .07f, .07f, .06f, .06f, .06f, .06f, .05f, .17f, .10f};
+					? new float[] {.11f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .04f, .16f, .07f, .14f}
+					: new float[] {.13f, .04f, .07f, .06f, .07f, .06f, .06f, .06f, .06f, .05f, .17f, .07f, .10f};
 			// the user (2026-10-11): under the hull pool the column is the hulls available, nothing else
-			String[] names = {"Colony", "Size", "Military", "Def", ThreatHulls.enabled() ? "Hulls" : "Free", "Fleet",
-					"Marines", "Arms", "Fuel", "Supplies", "Strikes", "Status", "Staging"};
+			String[] names = {"Colony", "Size", "Military", "Def", ThreatHulls.enabled() ? "Hulls" : "Free",
+					"Marines", "Arms", "Fuel", "Supplies", "Strikes", "Status", "Fleet", "Staging"};
 			List<Object> columns = new ArrayList<Object>();
 			for (int i = 0; i < names.length; i++) {
 				columns.add(names[i]);
@@ -395,20 +395,20 @@ public class ThreatFactionView {
 					+ "station over it are in the fleets table and sail with its orders."
 					: "Fleet points free to sail from here now (task forces on "
 					+ "station here included) / the colony's own fleet capacity.");
-			main.addTableHeaderTooltip(5, "Fleet points deployed over the colony now, at their live strength.");
 			if (own) {
-				main.addTableHeaderTooltip(6, "In the colony's resource stockpile, militia included.");
-				main.addTableHeaderTooltip(7, "In the colony's resource stockpile.");
-				main.addTableHeaderTooltip(8, "In the colony's resource stockpile. Sorties burn it.");
-				main.addTableHeaderTooltip(9, "In the colony's resource stockpile. Sorties use it.");
+				main.addTableHeaderTooltip(5, "In the colony's resource stockpile, militia included.");
+				main.addTableHeaderTooltip(6, "In the colony's resource stockpile.");
+				main.addTableHeaderTooltip(7, "In the colony's resource stockpile. Sorties burn it.");
+				main.addTableHeaderTooltip(8, "In the colony's resource stockpile. Sorties use it.");
 			} else {
-				main.addTableHeaderTooltip(6, "Banked from the colony's surplus above demand, militia included.");
-				main.addTableHeaderTooltip(7, "Banked from the colony's surplus above demand.");
-				main.addTableHeaderTooltip(8, "Banked from the colony's surplus above demand. Sorties burn it.");
-				main.addTableHeaderTooltip(9, "Banked from the colony's surplus above demand. Sorties use it.");
+				main.addTableHeaderTooltip(5, "Banked from the colony's surplus above demand, militia included.");
+				main.addTableHeaderTooltip(6, "Banked from the colony's surplus above demand.");
+				main.addTableHeaderTooltip(7, "Banked from the colony's surplus above demand. Sorties burn it.");
+				main.addTableHeaderTooltip(8, "Banked from the colony's surplus above demand. Sorties use it.");
 			}
-			main.addTableHeaderTooltip(10, "Threat expeditions in flight against this world.");
-			main.addTableHeaderTooltip(11, "What the colony is short of, by purpose; the row tooltip has the figures.");
+			main.addTableHeaderTooltip(9, "Threat expeditions in flight against this world.");
+			main.addTableHeaderTooltip(10, "What the colony is short of, by purpose; the row tooltip has the figures.");
+			main.addTableHeaderTooltip(11, "Fleet points deployed over the colony now, at their live strength.");
 			for (final ColonyRow r : rows) {
 				MarketAPI m = r.market;
 				List<Object> cells = new ArrayList<Object>();
@@ -424,13 +424,13 @@ public class ThreatFactionView {
 				ThreatWarBoard.cell(cells, Alignment.MID, text,
 						Misc.getWithDGS((int) ThreatGroundFronts.defenderStrength(m)));
 				fleetCell(cells, m, text);
-				deployedCell(cells, ThreatAidCapacity.stagedFP(m), text);
 				for (String c : ThreatReserves.COMMODITIES) stockCell(cells, m, c, text);
 				ThreatWarBoard.cell(cells, Alignment.MID, r.threats > 0 ? neg : gray,
 						r.threats > 0 ? "" + r.threats : "-");
 				List<ThreatNeeds.Need> needs = ThreatNeeds.of(m);
 				ThreatWarBoard.cell(cells, Alignment.MID, ThreatNeeds.cellColor(needs),
-						main.shortenString(ThreatNeeds.cellText(needs), (float) Math.floor(tw * frac[11]) - 6f));
+						main.shortenString(ThreatNeeds.cellText(needs), (float) Math.floor(tw * frac[10]) - 6f));
+				deployedCell(cells, ThreatAidCapacity.stagedFP(m), text);
 				ThreatWarBoard.cell(cells, Alignment.MID, gray, ""); // buttons sit here
 				main.addRow(cells.toArray());
 				main.addTooltipToAddedRow(new TooltipCreator() {
@@ -458,7 +458,6 @@ public class ThreatFactionView {
 				ThreatWarBoard.cell(cells, Alignment.MID, pos, "Outpost");
 				ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
 				ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
-				ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
 				for (String c : ThreatReserves.COMMODITIES) {
 					float stock = ThreatOutposts.stock(o, c);
 					ThreatWarBoard.cell(cells, Alignment.MID, stock <= 0f ? gray : text,
@@ -477,6 +476,7 @@ public class ThreatFactionView {
 					}
 				}
 				final String convoyText = convoyLine;
+				ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
 				ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
 				ThreatWarBoard.cell(cells, Alignment.MID, gray, "-");
 				ThreatWarBoard.cell(cells, Alignment.MID, gray, "");
@@ -502,14 +502,14 @@ public class ThreatFactionView {
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
 			fleetTotalCell(totals, rows, h);
-			float deployed = 0f;
-			for (ColonyRow r : rows) deployed += ThreatAidCapacity.stagedFP(r.market);
-			deployedCell(totals, deployed, h);
 			for (String c : ThreatReserves.COMMODITIES) {
 				totalCell(totals, rows, c, factionId, h);
 			}
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
+			float deployed = 0f;
+			for (ColonyRow r : rows) deployed += ThreatAidCapacity.stagedFP(r.market);
+			deployedCell(totals, deployed, h);
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
 			main.addRow(totals.toArray());
 			main.addTable("None", -1, 0f);
