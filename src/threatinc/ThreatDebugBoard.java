@@ -225,7 +225,7 @@ public class ThreatDebugBoard {
 			}
 		});
 		main.beginTable2(threat, rowH, true, true, "System", w(width, 0.18f), "Mode", w(width, 0.1f), "Pressure", w(width, 0.09f),
-				"Want", w(width, 0.08f), "Need", w(width, 0.08f), "Standing", w(width, 0.09f), "Exposure", w(width, 0.08f),
+				"Want FP", w(width, 0.08f), "Need FP", w(width, 0.08f), "Standing FP", w(width, 0.09f), "Exposure", w(width, 0.08f),
 				"Worlds", w(width, 0.07f), "Strata", w(width, 0.1f), "Attacked", w(width, 0.07f), "Human ly", w(width, 0.06f));
 		for (String id : systemIds) {
 			List<MarketAPI> worlds = ThreatIncData.getLiveColonyMarkets(id);
@@ -261,8 +261,8 @@ public class ThreatDebugBoard {
 			}
 		});
 		main.beginTable2(threat, rowH, true, true, "World", w(width, 0.14f), "System", w(width, 0.12f), "Size", w(width, 0.04f),
-				"Strata", w(width, 0.08f), "Keep", w(width, 0.07f), "Spare FP", w(width, 0.07f), "Staged", w(width, 0.06f),
-				"Core", w(width, 0.17f), "Strata/d", w(width, 0.06f), "Flow/d", w(width, 0.06f), "Standing", w(width, 0.06f),
+				"Strata", w(width, 0.08f), "Keep", w(width, 0.07f), "Spare FP", w(width, 0.07f), "Staged FP", w(width, 0.06f),
+				"Core", w(width, 0.17f), "Strata/d", w(width, 0.06f), "Flow/d", w(width, 0.06f), "Standing FP", w(width, 0.06f),
 				"Over", w(width, 0.05f), "Doing", w(width, 0.12f));
 		for (MarketAPI m : sorted) {
 			ThreatColonyManager.CoreState cs = ThreatColonyManager.coreState(m);

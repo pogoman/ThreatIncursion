@@ -91,6 +91,18 @@ public final class ThreatIntel {
 			return w != null ? (int) w[1] : 0;
 		}
 
+		/** The world's strata when seen (the objectives table, 2026-10-30), -1 in a report from before it was recorded. */
+		public float worldStrata(String marketId) {
+			float[] w = worlds.get(marketId);
+			return w != null && w.length > 2 ? w[2] : -1f;
+		}
+
+		/** The world's size when seen, 0 in a report from before it was recorded. */
+		public int worldSize(String marketId) {
+			float[] w = worlds.get(marketId);
+			return w != null && w.length > 3 ? (int) w[3] : 0;
+		}
+
 		/** The swarms over the strongest world it saw. */
 		public float strongestFP() {
 			float most = 0f;
@@ -172,7 +184,8 @@ public final class ThreatIntel {
 		r.source = source;
 		r.day = today();
 		List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(system.getId());
-		for (MarketAPI hive : hives) r.worlds.put(hive.getId(), new float[] { 0f, 0f });
+		// {swarm FP, fleets, strata, size}: the strata and size as seen, for the board (never the live figure)
+		for (MarketAPI hive : hives) r.worlds.put(hive.getId(), new float[] { 0f, 0f, ThreatStrata.of(hive), hive.getSize() });
 		for (CampaignFleetAPI fleet : system.getFleets()) {
 			if (!swarmFleet(fleet)) continue;
 			float fp = fleet.getFleetPoints();

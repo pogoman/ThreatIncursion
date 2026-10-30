@@ -22,12 +22,25 @@ is the layout it implements.
    is literally true, and cutting a hive's fuel can push the phase back.
 2. **Totals strip** (custom panel, label/value pairs): known systems, hive worlds, swarm fleet
    sighted, expeditions out, sieges in, hives burned. Mass and missions went 2026-10-30.
-3. **Ledger**: stock table, one row per known system in priority order. **Since 2026-10-30 (the
-   user: "a lot of the information here should not be shown as it is real time information") the
-   ledger shows what the scouts know:** Priority (the score itself, `Entry.score`, descending -
-   an expedition in flight, a strike it can pay for, decline, its place in the supply chain by
-   `ThreatMissionIntel.networkImpact`, mass, proximity), System, Worlds (a count), Swarm fleet
-   (the report's figure and age), Strikes (count), Activity (crests, drawn: every siege
+3. **Tactical objectives** (`ThreatObjectives.add`, 2026-10-30 15:00; the user: "tactical objectives
+   table sorting top producers by priority and listing known information like size sat bomb fuel
+   required and last known strata"): above the ledger, the campaign's staging systems
+   (`ThreatOffensive.savingStagings`, "Strike staging", bill and gathered), then each resource's top
+   and next-largest KNOWN producer (fuel plant, refinery, mine) - Objective, World, System, Distance,
+   Size and Strata as the scouts last saw them (`ThreatIntel.Report.worldSize` / `worldStrata`, recorded
+   with the report), Sat bomb fuel for the player's fleet (`ThreatSatBomb.price`), Disrupted days, and
+   Effect: what breaks when the world is offline - every known importer left to the next-largest known
+   source counted starving (two or more units short by `ThreatColonyManager.coreDemand`, or no source
+   left) or holding (one short). Sorted by effect (starve x3 + hold, fuel +1); a row click selects the
+   system. Availability is a broadcast of the largest single source (hive-economy.md), which is why
+   the largest producer is the objective and the next-largest the follow-up.
+   **Ledger**: stock table, one row per known system, **nearest first** (`Entry.coreLY`, never seen a
+   core last, then score). **Since 2026-10-30 (the user: "a lot of the information here should not be
+   shown as it is real time information") the ledger shows what the scouts know:** Distance (ly to the
+   nearest major inhabited world, the first column since 15:00 - the Priority score column, the Core
+   (ly) column and the Swarm fleet column are gone: "never accurate given defense fleets are absorbed
+   when idle"; the strip's Swarm fleet figure and the tiles' Swarm fleet line went with it, the tiles'
+   Strata line reads the report's strata, never the live figure), System, Worlds (a count), Strikes (count), Activity (crests, drawn: every siege
    expedition, task force, intercept, Support or Defend sortie, front run and ground front against
    the system - as many as fit the column, the rest in the row tooltip), Supply (commodity icons,
    drawn, what the scouts saw it produce), Core (ly), **Actions** (since 2026-10-30 13:30: Attack, the
@@ -319,7 +332,9 @@ them ... missions no longer [make] sense as threat shifts colony sizes constantl
 older save's posted offers and an accepted contract runs out as the player's. The strip's Missions
 figure went. A **High-value targets** table (`addTargets`, 12:17) lived under the ledger for an
 hour; the user ("we dont need the table we just built can just put the priority there") had it
-folded into the ledger's Priority column, which is the score `networkImpact` already feeds.
+folded into the ledger's Priority column, which is the score `networkImpact` already feeds. Since
+15:00 the Priority column is gone too (Distance first, nearest first) and the Tactical objectives
+table above the ledger says what to hit.
 
 Before that: missions came from `ThreatMissionIntel`; the board showed their count in the totals
 strip and listed them in the row tooltip. The Missions column's View button was removed 2026-09-05.
@@ -447,7 +462,7 @@ only while the raid action itself is current; the cargo line shows from launch.
 ## Things not done / open
 
 - The narrow (1080p, 997 px) fold has not been re-checked since the cards grew.
-- No sort toggles; one fixed priority order with the reason in the row tooltip.
+- No sort toggles; nearest first, the priority reason in the row tooltip.
 - Operations no longer have a table of their own; they live in the row tooltip.
 - An NPC faction view shows its war council: a strategy line under the heading
   (`ThreatWarCouncil.strategyLine`), and one row per running play at the top of the fleets table

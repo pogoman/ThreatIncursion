@@ -89,7 +89,8 @@ public class ThreatMapFog implements EveryFrameScript, CoreUITabListener {
 		if (ThreatIncConfig.debugMode()) return;
 		SectorEntityToken player = Global.getSector().getPlayerFleet();
 		for (String systemId : ThreatIncData.colonyMarkets().keySet()) {
-			if (ThreatIncData.discoveredSystems().contains(systemId)) continue;
+			// found systems too (the user, 2026-10-30: hovering a system on the map showed the hives' sizes):
+			// the board and the tiles carry what the scouts last saw, the map shows nothing live
 			StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 			if (system == null) continue;
 			// the player is there: found on the next tick, and a dialog may be open on the hive
