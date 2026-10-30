@@ -893,7 +893,7 @@ public class ThreatWarBoard {
 		// the context of the threat"); the selected system's own used to sit
 		// under its heading
 		Fronts fronts = addFronts(intel, main, width, opad, frontRows(),
-				Global.getSector().getFaction(Factions.THREAT), true);
+				Global.getSector().getFaction(Factions.THREAT));
 		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
 		nameWidths.clear();
 		// no drill-down under the ledger since 2026-10-30 15:45 (the user: "get rid of the planet tiles"): the
@@ -977,20 +977,17 @@ public class ThreatWarBoard {
 	public static class Fronts {
 		public com.fs.starfarer.api.ui.UIPanelAPI table;
 		public List<FrontRow> rows = new ArrayList<FrontRow>();
-		/** Per front, the table index of its button row, or -1 when it has none. */
-		public List<Integer> buttonRows = new ArrayList<Integer>();
-		/** Every row the table holds: the entries, their button rows, the Total row. */
+		/** Every row the table holds: the entries (row i is rows[i]) and the Total row. */
 		public int rowCount;
+		/** The Threat tab's table: no Actions column, no buttons. */
+		public boolean threatView;
 		/** Whether a row was reserved above the table for the supply-load selector. */
 		public boolean tierSelector;
 	}
 
-	protected static final float FRONT_STANCE_W = 56f;
-	protected static final float FRONT_SUPPLY_W = 60f;
-	protected static final float FRONT_PULLOUT_W = 72f;
-	protected static final float FRONT_SUPPORT_W = 62f;
+	/** The stance toggle's width: "Regroup" fits. */
+	protected static final float FRONT_STANCE_W = 66f;
 	protected static final float FRONT_DEFEND_W = 58f;
-	protected static final float FRONT_BUTTON_GAP = 4f;
 
 	/** Every live front, the player's own first, then by world name. */
 	public static List<FrontRow> frontRows() {
@@ -1080,7 +1077,8 @@ public class ThreatWarBoard {
 	 */
 	protected static String heldCell(ThreatGroundFronts.GroundFront f, MarketAPI m) {
 		if (ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE) {
-			return "" + Math.max(0, m.getSize() - f.strataHeld);
+			// taken of the hive's strata (the user, 2026-10-30 evening: "held number is wrong and should be 0/3")
+			return f.strataHeld + "/" + m.getSize();
 		}
 		// the swarm's front on a colony eats what it holds and grows by it (phase E): the growth a day
 		float feed = ThreatGroundFronts.infestGrowthPerDay(m, f);
@@ -1090,7 +1088,7 @@ public class ThreatWarBoard {
 	/** heldCell in words: "3 strata standing" or "1 of 4 districts". */
 	protected static String heldLabel(ThreatGroundFronts.GroundFront f, MarketAPI m) {
 		if (ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE) {
-			return Math.max(0, m.getSize() - f.strataHeld) + " strata standing";
+			return f.strataHeld + " of " + m.getSize() + " strata";
 		}
 		return f.strataHeld + " of " + m.getSize() + " districts";
 	}
@@ -1100,13 +1098,12 @@ public class ThreatWarBoard {
 	 * are none. The columns are the figures a push-or-dig-in decision needs;
 	 * the row tooltip is the arithmetic behind them, one line per fact
 	 * (ThreatGroundFronts' readouts, so the table quotes what the tick does).
-	 * A front the player can order takes two rows: the entry, then an empty
-	 * row its buttons - Push / Hold, Supply, Support, Pull out - float over
-	 * (user's layout, 2026-09-06); {@link #addFrontButtons} adds them last.
+	 * On a faction's tab the last column is Actions, where {@link #addFrontButtons} floats
+	 * the row's one button (2026-10-30 evening; until then a front the player could order
+	 * took two rows, its five buttons over the second, and a System column sat after World).
 	 */
 	public static Fronts addFronts(ThreatIncursionIntel intel, TooltipMakerAPI main,
-			float width, float opad, List<FrontRow> rows, FactionAPI tableFaction,
-			boolean showSystem) {
+			float width, float opad, List<FrontRow> rows, FactionAPI tableFaction) {
 		if (rows == null || rows.isEmpty()) return null;
 
 		FactionAPI colours = tableFaction != null ? tableFaction
@@ -1128,9 +1125,11 @@ public class ThreatWarBoard {
 		// only where a front of the player's carries orders; its buttons float
 		// in later (addFrontButtons -> addSupplyTierSelector)
 		// no orders on the Threat tab (the user, 2026-10-24): a faction is aided from its own tab
+		// the Fleet lever sizes an ally's Defend alone since 2026-10-30 evening (the player's own
+		// fronts are served from the Domain table at its levers)
 		boolean tierSelector = false;
 		for (FrontRow r : rows) {
-			if (!threatView && (playerCanOrder(r) || playerCanReinforce(r))) tierSelector = true;
+			if (!threatView && playerCanReinforce(r) && !r.market.isPlayerOwned()) tierSelector = true;
 		}
 		if (tierSelector) main.addSpacer(ThreatFactionView.SELECTOR_ROW_H);
 		float tw = width - 24f;
@@ -1140,7 +1139,6 @@ public class ThreatWarBoard {
 		List<Float> fracs = new ArrayList<Float>();
 		// no crest column: whose side the row reads from is the tab's (2026-10-18)
 		names.add("World"); fracs.add(.13f);
-		if (showSystem) { names.add("System"); fracs.add(.11f); }
 		names.add("Force"); fracs.add(.12f);
 		names.add("State"); fracs.add(.075f);
 		names.add("Held"); fracs.add(.055f);
@@ -1150,6 +1148,9 @@ public class ThreatWarBoard {
 		names.add("Arms"); fracs.add(.055f);
 		names.add("Victory"); fracs.add(.07f);
 		names.add("Space"); fracs.add(.09f);
+		// the one button a row floats over the last cell (the user, 2026-10-30 evening: "move the
+		// push/hold button to actions column right most side"); no orders on the Threat tab
+		if (!threatView) { names.add("Actions"); fracs.add(.075f); }
 		float sum = 0f;
 		for (Float fr : fracs) sum += fr;
 		float[] w = new float[names.size()];
@@ -1162,7 +1163,7 @@ public class ThreatWarBoard {
 		com.fs.starfarer.api.ui.UIPanelAPI table = main.beginTable2(colours, ROW_H, true, true,
 				columns.toArray());
 		main.makeTableItemsClickable();
-		int strengthCol = showSystem ? 2 : 1;
+		int strengthCol = 1;
 		String side = threatView ? "the swarm's" : "this faction's";
 		main.addTableHeaderTooltip(strengthCol, "Force: " + side + " strength, then the enemy's. "
 				+ "-> " + side + " attacking, <- the enemy attacking, <-> both, - neither. "
@@ -1185,6 +1186,7 @@ public class ThreatWarBoard {
 
 		Fronts result = new Fronts();
 		result.table = table;
+		result.threatView = threatView;
 		result.tierSelector = tierSelector;
 		result.rows = rows;
 		int rowIndex = 0;
@@ -1211,11 +1213,6 @@ public class ThreatWarBoard {
 			cell(cells, Alignment.LMID, m.isPlayerOwned() ? Misc.getBasePlayerColor()
 					: worldOwner != null ? worldOwner.getBaseUIColor() : bright,
 					main.shortenString(m.getName(), w[i++] - 10f));
-			if (showSystem) {
-				float sw = w[i++];
-				cell(cells, Alignment.LMID, text, m.getStarSystem() != null
-						? main.shortenString(m.getStarSystem().getNameWithNoType(), sw - 10f) : "-");
-			}
 			// Force: ours first, the arrow from whoever is attacking (the user, Sindria
 			// 2026-10-24: "sindria are pushing 402 to 198 yet the arrow points at sindria" -
 			// it had pointed from the landing), each figure in its side's colour
@@ -1241,8 +1238,7 @@ public class ThreatWarBoard {
 			String line = ThreatGroundFronts.stateWord(f, m, weLanded); // THE STATE WORD (2026-10-28), from this side
 			cell(cells, Alignment.MID, lineColor(line, pos, neg, h, text), line); i++;
 			// Held from this side: what our landing has taken, or what still stands on our world
-			boolean hive = ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE;
-			String held = weLanded || hive ? heldCell(f, m)
+			String held = weLanded ? heldCell(f, m)
 					: Math.max(0, m.getSize() - f.strataHeld) + "/" + m.getSize();
 			cell(cells, Alignment.MID, h, held); i++;
 			// this side's stance, losses and armaments; the side-based readouts
@@ -1293,6 +1289,7 @@ public class ThreatWarBoard {
 							: space != null ? space.getBaseUIColor() : text,
 					spaceId == null ? "Empty" : main.shortenString(spacePlayer ? "You"
 							: ThreatWarState.displayName(spaceId), w[i] - 10f)); i++;
+			if (!threatView) { cell(cells, Alignment.MID, gray, ""); i++; } // Actions: the button floats here
 			main.addRow(cells.toArray());
 			TooltipCreator facts = new TooltipCreator() {
 				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
@@ -1304,26 +1301,12 @@ public class ThreatWarBoard {
 			main.addTooltipToAddedRow(facts, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(ThreatFactionView.ROW_MARKET + m.getId());
 			rowIndex++;
-			if (threatView || (!playerCanOrder(r) && !playerCanReinforce(r))) {
-				result.buttonRows.add(-1);
-				continue;
-			}
-			// the player's front: an empty row beneath the entry, its buttons
-			// floated over it by addFrontButtons. Same facts, same click.
-			List<Object> blank = new ArrayList<Object>();
-			for (int k = 0; k < w.length; k++) cell(blank, Alignment.MID, gray, "");
-			main.addRow(blank.toArray());
-			main.addTooltipToAddedRow(facts, TooltipLocation.LEFT, false);
-			main.setIdForAddedRow(ThreatFactionView.ROW_MARKET + m.getId());
-			result.buttonRows.add(rowIndex);
-			rowIndex++;
 		}
 
 		List<Object> totals = new ArrayList<Object>();
 		for (int i = 0; i < w.length; i++) {
 			if (i == 0) cell(totals, Alignment.LMID, h, "Total - " + rows.size()
 					+ (rows.size() == 1 ? " front" : " fronts"));
-			else if (showSystem && i == 1) cell(totals, Alignment.LMID, gray, "");
 			else if (i == strengthCol) cell(totals, Alignment.MID, h, Misc.getWithDGS(totalOurs));
 			else cell(totals, Alignment.MID, gray, "");
 		}
@@ -1606,113 +1589,81 @@ public class ThreatWarBoard {
 	}
 
 	/**
-	 * The fronts table's buttons - the player's own fronts only, while their
-	 * faction is mobilised - floated over the empty row beneath each such
-	 * entry, left to right: Push / Hold, Supply, Support, Pull out. Added
-	 * last, anchored to the table (platform traps 1 and 2); both views call
-	 * this after everything else. The orders route through
+	 * The fronts table's Actions column (2026-10-30 evening, the user: "one button for push and
+	 * hold not two, and it toggles between them ... move the push/hold button to actions column
+	 * right most side"): one button a row, floated over the entry's last cell, added last and
+	 * anchored to the table (platform traps 1 and 2). The player's own landing: its stance as it
+	 * stands, pressed the other (BUTTON_PUSH / BUTTON_ENTRENCH, no strength gate). The player's own
+	 * colony under a Threat landing: the defenders' stance the same way (BUTTON_DEFEND_PUSH /
+	 * BUTTON_DEFEND_ENTRENCH). An ally's sieged world: Defend at the Fleet lever (BUTTON_AID_DEFEND).
+	 * Supply, Support, Defend and Pull out went: the Domain table's row for the attacked world holds
+	 * Deploy and Transfer (ThreatFactionView). The orders route through
 	 * ThreatFactionView.executeOrder, one code path.
 	 */
 	public static void addFrontButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Fronts fronts) {
-		if (fronts == null || fronts.table == null) return;
-		FactionAPI player = Global.getSector().getPlayerFaction();
+		if (fronts == null || fronts.table == null || fronts.threatView) return;
 		int[] fl = intel.frontLevers();
-		int n = Math.min(fronts.rows.size(), fronts.buttonRows.size());
+		int n = fronts.rows.size();
 		for (int i = 0; i < n; i++) {
 			FrontRow r = fronts.rows.get(i);
-			int rowIndex = fronts.buttonRows.get(i);
-			if (rowIndex < 0) continue;
-			// the row's distance up from the table's foot, centred in it
-			float up = (fronts.rowCount - rowIndex) * ROW_H - (ROW_H - 20f) / 2f;
+			// the row's distance up from the table's foot, centred in it; the button sits in the Actions cell
+			float up = (fronts.rowCount - i) * ROW_H - (ROW_H - 20f) / 2f;
 			if (playerCanReinforce(r)) {
-				// a Threat army on a human world: the player's own colony holds its defenders'
-				// stance orders, an ally's the Defend at the Fleet lever (2026-10-29 evening)
-				boolean ownWorld = r.market.isPlayerOwned();
-				float rx = 6f;
-				if (ownWorld && !ThreatGroundFronts.isHiveTarget(r.market)) {
-					// the defenders' stance (2026-10-17): both orders, the one they
-					// are in greyed - the Stance column is the Threat front's, so a
-					// lone toggle read as the wrong side's (user, the same night:
-					// "why dig in button when they are already digging in? Where
-					// is push button")
+				if (r.market.isPlayerOwned()) {
+					// the defenders' stance as it stands; pressed, the other (2026-10-30 evening, the user:
+					// "one button for push and hold not two, and it toggles between them")
+					boolean pushing = ThreatGroundFronts.defendersPush(r.front, r.market);
 					String dkey = Factions.PLAYER + ":" + r.market.getId();
-					com.fs.starfarer.api.ui.ButtonAPI dpush = intel.addGenericButton(main,
-							FRONT_STANCE_W, "Push", ThreatFactionView.BUTTON_DEFEND_PUSH + dkey);
-					dpush.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
-					rx += FRONT_STANCE_W + FRONT_BUTTON_GAP;
-					com.fs.starfarer.api.ui.ButtonAPI ddig = intel.addGenericButton(main,
-							FRONT_STANCE_W, "Hold", ThreatFactionView.BUTTON_DEFEND_ENTRENCH + dkey);
-					ddig.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
-					rx += FRONT_STANCE_W + FRONT_BUTTON_GAP;
-					String pushWhy = ThreatGroundFronts.defenderPushBlockReason(r.front, r.market);
-					ThreatFactionView.disableWith(main, dpush, pushWhy == null, pushWhy,
-							ThreatGroundFronts.defenderPushQuote(r.front, r.market));
-					String digWhy = ThreatGroundFronts.defenderEntrenchBlockReason(r.front, r.market);
-					ThreatFactionView.disableWith(main, ddig, digWhy == null, digWhy,
-							"Marines hold: no push; the cover rises to x"
-							+ String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()) + " over "
-							+ (int) ThreatIncConfig.frontEntrenchDays() + " days, lost with a "
-							+ ThreatGroundFronts.layerName(r.market) + ".");
+					com.fs.starfarer.api.ui.ButtonAPI stance = intel.addGenericButton(main, FRONT_STANCE_W,
+							pushing ? "Push" : "Hold",
+							(pushing ? ThreatFactionView.BUTTON_DEFEND_ENTRENCH : ThreatFactionView.BUTTON_DEFEND_PUSH) + dkey);
+					stance.getPosition().belowRight(fronts.table, -up).setXAlignOffset(-6f);
+					if (pushing) {
+						String why = ThreatGroundFronts.defenderEntrenchBlockReason(r.front, r.market);
+						ThreatFactionView.disableWith(main, stance, why == null, why,
+								"Hold: no push; the cover rises to x"
+								+ String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()) + " over "
+								+ (int) ThreatIncConfig.frontEntrenchDays() + " days, lost with a "
+								+ ThreatGroundFronts.layerName(r.market) + ".");
+					} else {
+						String why = ThreatGroundFronts.defenderPushBlockReason(r.front, r.market);
+						ThreatFactionView.disableWith(main, stance, why == null, why,
+								ThreatGroundFronts.defenderPushQuote(r.front, r.market));
+					}
+					continue;
 				}
-				// the own world's Reinforce and Request went on 2026-10-29 evening (the user: "remove the
-				// reinforce and request button from there"): a Transfer on the colony row reinforces it,
-				// and a Transfer or Deploy short of its needs asks whether to call for aid
-				if (!ownWorld) {
-					// DEFEND an ally's sieged world (2026-10-29 evening, the user: "defend button for faction
-					// under human faction ground front entry should use the fleet sizing buttons"): the
-					// player's task force over it at the Fleet lever's outcome - match the swarm / x1.25 /
-					// x1.5 (ThreatAid.quoteDefend) - as the player's own Defend; it was the colony row's
-					// Defend at every hull free, beside an Aid convoy, both gone
-					int orbitTier = fl.length > 2 ? fl[2] : 0;
-					com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
-							FRONT_DEFEND_W, "Defend",
-							ThreatFactionView.BUTTON_AID_DEFEND + r.market.getFactionId() + ":" + r.market.getId());
-					defend.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
-					ThreatAid.Quote d = ThreatAid.quoteDefend(r.market, orbitTier);
-					ThreatFactionView.disableWith(main, defend, d.ok(), d.ok() ? null : ThreatNotice.text(d.reason),
-							d.ok() ? "A task force of " + ThreatFactionView.forceText(d) + " from " + d.source.getName()
-									+ " holds this orbit for " + (int) ThreatIncConfig.guardDays()
-									+ " days. Paid from that colony's reserve; earns standing on arrival."
-									+ (d.sized != null ? "\n" + d.sized : "") : null);
-				}
+				// DEFEND an ally's sieged world (2026-10-29 evening): the player's task force over it at the
+				// Fleet lever's outcome - match the swarm / x1.25 / x1.5 (ThreatAid.quoteDefend)
+				int orbitTier = fl.length > 2 ? fl[2] : 0;
+				com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
+						FRONT_DEFEND_W, "Defend",
+						ThreatFactionView.BUTTON_AID_DEFEND + r.market.getFactionId() + ":" + r.market.getId());
+				defend.getPosition().belowRight(fronts.table, -up).setXAlignOffset(-6f);
+				ThreatAid.Quote d = ThreatAid.quoteDefend(r.market, orbitTier);
+				ThreatFactionView.disableWith(main, defend, d.ok(), d.ok() ? null : ThreatNotice.text(d.reason),
+						d.ok() ? "A task force of " + ThreatFactionView.forceText(d) + " from " + d.source.getName()
+								+ " holds this orbit for " + (int) ThreatIncConfig.guardDays()
+								+ " days. Paid from that colony's reserve; earns standing on arrival."
+								+ (d.sized != null ? "\n" + d.sized : "") : null);
 				continue;
 			}
 			if (!playerCanOrder(r)) continue;
+			// the player's own landing: its stance as it stands - Push, Hold, Regroup (a checkpoint) -
+			// and pressed, the other; no strength gate (the user, 2026-10-30 evening: "should use same
+			// mechanics as colony defence i can push and hold whenever i want"). Supply, Support, Defend
+			// and Pull out went the same evening: the Domain table's row for the world holds Deploy and
+			// Transfer (ThreatFactionView)
 			String key = Factions.PLAYER + ":" + r.market.getId();
-			float x = 6f;
-			// the stance order: the one the front is not in
 			boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(r.front.stance);
+			boolean regrouping = ThreatGroundFronts.STANCE_CONSOLIDATE.equals(r.front.stance);
 			com.fs.starfarer.api.ui.ButtonAPI stance = intel.addGenericButton(main,
-					FRONT_STANCE_W, pushing ? "Hold" : "Push",
+					FRONT_STANCE_W, pushing ? "Push" : regrouping ? "Regroup" : "Hold",
 					(pushing ? ThreatFactionView.BUTTON_ENTRENCH : ThreatFactionView.BUTTON_PUSH) + key);
-			stance.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
-			x += FRONT_STANCE_W + FRONT_BUTTON_GAP;
-			com.fs.starfarer.api.ui.ButtonAPI supply = intel.addGenericButton(main,
-					FRONT_SUPPLY_W, "Supply", ThreatFactionView.BUTTON_SUPPLY + key);
-			supply.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
-			x += FRONT_SUPPLY_W + FRONT_BUTTON_GAP;
-			// SUPPORT: nothing lands while the defenders hold the orbit, so the
-			// runs are refused until a warship clears it - and once there it
-			// besieges the world with the front
-			com.fs.starfarer.api.ui.ButtonAPI escort = intel.addGenericButton(main,
-					FRONT_SUPPORT_W, "Support", ThreatFactionView.BUTTON_SUPPORT + key);
-			escort.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
-			x += FRONT_SUPPORT_W + FRONT_BUTTON_GAP;
-			// DEFEND: the same station, bombarding only while the front cannot hold
-			com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
-					FRONT_DEFEND_W, "Defend", ThreatFactionView.BUTTON_DEFEND + key);
-			defend.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
-			x += FRONT_DEFEND_W + FRONT_BUTTON_GAP;
-			com.fs.starfarer.api.ui.ButtonAPI pull = intel.addGenericButton(main,
-					FRONT_PULLOUT_W, "Pull out", ThreatFactionView.BUTTON_PULLOUT + key);
-			pull.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
-
-			// each order's own gate, so a button never opens a Confirm the
-			// order would then fail (vanilla's dialog cannot grey Confirm)
+			stance.getPosition().belowRight(fronts.table, -up).setXAlignOffset(-6f);
 			if (pushing) {
 				String why = ThreatGroundFronts.entrenchBlockReason(r.front);
 				ThreatFactionView.disableWith(main, stance, why == null, why,
-						"Break off the assault and hold: losses fall to ~"
+						"Hold: break off the assault; losses fall to ~"
 						+ ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(
 								r.front, r.market, false)) + " troops a day; it defends at up to x"
 						+ String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus())
@@ -1720,44 +1671,13 @@ public class ThreatWarBoard {
 			} else {
 				String why = ThreatGroundFronts.pushBlockReason(r.front, r.market);
 				ThreatFactionView.disableWith(main, stance, why == null, why,
-						"Order the assault on " + ThreatGroundFronts.layerName(r.market) + " "
+						"Push: the assault on " + ThreatGroundFronts.layerName(r.market) + " "
 						+ (r.front.strataHeld + 1) + ": ~"
 						+ (int) Math.ceil(ThreatGroundFronts.pushDaysEstimate(r.front, r.market))
 						+ " days and ~" + Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(
 								r.front, r.market)) + " troops at this pace; armaments burn x"
 						+ String.format("%.0f", ThreatIncConfig.frontPushUpkeepMult()) + ".");
 			}
-			String supplyWhy = ThreatConvoys.supplyBlockReason(player, r.market, fl);
-			float[] asked = ThreatConvoys.supplyAsk(r.front, r.market, fl);
-			ThreatFactionView.disableWith(main, supply, supplyWhy == null, supplyWhy,
-					"A convoy runs " + Misc.getWithDGS((int) asked[0]) + " marines and "
-					+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your nearest "
-					+ "base to this front.");
-			// the fronts' Fleet lever is Support / Defend's outcome tier (2026-10-29; the Force ladder went)
-			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market, fl.length > 2 ? fl[2] : 0);
-			ThreatFleetOrders.Reassignable nearSupport = escortWhy == null
-					? ThreatFleetOrders.nearestReassignable(player, r.market) : null;
-			float supportFP = nearSupport != null ? nearSupport.fleet.getFleetPoints()
-					: ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
-			ThreatFactionView.disableWith(main, escort, escortWhy == null, escortWhy,
-					(nearSupport != null ? nearSupport.fleet.getName() + " (" + nearSupport.duty + ") goes."
-							: "A task force is raised from your nearest base.") + "\n"
-					+ ThreatFleetOrders.supportEffect(r.market, supportFP,
-							nearSupport != null ? nearSupport.fleet : null));
-			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market, fl.length > 2 ? fl[2] : 0);
-			ThreatFleetOrders.Reassignable nearDefend = defendWhy == null
-					? ThreatFleetOrders.nearestReassignable(player, r.market, ThreatFleetOrders.KIND_DEFEND)
-					: null;
-			float defendFP = nearDefend != null ? nearDefend.fleet.getFleetPoints()
-					: ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
-			ThreatFactionView.disableWith(main, defend, defendWhy == null, defendWhy,
-					(nearDefend != null ? nearDefend.fleet.getName() + " (" + nearDefend.duty + ") goes."
-							: "A task force is raised from your nearest base.") + "\n"
-					+ ThreatFleetOrders.defendEffect(r.market, defendFP,
-							nearDefend != null ? nearDefend.fleet : null));
-			String pullWhy = ThreatConvoys.pullOutBlockReason(player, r.market);
-			ThreatFactionView.disableWith(main, pull, pullWhy == null, pullWhy,
-					"A convoy lifts this front off the world and brings it home.");
 		}
 		if (fronts.tierSelector) ThreatFactionView.addFrontLevers(intel, main, fronts.table);
 	}

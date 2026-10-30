@@ -74,7 +74,7 @@ is the layout it implements.
    column was removed for space; the reason opens the row tooltip. Clicking a row selects the
    system (`tableRowClicked` with a String id).
 4. **Selected system heading**, then that system's **Ground fronts table** (2026-09-05, shared
-   with the faction view - `ThreatWarBoard.addFronts(rows, tableFaction, showSystem)`; the
+   with the faction view - `ThreatWarBoard.addFronts(rows, tableFaction)` - the System column went 2026-10-30 evening; the
    hive view passes `frontRowsIn(selected)` and no System column, a faction view passes
    `frontRowsFor(factionId)` - its own landings plus the swarm's landings on its worlds - with
    one). Shown only while the selection has a front; other systems' fronts show as crests in
@@ -95,7 +95,7 @@ is the layout it implements.
    armaments, burn and days; losses and why; the next counter-attack's figures and outcome
    (repelled / costs N marines and a stratum / overrun); the push in progress or what one
    would cost; what the front wants brought. Click = the colony screen (`ROW_MARKET`).
-   **A front the player can order takes two rows** (user's layout, 2026-09-06): the entry,
+   **A front the player can order took two rows until 2026-10-30 evening** (user's layout, 2026-09-06; one row since, its stance toggle in an Actions column - "The Domain table" below): the entry,
    then an empty row - same tooltip, same click - that its buttons float over, left to right:
    **Push** / **Dig in** (whichever the front is not doing - a front that lands able to hold
    is already pushing, `ThreatGroundFronts.autoPush`; `BUTTON_PUSH` / `BUTTON_ENTRENCH`
@@ -139,8 +139,31 @@ is the layout it implements.
    button and long colony tooltip were removed the same day for that reason: vanilla's UI to
    maintain, not ours.
 
-All floating buttons (Map, Colony, Push / Dig in, Support, Defend, Pull out, Supply) are created after
+All floating buttons (Map, Colony, the stance toggle, Defend, Deploy, Transfer, Outpost) are created after
 everything else and anchored to siblings (the table panel, the cards); see platform trap 1 and 2.
+
+**The Domain table and the Actions column (2026-10-30 evening, the user: "colony reserves tables
+should just be renamed to Domain ... add worlds we are attacking in the colony reserves table ... if
+threat are eliminated the entry can stay with an outpost button ... get rid of the outpost table ...
+move the push/hold button to actions column right most side ... remove the system column entirely").**
+The colonies table is headed **Domain** and holds, after the colonies: the hive worlds the player's
+landings attack (`ThreatFactionView.attackedRows`; Military "Front", Def the hive's strata figure,
+Marines / Arms the landing's, Status the line's state word, Fleet the points deployed over the hive,
+the row tooltip the front's arithmetic; **Deploy** / **Redeploy** = `ThreatDeploy.plan` with the hive
+as its target - built at the nearest colony at the Hulls lever, loaded at the others, a guard order
+over the hive that `ThreatGroundFronts.guardOverHive` makes besiege like a Support sortie
+(`tickSupport`) and that `ThreatFleetOrders.guardOrder` records with no recipient, so `stagedAt`
+counts it for the Fleet cell and Redeploy; **Transfer** = the front's supply run, `BUTTON_SUPPLY` at
+the Marines / Arms levers), then the purged worlds in reach (Military "Purged", Status the outpost's
+price, an **Outpost** button - the "Purged worlds in reach" table under the board is gone), then the
+outposts, then Total; `tableRows` counts them all for the floating buttons' offsets. The fronts table
+lost its System column and the second row under each of the player's fronts (`Fronts.buttonRows`),
+and gained an **Actions** column on the faction tabs holding ONE button a row: the player's landing's
+stance as it stands - Push / Hold / Regroup - pressed the other (no strength gate: `pushRefusal`
+refuses only when nothing is left to take); the own colony's defenders' stance the same way; an
+ally's Defend at the Fleet lever, which is drawn only for such a row. Supply, Support, Defend and
+Pull out went from the fronts; there is no Pull out order on the board since. Every lever is ONE
+button reading its tier; pressing it sets the next round the ladder (`addTierSelector`).
 
 **Deploy, Transfer, Attack and the call for aid** (2026-10-29, the user: "deploy should deploy a
 fleet sized based on hulls modifier ... then the attack button is available assuming the staged
@@ -234,7 +257,7 @@ all"; `ThreatFactionView.addFrontLevers` / `addColonyLevers`, one `addLever` a g
 ground fronts only **Fleet** since 2026-10-29 evening ("remove resource selectors from ground
 fronts table"; Marines and Arms sat there until then), over the colonies **Fuel**, **Supplies**,
 **Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
-all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`). The Fleet lever is Support / Defend's
+all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`); since 2026-10-30 evening a lever is ONE button reading its tier, pressed it sets the next round the ladder. The Fleet lever is Support / Defend's
 outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
 ladders), for the player's own fronts and the Defend of an ally's sieged world alike; the colonies'
 five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms

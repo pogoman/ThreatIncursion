@@ -111,7 +111,10 @@ public class ThreatDeploy {
 			p.source = colony;
 			p.staged = ThreatFleetOrders.stagedAt(colony);
 		} else {
+			// an outpost's, or a hive the player's landing attacks (the Domain table's row, 2026-10-30
+			// evening): built at the nearest colony; what is deployed over it already is resized like a colony's
 			p.source = outpostSource(target, levers);
+			if (target.market != null) p.staged = ThreatFleetOrders.stagedAt(target.market);
 		}
 		if (!ThreatAidCapacity.enabled()) {
 			p.reason = ThreatNotice.Reason.of("Player aid is disabled in the mod settings");

@@ -1830,7 +1830,12 @@ public class ThreatFleetOrders {
 				1000f, "returning to " + base.getName());
 		Order o = record(fleet, faction, KIND_GUARD, base, target.id(), target.name(), days);
 		o.aid = aid;
-		if (!faction.getId().equals(target.factionId())) o.recipientFactionId = target.factionId();
+		// a recipient is the ally whose world the guard holds; a hive the player attacks (the Domain row's
+		// Deploy, 2026-10-30 evening) has none, so stagedAt counts the fleet and Redeploy resizes it
+		if (!faction.getId().equals(target.factionId())
+				&& !com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT.equals(target.factionId())) {
+			o.recipientFactionId = target.factionId();
+		}
 		return o;
 	}
 

@@ -316,8 +316,7 @@ brought (`ThreatConvoys.frontWants`). Every line names its side - "Swarm 144: 13
 
 **Orders from the board** (the player's own fronts, while mobilised): **Push** / **Hold** (named Dig in until 2026-10-28)
 (`ThreatFactionView.BUTTON_PUSH` / `BUTTON_ENTRENCH` -> `orderPush` / `orderEntrench`,
-the same calls the planet dialog makes; gated by `pushBlockReason` - holding strength, as the
-dialog - and `entrenchBlockReason`; either also answers a checkpoint), Escort, Pull out,
+the same calls the planet dialog makes; gated by `pushBlockReason` - no strength gate since 2026-10-30 evening, the user: push and hold whenever, as the defenders - and `entrenchBlockReason`; either also answers a checkpoint; ONE toggle button in the fronts table's Actions column since that evening, reading the stance as it stands), and - until 2026-10-30 evening, when the Domain table's attacked-world row took them as Deploy / Transfer (docs/war-board.md "The Domain table") - Escort, Pull out,
 Supply (refused when the front wants nothing, `ThreatConvoys.supplyBlockReason` - unless
 the **Supply run** ladder over the table is set to Max, which asks for everything the base can
 spare above its floor (a hull load until 2026-09-29) whether the front wants it or not; `ThreatConvoys.supplyAsk`, docs/player-aid.md "load ladders").
