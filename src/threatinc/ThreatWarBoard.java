@@ -883,6 +883,7 @@ public class ThreatWarBoard {
 		Fronts fronts = addFronts(intel, main, width, opad, frontRows(),
 				Global.getSector().getFaction(Factions.THREAT), true);
 		addLedger(intel, ui, main, width, opad, entries, selected);
+		addTargets(main, width, opad, entries);
 		nameWidths.clear();
 		List<Object[]> cards = new ArrayList<Object[]>();
 		if (selected != null) {
@@ -1961,6 +1962,98 @@ public class ThreatWarBoard {
 	// ---- sector strip ----
 
 	/** Returns the strip panel so the faction selector can anchor below it (a sibling). */
+	/** Known hive worlds a link lists at most (the user's "top high value targets", 2026-10-30). */
+	public static final int TARGETS_PER_LINK = 3;
+
+	/**
+	 * HIGH-VALUE TARGETS (the user, 2026-10-30, in place of the strike contracts: "a new table
+	 * listing top high value targets for each resource type. basically the worlds that would have
+	 * the most negative impact on the threat if the given industry was disrupted"): for each link
+	 * of the hive chain - rare ore mining, fuel production, refining - the known hive worlds
+	 * (the board's entries) whose loss costs the network most (ThreatMissionIntel.networkImpact,
+	 * the contracts' own scoring), up to TARGETS_PER_LINK a link; a row a world - Link, World,
+	 * System, Size, Impact, State (disrupted N d / running). Clicking a row selects its system.
+	 * Nothing drawn with no known provider.
+	 */
+	protected static void addTargets(TooltipMakerAPI main, float width, float opad, List<Entry> entries) {
+		Set<String> known = new LinkedHashSet<String>();
+		for (Entry e : entries) known.add(e.systemId);
+		int[] types = { ThreatMissionIntel.TYPE_RARE_MINING, ThreatMissionIntel.TYPE_FUEL,
+				ThreatMissionIntel.TYPE_REFINING };
+		List<Object[]> rows = new ArrayList<Object[]>();
+		for (int type : types) {
+			List<Object[]> link = new ArrayList<Object[]>();
+			for (MarketAPI market : ThreatMissionIntel.providersOf(type)) {
+				if (market.getStarSystem() == null || !known.contains(market.getStarSystem().getId())) continue;
+				float impact = ThreatMissionIntel.networkImpact(type, market);
+				if (impact <= 0f) continue;
+				link.add(new Object[] { type, market, impact });
+			}
+			Collections.sort(link, new Comparator<Object[]>() {
+				public int compare(Object[] a, Object[] b) {
+					return Float.compare((Float) b[2], (Float) a[2]);
+				}
+			});
+			for (int i = 0; i < link.size() && i < TARGETS_PER_LINK; i++) rows.add(link.get(i));
+		}
+		if (rows.isEmpty()) return;
+		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
+		Color dark = threat.getDarkUIColor();
+		Color bright = threat.getBrightUIColor();
+		Color h = Misc.getHighlightColor();
+		Color pos = ThreatNotice.goodColor();
+		Color gray = Misc.getGrayColor();
+		Color text = Misc.getTextColor();
+		main.addSectionHeading("High-value targets", bright, dark, Alignment.MID, opad);
+		float tw = width - 24f;
+		String[] names = {"Link", "World", "System", "Size", "Impact", "State"};
+		float[] frac = {.20f, .22f, .22f, .08f, .12f, .16f};
+		List<Object> columns = new ArrayList<Object>();
+		for (int i = 0; i < names.length; i++) {
+			columns.add(names[i]);
+			columns.add((float) Math.floor(tw * frac[i]));
+		}
+		main.beginTable2(threat, ROW_H, true, true, columns.toArray());
+		main.makeTableItemsClickable();
+		main.addTableHeaderTooltip(0, "The hive chain the world runs.");
+		main.addTableHeaderTooltip(4, "What the hive network loses if this world's link is cut.");
+		main.addTableHeaderTooltip(5, "Whether the link runs; a raid or bombardment disrupts it.");
+		int lastType = -1;
+		for (Object[] row : rows) {
+			final int type = (Integer) row[0];
+			final MarketAPI market = (MarketAPI) row[1];
+			final float impact = (Float) row[2];
+			List<Object> cells = new ArrayList<Object>();
+			String link = ThreatMissionIntel.typeNoun(type);
+			link = Character.toUpperCase(link.charAt(0)) + link.substring(1);
+			cell(cells, Alignment.LMID, text, type == lastType ? "" : link);
+			lastType = type;
+			cell(cells, Alignment.LMID, bright, main.shortenString(market.getName(), (float) Math.floor(tw * frac[1]) - 10f));
+			cell(cells, Alignment.LMID, text, main.shortenString(market.getStarSystem().getNameWithNoType(),
+					(float) Math.floor(tw * frac[2]) - 10f));
+			cell(cells, Alignment.MID, h, "" + market.getSize());
+			cell(cells, Alignment.MID, h, "" + Math.round(impact * 100f));
+			Industry industry = market.getIndustry(ThreatMissionIntel.industryIdFor(type, market));
+			boolean disrupted = industry != null && industry.isDisrupted();
+			cell(cells, Alignment.MID, disrupted ? pos : gray,
+					disrupted ? "disrupted " + (int) Math.ceil(industry.getDisruptedDays()) + " d" : "running");
+			main.addRow(cells.toArray());
+			main.setIdForAddedRow(market.getStarSystem().getId());
+			final int providers = ThreatMissionIntel.providersOf(type).size();
+			main.addTooltipToAddedRow(new TooltipCreator() {
+				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
+				public float getTooltipWidth(Object tooltipParam) { return 420f; }
+				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
+					tooltip.addPara(market.getName() + " runs " + ThreatMissionIntel.typeNoun(type) + " for the hive, one of "
+							+ providers + (providers == 1 ? " world that does." : " worlds that do."), Misc.getTextColor(), 0f);
+					tooltip.addPara("Click to select its system.", Misc.getGrayColor(), 6f);
+				}
+			}, TooltipLocation.LEFT, false);
+		}
+		main.addTable("None", -1, 0f);
+		main.addSpacer(opad);
+	}
+
 	protected static CustomPanelAPI addStrip(TooltipMakerAPI main, float width, List<Entry> entries) {
 		int worlds = 0, mass = 0, outbound = 0, inbound = 0;
 		// the swarms the player's reports hold; a system never seen adds nothing
@@ -1976,18 +2069,18 @@ public class ThreatWarBoard {
 			outbound += e.outbound.size();
 			inbound += e.inbound.size();
 		}
-		int missions = ThreatMissionIntel.getOpen().size();
 		int burned = ThreatIncData.getCleansedCount();
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
 		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 
+		// no Missions figure since 2026-10-30: the contracts are retired, the targets table lists the links
 		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarm fleet",
-				"Expeditions out", "Sieges in", "Missions", "Hives burned"};
+				"Expeditions out", "Sieges in", "Hives burned"};
 		String[] values = {"" + entries.size(), "" + worlds, "" + mass,
 				anySeen ? Misc.getWithDGS(Math.round(swarmFP)) : "Unknown",
-				"" + outbound, "" + inbound, "" + missions, "" + burned};
+				"" + outbound, "" + inbound, "" + burned};
 		Color[] colors = {h, h, h, anySeen ? h : gray, outbound > 0 ? neg : h, inbound > 0 ? pos : h, h,
 				burned > 0 ? pos : h};
 

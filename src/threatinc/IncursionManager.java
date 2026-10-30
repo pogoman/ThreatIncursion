@@ -485,7 +485,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * {@link ThreatMissionIntel#canBeSuperseded}).
 	 */
 	protected void manageMissions() {
-		if (!ThreatIncConfig.missionsEnabled()) return;
+		if (!ThreatIncConfig.missionsEnabled()) {
+			// RETIRED 2026-10-30 (the user: "we should also retire the strategic missions no longer
+			// need them ... missions no longer [make] sense as threat shifts colony sizes constantly"):
+			// the knob is off by default; an older save's offers are withdrawn, an accepted contract
+			// runs out as the player's. The targets table on the Threat board lists the links instead.
+			for (ThreatMissionIntel curr : ThreatMissionIntel.getPosted()) curr.standDown();
+			return;
+		}
 		if (!boardsMobilized()) {
 			ThreatIncConfig.log("Mission board: dormant (phase " + getPhase()
 					+ ", never reached phase 3)");

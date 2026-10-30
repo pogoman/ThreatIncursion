@@ -141,7 +141,11 @@ factions can answer each) standing until it lands or is withdrawn; the confirm b
 word the call by the lever's tier (`ThreatAidRequests.askLabel`: Max "any marines that can be
 spared", Med "some spare marines").
 **Requests for aid** is a table at the top of every faction tab (`ThreatFactionView.addRequests`;
-nothing drawn with none): World, Asked (all or half of what one colony of each faction spares),
+nothing drawn with none). Since 2026-10-30 (the user: "each factions requests table should only show
+their requests") the player's tab lists the player's calls and an NPC faction's tab its own: its
+colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`) - World, Asked (purpose and
+good), Answer (the convoy at sea with the good and whose it is, `convoysWith`; a task force bound
+for a fleets need; else waiting), ETA (`convoyEta`). The player's: World, Asked (all or half of what one colony of each faction spares),
 Since, Answer, ETA, Standing (charged on receipt, a whole number), with **Withdraw** floating on every
 row (one call a row; off once that part is answered). The player's tab shows every faction's answer, an NPC tab that faction's own
 (its part sailing, another's taken, or its last reason and when it looks again). The colony rows'
@@ -302,9 +306,20 @@ the hive's weak point.
 
 ## Missions and sieges
 
-Missions come from `ThreatMissionIntel` (the bounty-to-mission conversion, done in a separate
-session); the board shows their count in the totals strip and lists them in the row tooltip.
-The Missions column's View button was removed 2026-09-05.
+**The contracts are retired (2026-10-30, the user: "retire the strategic missions no longer need
+them ... missions no longer [make] sense as threat shifts colony sizes constantly").**
+`threatinc_missionsEnabled` is false by default; `IncursionManager.manageMissions` withdraws an
+older save's posted offers and an accepted contract runs out as the player's. The strip's Missions
+figure went. In their place the Threat tab has a **High-value targets** table under the systems
+ledger (`ThreatWarBoard.addTargets`): for each link of the hive chain - rare ore mining, fuel
+production, refining - up to `TARGETS_PER_LINK` (3) known hive worlds ranked by
+`ThreatMissionIntel.networkImpact` (the contracts' own scoring: share x scarcity x lever, the home
+system, strike platforms, reach), a row a world: Link, World, System, Size, Impact (x100), State
+(running / disrupted N d). A row click selects its system; the row tooltip says how many worlds
+run the link.
+
+Before that: missions came from `ThreatMissionIntel`; the board showed their count in the totals
+strip and listed them in the row tooltip. The Missions column's View button was removed 2026-09-05.
 
 **The purge commission is gone** (2026-09-05). The board's Purge button and the commission
 section on the infested-system map icon were a second UI over `launchSiegeExpedition` with

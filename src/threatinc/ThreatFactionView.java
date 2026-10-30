@@ -996,13 +996,18 @@ public class ThreatFactionView {
 	 * THE REQUESTS TABLE (the user, 2026-10-29 evening): the player's standing calls for aid
 	 * (ThreatAidRequests.open), a row a call - a part, one a good, each its own call with its own
 	 * Withdraw so different factions can answer each (2026-10-30) - World, Asked (in the tier's
-	 * words, ThreatAidRequests.askLabel), Since, the answer, ETA and the standing it costs on receipt. On the player's
-	 * tab the answer is whoever took the part and where it sails from, "waiting" while nobody can;
-	 * on a faction's tab it is that faction's: its part sailing, another's taken, or its last reason
-	 * and when it looks again. The row tooltip is each faction's line. Nothing drawn with no request.
+	 * words, ThreatAidRequests.askLabel), Since, the answer (whoever took the part and where it
+	 * sails from, "waiting" while nobody has), ETA and the standing it costs on receipt. On the
+	 * player's tab only (the user, 2026-10-30: "each factions requests table should only show
+	 * their requests"): an NPC faction's tab lists its own calls, {@link #addFactionNeeds}.
+	 * Nothing drawn with no request.
 	 */
 	protected static Requests addRequests(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
 			float opad, final FactionAPI faction, final boolean own) {
+		if (!own) {
+			addFactionNeeds(intel, main, width, opad, faction);
+			return null;
+		}
 		List<ThreatAidRequests.Request> requests = ThreatAidRequests.open();
 		if (requests.isEmpty()) return null;
 		Color dark = faction.getDarkUIColor();
@@ -1113,6 +1118,129 @@ public class ThreatFactionView {
 		main.addTable("None", -1, 0f);
 		main.addSpacer(opad);
 		return out;
+	}
+
+	/**
+	 * AN NPC FACTION'S CALLS (the user, 2026-10-30: "each factions requests table should only show
+	 * their requests. i assume other factions are requesting as well?"): a faction's calls are its
+	 * colonies' needs on the ledger (ThreatNeeds.of - what the allies' goods pass and the player's
+	 * dock hand-over answer), a row a need - World, Asked (the purpose and the good), Answer (the
+	 * convoy at sea with the good and whose it is, a task force bound for a fleets need, else
+	 * waiting), ETA. The row tooltip is the need's figures and every convoy sailing. Nothing drawn
+	 * with no need.
+	 */
+	protected static void addFactionNeeds(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
+			float opad, final FactionAPI faction) {
+		List<Object[]> rows = new ArrayList<Object[]>();
+		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
+			for (ThreatNeeds.Need n : ThreatNeeds.of(m)) rows.add(new Object[] { m, n });
+		}
+		if (rows.isEmpty()) return;
+		Color dark = faction.getDarkUIColor();
+		Color bright = faction.getBrightUIColor();
+		Color h = Misc.getHighlightColor();
+		Color gray = Misc.getGrayColor();
+		Color text = Misc.getTextColor();
+		main.addSectionHeading("Requests for aid", bright, dark, Alignment.MID, opad);
+		float tw = width - 24f;
+		String[] names = {"World", "Asked", "Answer", "ETA"};
+		float[] frac = {.16f, .34f, .40f, .10f};
+		List<Object> columns = new ArrayList<Object>();
+		for (int i = 0; i < names.length; i++) {
+			columns.add(names[i]);
+			columns.add((float) Math.floor(tw * frac[i]));
+		}
+		main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
+		main.makeTableItemsClickable();
+		main.addTableHeaderTooltip(1, "What the world calls for, by purpose.");
+		main.addTableHeaderTooltip(2, "What sails to answer it; waiting until something does.");
+		main.addTableHeaderTooltip(3, "Days until it lands.");
+		for (Object[] row : rows) {
+			final MarketAPI m = (MarketAPI) row[0];
+			final ThreatNeeds.Need n = (ThreatNeeds.Need) row[1];
+			List<Object> cells = new ArrayList<Object>();
+			ThreatWarBoard.cell(cells, Alignment.LMID, text,
+					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
+			String asked = n.purpose + " - " + n.goodLabel() + (n.suspended ? " - blockaded" : "");
+			ThreatWarBoard.cell(cells, Alignment.LMID, n.color(),
+					main.shortenString(asked, (float) Math.floor(tw * frac[1]) - 10f));
+			final List<ThreatConvoys.Convoy> sailing = n.isFleets() ? new ArrayList<ThreatConvoys.Convoy>()
+					: convoysWith(m, n.good);
+			String answer = "waiting";
+			Color answerColor = gray;
+			String eta = "-";
+			Color etaColor = gray;
+			if (n.isFleets()) {
+				if (ThreatCoalition.guardBoundFor(m)) {
+					answer = "a task force is bound here";
+					answerColor = text;
+				}
+			} else if (!sailing.isEmpty()) {
+				ThreatConvoys.Convoy c = sailing.get(0);
+				FactionAPI sender = Global.getSector().getFaction(c.factionId);
+				answer = (sender != null ? ThreatWarState.displayName(sender.getId()) : "A convoy") + ": "
+						+ Misc.getWithDGS(Math.round(cargoOf(c, n.good))) + " " + ThreatReserves.label(n.good)
+						+ " from " + c.fromName() + (sailing.size() > 1 ? " +" + (sailing.size() - 1) : "");
+				answerColor = sender != null ? sender.getBaseUIColor() : text;
+				float left = convoyEta(c, m);
+				eta = left <= 0f ? "due" : (int) Math.ceil(left) + " d";
+				etaColor = h;
+			}
+			ThreatWarBoard.cell(cells, Alignment.LMID, answerColor,
+					main.shortenString(answer, (float) Math.floor(tw * frac[2]) - 10f));
+			ThreatWarBoard.cell(cells, Alignment.MID, etaColor, eta);
+			main.addRow(cells.toArray());
+			main.setIdForAddedRow(ROW_MARKET + m.getId());
+			main.addTooltipToAddedRow(new TooltipCreator() {
+				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
+				public float getTooltipWidth(Object tooltipParam) { return 460f; }
+				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
+					Color tx = Misc.getTextColor();
+					tooltip.addPara(m.getName() + ": " + n.line() + ".", tx, 0f);
+					for (ThreatConvoys.Convoy c : sailing) {
+						FactionAPI sender = Global.getSector().getFaction(c.factionId);
+						float left = convoyEta(c, m);
+						tooltip.addPara((sender != null ? ThreatWarState.displayName(sender.getId()) : "A convoy") + ": "
+								+ Misc.getWithDGS(Math.round(cargoOf(c, n.good))) + " " + ThreatReserves.label(n.good)
+								+ " from " + c.fromName() + ", ETA " + Math.max(0, (int) Math.ceil(left)) + " d.", tx, 4f);
+					}
+					if (sailing.isEmpty() && !n.isFleets()) tooltip.addPara("No answer yet.", tx, 4f);
+					tooltip.addPara("Click for the colony screen.", Misc.getGrayColor(), 6f);
+				}
+			}, TooltipLocation.BELOW);
+		}
+		main.addTable("None", -1, 0f);
+		main.addSpacer(opad);
+	}
+
+	/** The convoys at sea to the market carrying some of the good, whoever sent them. */
+	protected static List<ThreatConvoys.Convoy> convoysWith(MarketAPI m, String good) {
+		List<ThreatConvoys.Convoy> out = new ArrayList<ThreatConvoys.Convoy>();
+		if (m == null || good == null) return out;
+		for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
+			if (c.fleet == null || !c.fleet.isAlive() || c.pickup) continue;
+			if (!m.getId().equals(c.toMarketId)) continue;
+			if (cargoOf(c, good) > 0.5f) out.add(c);
+		}
+		return out;
+	}
+
+	/** Units of the good aboard a convoy (hulls as ThreatHulls shows them). */
+	protected static float cargoOf(ThreatConvoys.Convoy c, String good) {
+		if (Commodities.MARINES.equals(good)) return c.marines;
+		if (Commodities.HAND_WEAPONS.equals(good)) return c.armaments;
+		if (Commodities.FUEL.equals(good)) return c.fuel;
+		if (Commodities.SUPPLIES.equals(good)) return c.supplies;
+		if (Commodities.SHIPS.equals(good)) return ThreatHulls.shown(good, c.ships);
+		return 0f;
+	}
+
+	/** Days until the convoy lands at the market by the passage it was sent on, 0 once overdue. */
+	protected static float convoyEta(ThreatConvoys.Convoy c, MarketAPI to) {
+		MarketAPI from = c.fromMarketId != null ? Global.getSector().getEconomy().getMarket(c.fromMarketId) : null;
+		float days = ThreatAidRequests.eta(from, to)
+				- Global.getSector().getClock().getElapsedDaysSince(c.departedTimestamp);
+		return Math.max(0f, days);
 	}
 
 	/** The Withdraw button on each call's row, floated in last (platform traps 1 and 2); off once the part is answered. */
