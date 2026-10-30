@@ -593,7 +593,12 @@ from "move / build a fleet" to "bud / shift / absorb".
   points, inbound and pending counted as held - at its world with the most room; a campaign's
   staging systems never donate. Before it, under CONSOLIDATE (16 of 30 systems threatened in
   the user's game) the shift sent spare strata to the DENSEST system, so backwards, and only an
-  attacked world drew any forward.
+  attacked world drew any forward. **The donor is the richest, not the nearest (14:10):** a
+  staging or stance shift takes a swarm of at least a seed's worth from the quiet world of
+  another system that can give the most toward the amount, nearest at a tie, so the back line's
+  size-8 worlds are drawn down first; a defence shift keeps nearest-first and a stratum's
+  minimum for speed. A system under attack never donates - the player's fleet over a hive world
+  reads as a blockade, rallies shifts INTO its system and keeps it from giving.
 - **Offensive** (`ThreatOffensive`): the fund is the strata the worlds in reach of the staging
   system can spare - all above what the posture keeps, the rally want against forces seen
   nearby plus the 800 floor (DECIDED round 7: a quiet fortress can send 10,000 FP) - read as

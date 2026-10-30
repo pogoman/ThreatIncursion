@@ -665,6 +665,7 @@ public class ThreatBudding {
 		MarketAPI receiver = null;
 		float amount = 0f;
 		String why = null;
+		boolean defence = false;
 		// an attacked world short of an answer
 		for (MarketAPI c : colonies) {
 			if (c.getPrimaryEntity() == null || c.getStarSystem() == null) continue;
@@ -680,6 +681,7 @@ public class ThreatBudding {
 				receiver = c;
 				amount = Math.min(short_, room);
 				why = (int) force + " FP over it, " + (int) short_ + " FP short";
+				defence = true;
 			}
 		}
 		// FORWARD STAGING (the user, 2026-10-30: "i thought they would be staging strata at frontline worlds in
@@ -760,18 +762,28 @@ public class ThreatBudding {
 				}
 			}
 		}
-		if (receiver == null || amount < ThreatStrata.fpOf(ThreatStrata.sizeAt(1))) return;
+		// a defence takes a stratum's worth from the nearest donor (speed); a staging or stance shift takes a
+		// swarm of at least a seed's worth from the donor that can give the MOST, nearest at a tie (the user,
+		// 2026-10-30 14:10, Pelephanar's size-8 worlds beside 80-FP shifts from Gamma Darien: "why is it focusing
+		// on the furthest colony?" - nearest-first never drew the back line down, so its mass only grew)
+		float min = defence ? ThreatStrata.fpOf(ThreatStrata.sizeAt(1))
+				: ThreatStrata.fpOf(Math.max(ThreatStrata.sizeAt(1), ThreatIncConfig.shiftFloorStrata()));
+		if (receiver == null || amount < min) return;
 		MarketAPI donor = null;
-		float near = Float.MAX_VALUE;
+		float near = Float.MAX_VALUE, most = 0f;
 		for (MarketAPI c : colonies) {
 			if (c == receiver || c.getPrimaryEntity() == null || c.getStarSystem() == null) continue;
 			if (c.getStarSystem() == receiver.getStarSystem() || hasOrder(c)) continue;
 			if (stagingSystems.contains(c.getStarSystem().getId())) continue;
 			if (ThreatPosture.underAttack(c.getStarSystem()) || ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
-			if (buddableFP(c, false) < ThreatStrata.fpOf(ThreatStrata.sizeAt(1))) continue;
+			float can = buddableFP(c, false);
+			if (can < min) continue;
 			float ly = ThreatFuel.ly(c.getStarSystem(), receiver.getStarSystem());
-			if (ly < near) {
+			float gives = Math.min(amount, can);
+			boolean better = defence ? ly < near : gives > most + 0.5f || (gives > most - 0.5f && ly < near);
+			if (better) {
 				near = ly;
+				most = gives;
 				donor = c;
 			}
 		}

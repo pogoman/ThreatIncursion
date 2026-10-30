@@ -846,7 +846,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBountyIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :48
 - `ThreatBountyIntel.getIntelTags(SectorMapAPI map)` :53
 
-## ThreatBudding (842 lines)
+## ThreatBudding (854 lines)
 ### the flow
 - `ThreatBudding.flowPerDay(MarketAPI market)` :97 - Strata the world moves a day, either way:
 - `ThreatBudding.flowFP(MarketAPI market)` :103 - #flowPerDay in fleet points.
@@ -887,10 +887,10 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### the shift
 - `ThreatBudding.shift()` :661 - The hive's one lever, in place of the pressure pass (ThreatColonyManager.redistributeGarrisons):
 ### readouts
-- `ThreatBudding.flowText(MarketAPI market)` :788 - The board's flow cell for a world:
-- `ThreatBudding.days(float strata, float flow)` :819
-- `ThreatBudding.visual(MarketAPI market, String label, float fp, boolean rising)` :824 - The rising or falling glows over the world, for a player in the system:
-- `ThreatBudding.standingFP()` :832 - Fleets over hive worlds that are the strata in space:
+- `ThreatBudding.flowText(MarketAPI market)` :800 - The board's flow cell for a world:
+- `ThreatBudding.days(float strata, float flow)` :831
+- `ThreatBudding.visual(MarketAPI market, String label, float fp, boolean rising)` :836 - The rising or falling glows over the world, for a player in the system:
+- `ThreatBudding.standingFP()` :844 - Fleets over hive worlds that are the strata in space:
 
 ## ThreatBuildCost (121 lines)
 - `ThreatBuildCost.pricedAs(String industryId)` :26 - The hive's own structures, priced as the vanilla ones they stand in for.
