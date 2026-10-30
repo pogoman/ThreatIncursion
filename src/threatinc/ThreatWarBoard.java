@@ -864,6 +864,15 @@ public class ThreatWarBoard {
 		// row's space is reserved here
 		String view = intel.getSelectedFactionId();
 		boolean selector = ThreatFactionView.reserveSelectorRow(main);
+		// the debug board (the user, 2026-10-30): everything the swarm is doing and planning, debug mode only
+		if (ThreatDebugBoard.VIEW_DEBUG.equals(view) && ThreatIncConfig.debugMode()) {
+			nameWidths.clear();
+			ThreatDebugBoard.render(intel, main, width, opad);
+			float h = main.getHeightSoFar();
+			if (selector) ThreatFactionView.addSelector(intel, main, width, view, strip);
+			main.setHeightSoFar(h);
+			return;
+		}
 		// the player's own tab shows before they mobilise too: that page is
 		// where the Mobilise button lives
 		if (view != null && !ThreatFactionView.VIEW_THREAT.equals(view)

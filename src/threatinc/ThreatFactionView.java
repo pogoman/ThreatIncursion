@@ -132,6 +132,8 @@ public class ThreatFactionView {
 			if (faction == null || faction.isNeutralFaction()) continue; // no tab for a pseudo-faction
 			ids.add(id);
 		}
+		// the debug board (the user, 2026-10-30): what the swarm is doing and planning, in debug mode only
+		if (ThreatIncConfig.debugMode()) ids.add(ThreatDebugBoard.VIEW_DEBUG);
 		return ids;
 	}
 
@@ -163,7 +165,8 @@ public class ThreatFactionView {
 		float w = Math.min(SELECTOR_BUTTON_W, (width - 4f * (ids.size() - 1)) / ids.size());
 		ButtonAPI prev = null;
 		for (String id : ids) {
-			String label = VIEW_THREAT.equals(id) ? "The Threat" : ThreatWarState.displayName(id);
+			String label = VIEW_THREAT.equals(id) ? "The Threat"
+					: ThreatDebugBoard.VIEW_DEBUG.equals(id) ? "Debug" : ThreatWarState.displayName(id);
 			ButtonAPI button = intel.addGenericButton(main, w, main.shortenString(label, w - 12f),
 					BUTTON_FACTION + id);
 			boolean current = id.equals(selected == null ? VIEW_THREAT : selected);
@@ -182,6 +185,11 @@ public class ThreatFactionView {
 					if (VIEW_THREAT.equals(fid)) {
 						tooltip.addPara("The hive's war: known infested systems, their colonies "
 								+ "and the operations against them.", 0f);
+						return;
+					}
+					if (ThreatDebugBoard.VIEW_DEBUG.equals(fid)) {
+						tooltip.addPara("Debug mode: what the swarm is doing and planning - stance, "
+								+ "offensive, shifts, strikes, every system and world. Nothing is hidden by the fog.", 0f);
 						return;
 					}
 					ThreatWarState.FactionWar war = ThreatWarState.get(fid);

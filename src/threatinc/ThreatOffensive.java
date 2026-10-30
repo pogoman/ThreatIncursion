@@ -185,7 +185,7 @@ public class ThreatOffensive {
 		if (ThreatIncConfig.defenceFirst()) {
 			float shortFP = ThreatPosture.defenceShortFP();
 			if (shortFP > 0f) {
-				ThreatIncConfig.log("Offensive: the defence first - " + ThreatPosture.defenceShortSummary() + "; the fund ("
+				note("Offensive: the defence first - " + ThreatPosture.defenceShortSummary() + "; the fund ("
 						+ (int) ThreatColonyManager.strikeFund() + " FP, +" + (int) ThreatColonyManager.strikeFundPerMonth()
 						+ "/mo) pays it, no prong priced");
 				return;
@@ -203,7 +203,7 @@ public class ThreatOffensive {
 			if (scheduled(m) || (opening && !m.isPlayerOwned())) candidates.remove(m);
 		}
 		if (opening && candidates.isEmpty()) {
-			ThreatIncConfig.logQuiet("offensiveopen", "Offensive: no prong priced before the war opens - the strike fund holds "
+			noteQuiet("offensiveopen", "Offensive: no prong priced before the war opens - the strike fund holds "
 					+ (int) ThreatColonyManager.strikeFund() + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
 			return;
 		}
@@ -316,7 +316,7 @@ public class ThreatOffensive {
 			payDefence(0f);
 			float left = Math.max(0f, ThreatColonyManager.strikeFund());
 			budget = Math.min(budget, Math.min(left, perMonth));
-			ThreatIncConfig.log("Offensive: losing " + ThreatStance.losingSummary() + " holds the navy - the pressed hives paid ("
+			note("Offensive: losing " + ThreatStance.losingSummary() + " holds the navy - the pressed hives paid ("
 					+ ThreatPosture.defenceShortSummary() + " still short), the campaign prices " + (int) budget + " FP of the "
 					+ (int) left + " left");
 		}
@@ -515,7 +515,7 @@ public class ThreatOffensive {
 		if (campaign.isEmpty()) {
 			// what kept the best prong out, so a hoard reads as what it is (hw61a: "nothing the fund pays" nine
 			// months running with 114-118k FP in the fund - the supplies away kept every prong at the focus out)
-			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the means pay by the deadline - " + prongs.size()
+			noteQuiet("offensive", "Offensive: nothing the means pay by the deadline - " + prongs.size()
 					+ " target(s) " + where + ", fund " + (int) fund + " FP (+" + (int) perMonth + "/mo), "
 					+ (int) monthsLeft + " month(s) left" + (firstOut != null ? "; the best prong, "
 					+ firstOut.target.getName() + " (" + (int) firstOut.fp + " FP), is out on " + firstWhy : ""));
@@ -530,7 +530,7 @@ public class ThreatOffensive {
 			// the fuel it waits on is demand on the stock: the planner builds the plants (ThreatFuel.heldShort)
 			if (fuelStock < fuel && ThreatIncConfig.strikeWaitBooksFuel()) ThreatFuel.heldShort("the offensive", fuel);
 			setSaving(campaign);
-			ThreatIncConfig.log("Offensive: saving for " + campaign.size() + " of " + prongs.size() + " target(s) " + where
+			note("Offensive: saving for " + campaign.size() + " of " + prongs.size() + " target(s) " + where
 					+ ", " + (int) cost + " FP from the fund with " + (int) spare + " FP of spare swarms, " + (int) fuel + " fuel and " + (int) supplies + " supplies (" + (!sustained ? "not yet kept, " : "") + (int) suppliesStock + " free, +" + (int) suppliesFlow + "/mo spare); fund " + (int) fund + " FP (+" + (int) perMonth
 					+ "/mo), fuel " + (int) fuelStock + " (+" + (int) ThreatFuel.perMonth() + "/mo), launch in "
 					+ (int) Math.ceil(Math.max(Math.max(0f, cost - fund) / Math.max(1f, perMonth),
@@ -624,14 +624,14 @@ public class ThreatOffensive {
 			// its bills are budding at the stagings (launchStrike's orderStrike), so the shift keeps filling them
 			if (day >= deadline) setStartDay(day);
 			setSaving(campaign);
-			ThreatIncConfig.log("Offensive: none of " + campaign.size() + " planned prong(s) could sail today (" + where
+			note("Offensive: none of " + campaign.size() + " planned prong(s) could sail today (" + where
 					+ "); fund " + (int) ThreatColonyManager.strikeFund() + " FP, " + (int) ThreatBudding.strikeBound()
 					+ " budded toward the strikes; first " + names(campaign, 4));
 			return;
 		}
 		setStartDay(day);
 		clearSaving();
-		ThreatIncConfig.log("Offensive launched: " + sent + " strike(s) now and " + held + " to follow, of " + campaign.size()
+		note("Offensive launched: " + sent + " strike(s) now and " + held + " to follow, of " + campaign.size()
 				+ " planned, " + (int) sentFP + " FP (" + (int) sentSpare + " of spare swarms), arriving together in ~"
 				+ (int) arriveIn + " days (" + where
 				+ (day >= deadline && fund < cost ? ", at the deadline" : "") + "); fund left "
@@ -911,6 +911,33 @@ public class ThreatOffensive {
 	// ------------------------------------------------------------------
 
 	// ------------------------------------------------------------------
+	// the last pass's verdict, for the debug board (ThreatDebugBoard)
+	// ------------------------------------------------------------------
+
+	protected static final String KEY_LAST_PASS = "threatinc_offensiveLastPass";
+
+	/** Logs the pass's verdict and keeps it ("day|text") for the debug board. */
+	protected static void note(String text) {
+		ThreatIncConfig.log(text);
+		Global.getSector().getPersistentData().put(KEY_LAST_PASS, (int) ThreatPosture.today() + "|" + text);
+	}
+
+	/** As note, through logQuiet (one line a key until it changes). */
+	protected static void noteQuiet(String key, String text) {
+		ThreatIncConfig.logQuiet(key, text);
+		Global.getSector().getPersistentData().put(KEY_LAST_PASS, (int) ThreatPosture.today() + "|" + text);
+	}
+
+	/** The last pass's verdict as {day, text}, or null before any. */
+	public static String[] lastPassNote() {
+		Object v = Global.getSector().getPersistentData().get(KEY_LAST_PASS);
+		if (!(v instanceof String)) return null;
+		String s = (String) v;
+		int bar = s.indexOf('|');
+		return bar > 0 ? new String[] { s.substring(0, bar), s.substring(bar + 1) } : new String[] { "?", s };
+	}
+
+	// ------------------------------------------------------------------
 	// what the campaign is saving for - the shift stages the front ahead of it (ThreatBudding.shift)
 	// ------------------------------------------------------------------
 
@@ -1003,7 +1030,7 @@ public class ThreatOffensive {
 			float pay = Math.min(fund, shortBy.get(c.getId()));
 			if (pay <= 0f || !ThreatColonyManager.spendStrikeFund(c, pay)) continue;
 			fund -= pay;
-			ThreatIncConfig.log("Offensive: the defence first - " + (int) pay + " FP from the fund to " + c.getName()
+			note("Offensive: the defence first - " + (int) pay + " FP from the fund to " + c.getName()
 					+ " (short " + (int) shortBy.get(c.getId()).floatValue() + " of need " + (int) ThreatPosture.needFP(c) + "; "
 					+ (int) fund + " FP left in the fund)");
 		}

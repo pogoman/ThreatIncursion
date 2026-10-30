@@ -127,6 +127,7 @@ to reconcile it.
 ### Custom intel UI / war board
 - `ThreatWarBoard.java` â the custom-drawn "The Abyssal War" war board (large description of `ThreatIncursionIntel`): ledger (with the Activity crests), the selected system's ground-fronts table (also drawn by the faction view; row buttons Push / Dig in / Support / Pull out / Supply), colony cards. The mod's bespoke war-board UI â re-read before patching (two sessions have edited it concurrently).
 - `ThreatFactionView.java` â the war board's per-faction drill-down view (colonies, reserves, fleets, order buttons) shown when a mobilised faction is selected.
+- `ThreatDebugBoard.java` - the war board's Debug tab (debug mode only, 2026-10-30): the swarm's whole state unveiled - stance and reasoning, the offensive's last verdict, what it saves for, held prongs, strike orders, strikes in flight, every shift and budding order, swarms flying between hive worlds, every system's posture and every world's strata, keep, Core state and flow.
 - `ThreatIncursionIntel.java` â the permanent sector-wide intel entry hosting the war board and routing its button/click events.
 - `ThreatColonyScreenDialog.java` â opens vanilla's own colony info screen for a hive world from the war board, no custom UI.
 - `ThreatNoticeClickDialog.java` â invisible dialog behind a clicked `ThreatNotice`: sets the board's faction tab and opens the Intel screen on it (vanilla's INTEL_TAB click cannot select an intel that is not in the manager).
