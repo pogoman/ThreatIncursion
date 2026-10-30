@@ -1462,9 +1462,9 @@ public class ThreatGroundFronts {
 		float coverD;
 		float pressure;
 		if (isHiveTarget(market)) {
-			// a hive's troops are its strata, in vanilla's figure already (ThreatStrata); the count asked is extra
-			float troops = forLanding ? 0f : count;
-			d = MarketCMD.getDefenderStr(market, true) + troops;
+			// a hive's troops are its strata, in vanilla's figure already (ThreatStrata); the count asked
+			// is the whole of them, as a colony's is its armed marines (the tooltip's "Needs N troops")
+			d = forLanding ? MarketCMD.getDefenderStr(market, true) : count;
 			coverD = 1f;
 			pressure = d * hiveCounterAttackPace(market);
 		} else {
@@ -2530,7 +2530,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		boolean hive = isHiveTarget(market);
 		String layer = layerName(market);
 		String Layer = Character.toUpperCase(layer.charAt(0)) + layer.substring(1);
-		String layers = hive ? "strata" : "districts";
+		String layers = layerPlural(market);
 		String held = "" + front.strataHeld, total = "" + market.getSize();
 		ThreatNotice n = ThreatNotice.titled(Layer + (taken ? " Taken" : " Retaken"));
 		if (taken) {
@@ -5598,6 +5598,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static String layerName(MarketAPI market) {
 		if (market == null) return "stratum";
 		return Theatre.of(market).layer();
+	}
+
+	/** "strata" on a hive, "districts" on a colony. */
+	public static String layerPlural(MarketAPI market) {
+		return "stratum".equals(layerName(market)) ? "strata" : layerName(market) + "s";
 	}
 
 	/** A player's or faction's front is gone: the surviving positions were overrun. */

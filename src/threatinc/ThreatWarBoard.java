@@ -1360,6 +1360,7 @@ public class ThreatWarBoard {
 		float dryMult = ThreatIncConfig.frontDryEffectivenessMult();
 		boolean hive = ThreatGroundFronts.isHiveTarget(m);
 		String layer = ThreatGroundFronts.layerName(m);
+		String layers = ThreatGroundFronts.layerPlural(m);
 		boolean worldPushes = ThreatGroundFronts.defendersPush(f, m);
 		float rate = ThreatGroundFronts.lineRate(f, m);
 		float band = ThreatIncConfig.frontGrindBand();
@@ -1391,9 +1392,9 @@ public class ThreatWarBoard {
 		// sindria does. use faction name there"), each side in its colour
 		String holder = ThreatWarState.displayName(m.getFactionId());
 		Color holderC = factionColor(m.getFactionId());
-		Color armyC = threatFront ? ThreatNotice.threatColor() : factionColor(f.factionId);
+		Color armyC = threatFront ? ThreatNotice.threatColor() : factionColor(ownerId);
 		LabelAPI control = tooltip.addPara("Control of the " + layer + ": " + holder + " %s, " + Army + " %s; " + Army
-				+ " holds %s of %s " + layer + "s.", 4f, text, h, (100 - shareA) + "%", shareA + "%", "" + held, "" + m.getSize());
+				+ (threatFront ? " holds" : " hold") + " %s of %s " + layers + ".", 4f, text, h, (100 - shareA) + "%", shareA + "%", "" + held, "" + m.getSize());
 		control.setHighlight(holder, (100 - shareA) + "%", Army, shareA + "%", Army, "" + held, "" + m.getSize());
 		control.setHighlightColors(holderC, h, armyC, h, armyC, h, h);
 
@@ -1427,10 +1428,16 @@ public class ThreatWarBoard {
 			float strata = ThreatStrata.standing(m);
 			float pace = ThreatGroundFronts.hiveCounterAttackPace(m);
 			d = defender;
-			tooltip.addPara(World + " %s from %s strata standing" + (pace < 0.995f ? "; attacks at x %s supplies = %s" : "")
-					+ "." + needD, 4f, text, h, pace < 0.995f
-							? new String[] { n(defender), n(strata), f2(pace), n(push) }
-							: new String[] { n(defender), n(strata) });
+			// its attacks are paced by what it holds and whether its Core eats (hiveCounterAttackPace), each factor named
+			List<String> wa = new ArrayList<String>();
+			wa.add(n(defender));
+			wa.add(n(strata));
+			String paceS = "";
+			if (ThreatColonyManager.coreState(m).starving()) { paceS += " x %s starving"; wa.add(f2(0.5f)); }
+			if (held > 0) { paceS += " x %s strata standing"; wa.add((m.getSize() - held) + "/" + m.getSize()); }
+			if (pace < 0.995f && paceS.isEmpty()) { paceS += " x %s"; wa.add(f2(pace)); }
+			if (!paceS.isEmpty()) { paceS = "; attacks at" + paceS + " = %s"; wa.add(n(push)); }
+			tooltip.addPara(World + " %s = %s strata" + paceS + "." + needD, 4f, text, h, wa.toArray(new String[0]));
 		} else {
 			float garrisonAll = ThreatGroundFronts.colonyGarrison(m);
 			armed = ThreatReserves.armedMarines(m);
@@ -1492,7 +1499,7 @@ public class ThreatWarBoard {
 			tooltip.addPara("Victory: none" + (change < 0f ? "." : " - the last " + layer + " is protected."), text, 4f);
 		} else {
 			int after = toA ? Math.max(0, m.getSize() - f.strataHeld - 1) : Math.max(0, f.strataHeld);
-			tooltip.addPara("Victory: " + side + " in %s d (%s more " + layer + "s after this one).", 4f, text, h,
+			tooltip.addPara("Victory: " + side + " in %s d (%s more " + layers + " after this one).", 4f, text, h,
 					"" + (int) Math.ceil(victory), "" + after);
 		}
 
@@ -1564,10 +1571,8 @@ public class ThreatWarBoard {
 		}
 		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(m);
 		if (theatre == ThreatGroundFronts.HIVE) {
-			int standing = Math.max(0, m.getSize() - f.strataHeld);
 			int starved = f.sizeAtLanding > 0 ? Math.max(0, f.sizeAtLanding - m.getSize()) : 0;
-			tooltip.addPara("Hive strata %s of %s" + (starved > 0 ? ", %s starved." : "."), 4f, text, h,
-					starved > 0 ? new String[] { "" + standing, "" + m.getSize(), "" + starved } : new String[] { "" + standing, "" + m.getSize() });
+			if (starved > 0) tooltip.addPara("%s strata starved since the landing.", 4f, text, h, "" + starved);
 		}
 		if (regrouping) {
 			tooltip.addPara(Army + " regrouping %s d, then " + (ThreatGroundFronts.doctrinePushes(f, m) ? "push" : "hold") + " by doctrine.",

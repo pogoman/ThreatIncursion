@@ -312,7 +312,7 @@ progress or what one would cost (`pushCasualtyEstimate`), and what the front wan
 brought (`ThreatConvoys.frontWants`). Every line names its side - "Swarm 144: 133 troops x ...",
 "Marines 983: holding needs 167 ...", "Marines losing 0.74 a day", "Swarm pushing district 1 of 5",
 "Next marine counter-attack in 5 days: 983 against the landing's 169" - and the swarm's bodies are
-*troops*, never marines (user, 2026-09-06; the side names 2026-10-18).
+*troops*, never marines (user, 2026-09-06; the side names 2026-10-18). A hive world's line has the colony line's shape (the user, 2026-10-30: "this siege dialog is all wrong, should be same as dialog for defending worlds") - "Ogre 2,760 = 2,760 strata; attacks at x 0.50 starving = 1,380. Needs N troops pushing to hold", each pace factor of `hiveCounterAttackPace` named - and its "Needs" is its whole troop count (`lineRateWith`), as a colony's is its armed marines; the Control line counts "strata" / "districts" (`layerPlural`), and the "Hive strata 3 of 3" line went (the Control line says it; only "N strata starved since the landing" stays).
 
 **Orders from the board** (the player's own fronts, while mobilised): **Push** / **Hold** (named Dig in until 2026-10-28)
 (`ThreatFactionView.BUTTON_PUSH` / `BUTTON_ENTRENCH` -> `orderPush` / `orderEntrench`,
