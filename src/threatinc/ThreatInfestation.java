@@ -48,11 +48,6 @@ public class ThreatInfestation extends BaseIndustry {
 			names.append(ind.getCurrentName());
 		}
 		tooltip.addPara("Claimed: %s.", opad, neg, names.length() > 0 ? names.toString() : "nothing yet");
-		Industry next = ThreatOccupation.next(market, front);
-		if (next != null && front.strataHeld > 0) {
-			tooltip.addPara("Next: %s in %s.", 3f, h, next.getCurrentName(),
-					days(ThreatOccupation.daysToNextClaim(front)));
-		}
 		float grow = ThreatOccupation.growthPerDay(front);
 		tooltip.addPara("Eaten: %s units a day, %s strata a day to the swarm.", 3f, neg,
 				ThreatStrata.fmt(front.eatenUnits), ThreatStrata.fmt(grow));

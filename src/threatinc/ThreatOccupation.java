@@ -314,16 +314,11 @@ public class ThreatOccupation {
 		return null;
 	}
 
-	/** Days until the clock claims the next industry. */
-	public static float daysToNextClaim(GroundFront front) {
-		if (front == null) return 0f;
-		return Math.max(0f, Math.max(1f, ThreatIncConfig.occupationClaimDays()) - front.claimDays);
-	}
-
 	/**
 	 * One tick of the front ({@link ThreatGroundFronts}'s tick, after the attrition):
-	 * the clock claims while a district is held, the eaten output grows the pool at a hive's
-	 * rate and the swarm shifts it between the ground and the orbit (#shift); vanilla's deciv is held off.
+	 * a district held is an industry claimed, no more and no fewer (#catchUp, #trim), the eaten output grows
+	 * the pool at a hive's rate and the swarm shifts it between the ground and the orbit (#shift); vanilla's
+	 * deciv is held off.
 	 */
 	protected static void tick(GroundFront front, MarketAPI market, float elapsedDays) {
 		if (!occupies(front, market)) return;
@@ -354,24 +349,11 @@ public class ThreatOccupation {
 		}
 		// a district held is an industry claimed, at once (the user, Haven 2026-10-27: two
 		// districts taken and nothing marked): claims behind the districts held catch up
-		// here and in takeStratum; the clock claims the rest while ground is held
+		// here and in takeStratum - and never more claims than districts (the user, Arkoman
+		// 2026-10-30, one district held and three industries green from the old 30-day clock:
+		// "the district was taken back only mining should be consuming"): the excess is released
 		if (catchUp(front, market)) changed = true;
-		if (front.strataHeld > 0) {
-			float per = Math.max(1f, ThreatIncConfig.occupationClaimDays());
-			front.claimDays += elapsedDays;
-			while (front.claimDays >= per) {
-				Industry nxt = next(market, front);
-				if (nxt == null) {
-					// everything claimed: the clock waits, full, for the next industry built
-					front.claimDays = per;
-					break;
-				}
-				front.claimDays -= per;
-				claims.add(nxt.getId());
-				changed = true;
-				announceClaim(front, market, nxt);
-			}
-		}
+		if (trim(front, market)) changed = true;
 		// CONSUMPTION (the user, 2026-10-28): the oldest claims, as many as districts held, are eaten over
 		// their build time and removed; with nothing left to claim the swarm lifts off (section 7)
 		if (consume(front, market, elapsedDays)) changed = true;
@@ -407,15 +389,32 @@ public class ThreatOccupation {
 	}
 
 	/**
-	 * Every claim left goes (the last district retaken, {@link ThreatGroundFronts#loseStratum}; the user,
-	 * Arkoman 2026-10-28 evening, "we regained 5/5 but now mining is still green and stuck on consumed
-	 * 34 days left"): a front holding no district holds no industry - each is released as a retaken
-	 * district releases one, rebuilt from its eaten share.
+	 * Never more claims than districts held ({@link ThreatGroundFronts#loseStratum} and the tick; the user,
+	 * Arkoman 2026-10-30, one district held and Mining, Orbital Works and Ground Defenses all green from
+	 * the old 30-day claim clock: "the district was taken back only mining should be consuming"): the
+	 * newest claim not being consumed goes first, each rebuilt from its eaten share; a front holding no
+	 * district holds no industry (Arkoman 2026-10-28 evening, "regained 5/5 but now mining is still
+	 * green"). True when anything was released.
 	 */
-	protected static void releaseAll(GroundFront front, MarketAPI market) {
-		if (!occupies(front, market)) return;
+	protected static boolean trim(GroundFront front, MarketAPI market) {
+		if (!occupies(front, market)) return false;
+		boolean any = false;
 		int guard = 64;
-		while (!claims(front).isEmpty() && guard-- > 0) release(front, market);
+		while (claims(front).size() > Math.max(0, front.strataHeld) && guard-- > 0) {
+			List<String> claims = claims(front);
+			List<String> active = active(front, market);
+			String id = null;
+			for (int i = claims.size() - 1; i >= 0; i--) {
+				if (!active.contains(claims.get(i))) {
+					id = claims.get(i);
+					break;
+				}
+			}
+			if (id == null) id = claims.get(claims.size() - 1);
+			releaseClaim(front, market, id);
+			any = true;
+		}
+		return any;
 	}
 
 	/** A district taken claims an industry on the spot ({@link ThreatGroundFronts#takeStratum}); the reapply follows there. */
@@ -459,6 +458,12 @@ public class ThreatOccupation {
 		// read empty and the newest claim (Orbital Works) was freed, Mining stayed green at "34 days left"
 		List<String> active = active(front, market);
 		String id = active.isEmpty() ? claims.get(claims.size() - 1) : active.get(active.size() - 1);
+		releaseClaim(front, market, id);
+	}
+
+	/** The claim is released: off the list, rebuilt from its eaten share, "Industry Reclaimed"; the reapply is the caller's. */
+	protected static void releaseClaim(GroundFront front, MarketAPI market, String id) {
+		List<String> claims = claims(front);
 		claims.remove(id);
 		Float eatenDays = consumeDays(front).remove(id);
 		Industry ind = market.getIndustry(id);

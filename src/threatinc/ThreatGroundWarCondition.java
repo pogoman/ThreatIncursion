@@ -125,11 +125,6 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 			}
 			int eaten = ThreatOccupation.consumed(market, false).size();
 			if (eaten > 0) tooltip.addPara("Consumed by the swarm: %s industries.", 3f, neg, "" + eaten);
-			Industry next = ThreatOccupation.next(market, front);
-			if (next != null && held > 0) {
-				tooltip.addPara("Next claim: %s in %s.", 3f, h, next.getCurrentName(),
-						days(ThreatOccupation.daysToNextClaim(front)));
-			}
 			float grow = ThreatOccupation.growthPerDay(front);
 			if (grow > 0f) {
 				tooltip.addPara("The swarm eats %s units a day: %s strata a day into its pool.", 3f, neg,

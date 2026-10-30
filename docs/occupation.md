@@ -546,3 +546,20 @@ paid out over time" (rule 3 of the 09:30 decision).
   troops to the pool, pool P)" shows the cap's cut (N < M).
 - Military structures pay a lump too (they fed nothing under the stream, which counted producers
   only) - the user's words cover every industry; consumed last, they are the end of the timer.
+
+## 9. ONE CLAIM A DISTRICT (2026-10-30, the user: "why is orbital works perma green?")
+
+Arkoman, Held 4/5 (one district the swarm's): Mining green and "Consumed: 40 days left", Orbital
+Works green with no bar, Ground Defenses claimed too - "the district was taken back only mining
+should be consuming". The 30-day claim clock (section 5) had claimed all three industries while the
+swarm held ground, and a district retaken released one, so claims outlived districts: a one-district
+front sat on three industries, two of them eaten x0 and never consumed. The log: "the swarm claims
+Ground Defenses on Arkoman (3 claimed)".
+
+Now **claims = districts held**, no more. The clock is retired: `catchUp` claims one industry per
+district the moment it is held (as before), `ThreatOccupation.trim` releases the newest claim not
+being consumed while claims exceed districts (from the tick and from `loseStratum`, which also
+retired `releaseAll`), each rebuilt from its eaten share with "Industry Reclaimed". A front from an
+older save with claims beyond its districts is trimmed on its first tick. Every claim is therefore
+an active consumption slot. Knob `occupationClaimDays` removed (settings, Luna row, config);
+`GroundFront.claimDays` kept so saves load; the "Next claim" tooltip line gone. Untested.

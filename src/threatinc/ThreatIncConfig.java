@@ -413,8 +413,6 @@ public class ThreatIncConfig {
 	public static int conquestHiveSize()      { return i("threatinc_conquestHiveSize"); }
 	/** THE OCCUPATION (2026-10-27, docs/occupation.md): a Threat ground victory occupies the world - claims, eats, buds - and never takes it. */
 	public static boolean occupationEnabled() { return b("threatinc_occupationEnabled", true); }
-	/** Days the swarm's front takes to claim the next industry of a world it holds a district of. */
-	public static float occupationClaimDays() { return f("threatinc_occupationClaimDays"); }
 	/** The hive pool's growth as a share of a hive's rate for the world's size (1 = a hive's; docs/occupation.md 6). */
 	public static float occupationRateMult() { return f("threatinc_occupationRateMult"); }
 	/** The least swarm an occupied world's pool buds against a force over it; 0 never buds. */

@@ -496,8 +496,8 @@
 	"threatinc_conquestConverts": true,
 	"threatinc_conquestHiveSize": 2,
 	# THE OCCUPATION (2026-10-27, docs/occupation.md): the swarm never takes a human world.
-	# Its landing claims the world's industries one by one, one per occupationClaimDays while
-	# it holds a district; a claimed industry runs for the swarm (its output x0 to the market)
+	# Its landing claims one of the world's industries per district it holds, never more
+	# (2026-10-30); a claimed industry runs for the swarm (its output x0 to the market)
 	# and the claimed share of its producers feeds ONE strata pool at the rate a hive of the
 	# world's size grows (coreStrataPerSizeMonth x size a month) x occupationRateMult, capped at
 	# the strata a hive of that size begins at; the swarm shifts the pool between the ground
@@ -505,7 +505,6 @@
 	# least occupationBudFP up (whole, only if enough) against a force over the world, and
 	# back when either is quiet. A district retaken releases the newest claim. Off: the old end state (conquestConverts, or the world decivilises)
 	"threatinc_occupationEnabled": true,
-	"threatinc_occupationClaimDays": 30,
 	"threatinc_occupationRateMult": 1.0,
 	"threatinc_occupationBudFP": 60,
 	# CONSUMPTION (the user, 2026-10-28, docs/occupation.md 7): a claimed industry is CONSUMED over its vanilla

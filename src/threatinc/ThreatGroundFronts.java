@@ -193,7 +193,7 @@ public class ThreatGroundFronts {
 		public float defenderDoctrineDaysLeft;
 		/** THE OCCUPATION (2026-10-27, ThreatOccupation): the industries the swarm's front has claimed, in claim order. */
 		public List<String> claims;
-		/** Days on the clock toward the next claim. */
+		/** Retired 2026-10-30 (the claim clock is gone: one claim a district); kept so saves load. */
 		public float claimDays;
 		/** Output units a day of the claimed industries, as the ground war condition last read them. */
 		public float eatenUnits;
@@ -2583,11 +2583,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (front.strataHeld > 0) {
 			// the claim goes first, while the slot it is consumed in still counts (Arkoman, 2026-10-28
 			// evening: decremented first, the release saw no active claim and freed the newest, Orbital
-			// Works, instead of the Mining being eaten); and a front holding no district holds no
-			// industry - every claim left goes with the last district, each rebuilt from its eaten share
+			// Works, instead of the Mining being eaten); and never more claims than districts held
+			// (2026-10-30) - a front holding no district holds no industry
 			ThreatOccupation.release(front, market); // and the newest claim with it (the occupation, 2026-10-27)
 			front.strataHeld--;
-			if (front.strataHeld <= 0) ThreatOccupation.releaseAll(front, market);
+			ThreatOccupation.trim(front, market);
 			// a final push does not stop for a setback - it is spent either way
 			front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 			reapply(front.marketId);
