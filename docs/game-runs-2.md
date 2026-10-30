@@ -1942,3 +1942,32 @@ the parallel staging path live (3.3-4.1k lines), the back line no longer desized
 121 drops vs 470-710) and starvations down (4 / 4 / 7 vs 21 / 9 / 7); 0 exceptions on saves from the older
 jar. Set B untested. Open: a shift swarm of the donor's whole amount (5.4k FP) held on fuel stands as
 defence (23 / 8 / 10 a game).
+
+## 91. hw324-hw325 - rounds 92-93, THE PASSAGE SIZES THE SHIFT (2026-10-30 17:54-18:54)
+
+The user, 17:52, on the hw322 wrinkle: "ah ok do that fix and test". `ThreatBudding.fuelAffordFP(from, to)`
+= the free fuel over the one-way passage of one FP (ThreatFuel.passage is linear in FP; 5% margin for the
+archetype's rounding); `shift()` counts a donor's give as min(buddable, afford); `advance()` caps a SHIFT
+pool's want at the afford each poll, settles the pool's excess over it back before spawning, and drops a
+shift the fuel pays under a seed's worth of (the pool settles). Set A pre-opening snapshots again, read
+against hw322 at the same war day.
+
+- **hw324 (jar 17:53:25, without the settle) STOPPED at w1,234:** c had 25 stuck shifts already (hw322c 10
+  all war) - pools budded while the fuel stood at 95k spawned whole after the strikes drained it to 3.5-5.6k
+  (800-1,300 FP swarms held on fuel), the cap lowered the want but the spawn took the pool. Fix 2 (3f3f7e76):
+  the excess settles first. Jar 18:04:02.
+- **hw325 (jar 18:04:02):** a never started - my sed renumbering of the driver changed a digit of its seed
+  id and the clone failed (the hw202a mistake again; the watcher waited on a's log and never ran, so the
+  exception count below is strategy-read's); b and c ran their 2,900 days in 49 minutes.
+
+| game | war day | hives | stuck shifts | drops on fuel / settles | mean shift swarm FP | campaigns | wait (d) | strikes | consumed | lift-offs | retaken | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw325b @ hw322b's end w3,370 | 3,371 | 269 (228; old jar 234) | 0 (8) | 5 / 2 | 404 (371) | 65 (45) | 69 (85) | 134 (111) | 213 (237) | 115 (82) | 61 (87) | 0 |
+| hw325c @ hw322c's end w3,544 | 3,545 | 324 (315; old jar 296) | 0 (10) | 65 / 10 | 377 (327) | 61 (59) | 58 (51) | 133 (106) | 198 (166) | 98 (62) | 51 (71) | 0 |
+| hw325b END | 3,853 | 304 | 0 | 5 / 2 | 404 | 80 | 64 | 158 | 225 | 139 | 78 | 0 |
+| hw325c END | 3,871 | 351 | 0 | 65 / 10 | 377 | 70 | 58 | 153 | 215 | 109 | 68 | 0 |
+
+**ROUNDS 92-93 VERDICT (18:58):** the fix ends the stuck shifts (0 / 0 against 8 / 10, hw324c's 25) at no
+cost: the shift swarms are the same size (377-404 FP mean), the drops on fuel are rare (5 / 65 a game, 2 / 10
+settles), and the balance reads at or above hw322 - hives 269 / 324 against 228 / 315 at the same day,
+campaigns and strikes up, retaken down. KEPT. Set A's a seed and set B untested on this jar.
