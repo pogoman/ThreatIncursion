@@ -30,7 +30,11 @@ is the layout it implements.
    (the report's figure and age), Strikes (count), Activity (crests, drawn: every siege
    expedition, task force, intercept, Support or Defend sortie, front run and ground front against
    the system - as many as fit the column, the rest in the row tooltip), Supply (commodity icons,
-   drawn, what the scouts saw it produce), Core (ly). Mass, the Cores' state (with its trend
+   drawn, what the scouts saw it produce), Core (ly), **Actions** (since 2026-10-30 13:30: Attack, the
+   player board's order - the fleet deployed at the nearest player colony sails against the system,
+   `IncursionManager.attackBase` / `attackBlockReason` - and Map, which selects the system on the map;
+   `ThreatWarBoard.addLedgerButtons`, floated after the front buttons; the player tab's own "Known
+   hive systems" table went the same day). Mass, the Cores' state (with its trend
    glyph), Reach ("cant the threat sail as far as they like fuel permitting") and Flow are gone -
    their `Cols` widths are 0 and every cell and tooltip is guarded by `c.has`. The Threat/reason
    column was removed for space; the reason opens the row tooltip. Clicking a row selects the

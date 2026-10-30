@@ -882,7 +882,7 @@ public class ThreatWarBoard {
 		// under its heading
 		Fronts fronts = addFronts(intel, main, width, opad, frontRows(),
 				Global.getSector().getFaction(Factions.THREAT), true);
-		addLedger(intel, ui, main, width, opad, entries, selected);
+		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
 		nameWidths.clear();
 		List<Object[]> cards = new ArrayList<Object[]>();
 		if (selected != null) {
@@ -895,6 +895,7 @@ public class ThreatWarBoard {
 		float heightBefore = main.getHeightSoFar();
 		if (selector) ThreatFactionView.addSelector(intel, main, width, view, strip);
 		addFrontButtons(intel, main, fronts);
+		addLedgerButtons(intel, main, ledger);
 		for (Object[] pair : cards) {
 			CustomPanelAPI card = (CustomPanelAPI) pair[0];
 			MarketAPI market = (MarketAPI) pair[1];
@@ -920,6 +921,42 @@ public class ThreatWarBoard {
 		com.fs.starfarer.api.ui.UIPanelAPI table;
 		Cols cols;
 		List<Entry> rows = new ArrayList<Entry>();
+	}
+
+	/**
+	 * Attack and Map on every ledger row (the user, 2026-10-30: "new action column at the end attack
+	 * which does the same as what it does on the player board ... and also map button that shows the
+	 * system on the map"). Attack is the player board's order (ThreatFactionView.BUTTON_SIEGE: the
+	 * fleet deployed at the nearest player colony sails, IncursionManager.attackBase); Map selects the
+	 * system on the map (BUTTON_MAP, ThreatIncursionIntel.buttonPressConfirmed). Floating buttons,
+	 * added after everything they anchor to.
+	 */
+	public static void addLedgerButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Ledger ledger) {
+		if (ledger == null || ledger.table == null) return;
+		FactionAPI player = Global.getSector().getPlayerFaction();
+		boolean mayOrder = ThreatFleetOrders.canPlayerOrder(player);
+		String blocked = ThreatFleetOrders.orderBlockReason(player);
+		int n = ledger.rows.size();
+		for (int i = 0; i < n; i++) {
+			Entry e = ledger.rows.get(i);
+			float up = (n - i) * ROW_H - (ROW_H - 20f) / 2f;
+			com.fs.starfarer.api.ui.ButtonAPI attack = intel.addGenericButton(main,
+					ThreatFactionView.SMALL_BUTTON_W + 10f, "Attack",
+					ThreatFactionView.BUTTON_SIEGE + Factions.PLAYER + ":" + e.systemId);
+			attack.getPosition().belowRight(ledger.table, -up).setXAlignOffset(-6f);
+			MarketAPI base = e.system != null ? IncursionManager.attackBase(player, e.system) : null;
+			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system)
+					: "Nothing there to attack yet.";
+			boolean ok = mayOrder && e.isColony() && why == null;
+			ThreatFactionView.disableWith(main, attack, ok, blocked != null ? blocked
+					: why != null ? why : "Nothing there to attack yet.",
+					"The fleet deployed at " + (base != null ? base.getName() : "the nearest colony")
+					+ " holds the orbit, razes the strata for the fuel aboard past the passage and lands its marines.");
+			com.fs.starfarer.api.ui.ButtonAPI map = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
+					BUTTON_MAP + e.systemId);
+			map.getPosition().belowRight(ledger.table, -up)
+					.setXAlignOffset(-6f - ThreatFactionView.SMALL_BUTTON_W - 10f - 6f);
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -2017,8 +2054,8 @@ public class ThreatWarBoard {
 	// ---- the ledger ----
 
 	protected static final int RANK = 0, SYSTEM = 1, THREAT = 2, WORLDS = 3, MASS = 4, VIT = 5,
-			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11, FLOW = 12;
-	protected static final int COLS = 13;
+			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11, FLOW = 12, ACT = 13;
+	protected static final int COLS = 14;
 
 	/** Column widths (and their offsets within a row) for a given table width. */
 	protected static class Cols {
@@ -2035,10 +2072,12 @@ public class ThreatWarBoard {
 			// 2026-10-01): its points came off System, Worlds, Fed and Activity
 			// THE LEDGER IS WHAT THE SCOUTS KNOW (the user, 2026-10-30: "a lot of the information here
 			// should not be shown as it is real time information"): Mass, the Cores' state, Reach and
-			// Flow are gone (0 width); Worlds is a count; # is the priority score
+			// Flow are gone (0 width); Worlds is a count; # is the priority score. Actions (the user,
+			// 2026-10-30: "new action column at the end attack ... and also map button") holds Attack +
+			// Map, 64 + 46 px and their gaps
 			float[] frac = narrow
-					? new float[] {.06f, .18f, 0f, .07f, 0f, 0f, .14f, 0f, .07f, .18f, .22f, .08f, 0f}
-					: new float[] {.06f, .20f, 0f, .07f, 0f, 0f, .15f, 0f, .07f, .17f, .20f, .08f, 0f};
+					? new float[] {.06f, .16f, 0f, .07f, 0f, 0f, .13f, 0f, .07f, .15f, .16f, .07f, 0f, .13f}
+					: new float[] {.06f, .18f, 0f, .07f, 0f, 0f, .14f, 0f, .07f, .15f, .15f, .07f, 0f, .11f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2091,7 +2130,7 @@ public class ThreatWarBoard {
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
 		String[] names = {"Priority", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
-				"Reach", "Strikes", "Activity", "Supply", "Core", "Flow"};
+				"Reach", "Strikes", "Activity", "Supply", "Core", "Flow", "Actions"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
 			if (!c.has(i)) continue;
@@ -2192,6 +2231,7 @@ public class ThreatWarBoard {
 			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
 			if (c.has(FLOW)) cell(cells, Alignment.LMID, e.flow != null ? h : gray,
 					e.flow != null ? main.shortenString(e.flow, c.w[FLOW] - 2f * CELL_PAD) : "-");
+			cell(cells, Alignment.MID, gray, ""); // Attack + Map float here (addLedgerButtons)
 
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
 			main.addTooltipToAddedRow(new TooltipCreator() {

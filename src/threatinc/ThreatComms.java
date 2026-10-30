@@ -203,7 +203,8 @@ public class ThreatComms {
 		if (ThreatNeeds.HOLD.equals(n.purpose)) return n.overrun ? OVERRUN : HOLD;
 		if (ThreatNeeds.PUSH_BACK.equals(n.purpose)) return PUSH_BACK;
 		if (ThreatNeeds.ARM.equals(n.purpose)) return ARM;
-		if (ThreatNeeds.ORBIT.equals(n.purpose)) return n.strike ? INBOUND : ORBIT;
+		if (ThreatNeeds.ORBIT.equals(n.purpose)) return ORBIT;
+		if (ThreatNeeds.MEET.equals(n.purpose)) return INBOUND;
 		if (ThreatNeeds.NAVY.equals(n.purpose) || ThreatNeeds.FLEET.equals(n.purpose)) return NAVY;
 		if (ThreatNeeds.EXPEDITION.equals(n.purpose)) {
 			return Commodities.FUEL.equals(n.good) ? EXPEDITION_FUEL : EXPEDITION_SUPPLIES;
@@ -258,7 +259,7 @@ public class ThreatComms {
 			notice(pushBack ? HOLDS : PUSHES, faction, m, null).send();
 			return true;
 		}
-		if (ThreatNeeds.ORBIT.equals(purpose)) {
+		if (ThreatNeeds.ORBIT.equals(purpose) || ThreatNeeds.MEET.equals(purpose)) {
 			notice(SKY, faction, m, null).send();
 			return true;
 		}

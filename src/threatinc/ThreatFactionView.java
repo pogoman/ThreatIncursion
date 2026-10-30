@@ -33,7 +33,7 @@ import com.fs.starfarer.api.util.Misc;
  * faction from the selector row and the board shows that faction's war
  * instead of the hive's - its colonies with their reserves, defenses and
  * strikes inbound; its fleets (task forces, expeditions, convoys, standing
- * orders); and the hive systems its bases can reach. For the player's OWN
+ * orders). For the player's OWN
  * faction every fleet action lives here as a button: guard a colony, stage
  * materiel to it, hunt a hive's swarms, send a siege, recall a fleet.
  * Another faction's view is a window, not a console (docs/player-aid.md): its
@@ -559,50 +559,8 @@ public class ThreatFactionView {
 			main.addSpacer(opad);
 		}
 
-		// ---- known hive systems: the player's tab only (the NPC tabs' "Hive systems in reach" and
-		// its Hunt aid went 2026-10-29, the user: "we dont need to see that table at all") ----
-		List<ThreatWarBoard.Entry> reach = own ? hivesInReach(markets) : new ArrayList<ThreatWarBoard.Entry>();
-		UIPanelAPI hiveTable = null;
-		if (own) main.addSectionHeading("Known hive systems", bright, dark, Alignment.MID, opad);
-		// no ladder row here since 2026-10-29: the Attack is the fleet deployed on the colonies table
-		if (!own) {
-			// nothing: an NPC faction's tab goes on to its colonies
-		} else if (reach.isEmpty()) {
-			main.addPara("No known infested system lies within expedition reach of this "
-					+ "faction's military worlds.", gray, opad);
-		} else {
-			float tw = width - 24f;
-			// Actions carries Hunt, Bombard and Siege (~202 px); Nearest base
-			// holds a shortened colony name and the count columns a single figure,
-			// so the rest of the width goes to System (the system name)
-			float[] frac = {.26f, .09f, .09f, .18f, .13f, .25f};
-			String[] names = {"System", "Worlds", "Mass", "Nearest base", "Distance", "Actions"};
-			List<Object> columns = new ArrayList<Object>();
-			for (int i = 0; i < names.length; i++) {
-				columns.add(names[i]);
-				columns.add((float) Math.floor(tw * frac[i]));
-			}
-			hiveTable = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
-			main.makeTableItemsClickable();
-			for (ThreatWarBoard.Entry e : reach) {
-				MarketAPI base = nearestBase(markets, e.system);
-				float d = base != null ? Misc.getDistanceLY(base.getStarSystem().getLocation(),
-						e.system.getLocation()) : -1f;
-				List<Object> cells = new ArrayList<Object>();
-				ThreatWarBoard.cell(cells, Alignment.LMID, bright,
-						main.shortenString(e.displayName(), (float) Math.floor(tw * frac[0]) - 10f));
-				ThreatWarBoard.cell(cells, Alignment.MID, h, "" + e.markets.size());
-				ThreatWarBoard.cell(cells, Alignment.MID, h, "" + e.mass);
-				ThreatWarBoard.cell(cells, Alignment.MID, text, base != null
-						? main.shortenString(base.getName(), (float) Math.floor(tw * frac[3]) - 10f) : "-");
-				ThreatWarBoard.cell(cells, Alignment.MID, text, d >= 0f ? (int) Math.ceil(d) + " ly" : "-");
-				ThreatWarBoard.cell(cells, Alignment.MID, gray, "");
-				main.addRow(cells.toArray());
-				main.setIdForAddedRow(e.systemId);
-			}
-			main.addTable("None", -1, 0f);
-			main.addSpacer(opad);
-		}
+		// no hive table on the player's tab since 2026-10-30 (the user: "we then dont need that table on
+		// player board"): the Attack order is on the Threat tab's ledger rows (ThreatWarBoard.addLedgerButtons)
 
 		// ---- purged worlds in reach: outposts ----
 		List<com.fs.starfarer.api.campaign.PlanetAPI> purged = purgedInReach(faction);
@@ -786,27 +744,6 @@ public class ThreatFactionView {
 							+ f.huntSystem.getNameWithLowercaseTypeShort() + " for "
 							+ (int) ThreatIncConfig.softenDays() + " days, then goes home.");
 				}
-			}
-		}
-		if (hiveTable != null) {
-			int n = reach.size();
-			for (int i = 0; i < n; i++) {
-				ThreatWarBoard.Entry e = reach.get(i);
-				float up = (n - i) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
-				// ONE ORDER ON A HIVE ROW (phase D, docs/strata-are-the-threat.md 8): Attack - the fleet
-				// deployed at the nearest colony (ThreatDeploy), with everything aboard it. Off while no
-				// fleet is deployed or it carries less than the passage's fuel or the expedition's
-				// supplies (IncursionManager.attackBlockFacts)
-				MarketAPI siegeBase = IncursionManager.attackBase(faction, e.system);
-				String attackWhy = IncursionManager.attackBlockReason(siegeBase, faction, e.system);
-				boolean attackOk = mayOrder && e.isColony() && attackWhy == null;
-				ButtonAPI attack = intel.addGenericButton(main, SMALL_BUTTON_W + 10f, "Attack",
-						BUTTON_SIEGE + factionId + ":" + e.systemId);
-				attack.getPosition().belowRight(hiveTable, -up).setXAlignOffset(-6f);
-				disableWith(main, attack, attackOk, blocked != null ? blocked : attackWhy != null ? attackWhy
-						: "Nothing there to attack yet.",
-						"The fleet deployed at " + (siegeBase != null ? siegeBase.getName() : "the nearest colony")
-						+ " holds the orbit, razes the strata for the fuel aboard past the passage and lands its marines.");
 			}
 		}
 		if (colonyTable != null) {
@@ -2067,16 +2004,6 @@ public class ThreatFactionView {
 		if (supplies > 0f) parts.add((int) supplies + " supplies");
 		if (ships > 0f) parts.add(ThreatHulls.shown(Commodities.SHIPS, ships) + " ship hulls");
 		return parts.isEmpty() ? "empty" : ThreatWarBoard.join(parts);
-	}
-
-	/** Known infested colony systems within expedition reach of any of the faction's military worlds - for the player, every known one (no range). */
-	protected static List<ThreatWarBoard.Entry> hivesInReach(List<MarketAPI> markets) {
-		List<ThreatWarBoard.Entry> result = new ArrayList<ThreatWarBoard.Entry>();
-		for (ThreatWarBoard.Entry e : ThreatWarBoard.buildEntries()) {
-			if (e.system == null) continue;
-			if (nearestBase(markets, e.system) != null) result.add(e);
-		}
-		return result;
 	}
 
 	/** The nearest base among these within its expedition range - a player colony at any range (docs/strategy-layer.md "Ranges"). */

@@ -84,9 +84,9 @@ world with enough tankers can cross the sector; distance should cost time, not
 permission." So no range gate on the player's hand orders: `ThreatAid.sources` (the
 source of every Guard / Intercept / Escort / Defend / Aid / Strike), `ThreatConvoys.
 stageDonor` (Stage), `ThreatFleetOrders.pickBase` for the player (Supply / Pull out
-runs, purged worlds for Outpost) and the faction view's `nearestBase` (the Siege base,
-and which hives are listed - the player's table is headed "Known hive systems" and
-lists every known one). What distance costs: fuel drawn at launch by points x
+runs, purged worlds for Outpost) and the faction view's `nearestBase` (the Attack base;
+since 2026-10-30 the Attack button sits on every row of the Threat tab's ledger,
+`ThreatWarBoard.addLedgerButtons`, and the player tab lists no hives). What distance costs: fuel drawn at launch by points x
 light-years (`expeditionFuelPerPointLY`, best-effort), the real transit each way, and
 the capacity held for all of it. NPC navies and NPC factions' automatic traffic (the
 convoy planner's donor reach in `pickDonor` / `stagingBaseFor` / `planRelief` /

@@ -40,6 +40,8 @@ public class ThreatNeeds {
 	public static final String PUSH_BACK = "push back";
 	public static final String ARM = "arm the defenders";
 	public static final String ORBIT = "lift the orbit";
+	/** A fleets need raised by a strike in flight, the orbit still empty (the user, 2026-10-30: "why does nortia want clear the orbit when space is empty"). */
+	public static final String MEET = "meet the strike";
 	public static final String DEPOT = "keep the depot";
 	public static final String NAVY = "rebuild the navy";
 	/** A player colony short of the hulls to field one task force (the user, 2026-10-24: Request "doesnt consider a lack of hulls to be a shortage"); the hulls land and stay there (ThreatConvoys, ThreatHulls.moveHome). */
@@ -124,6 +126,7 @@ public class ThreatNeeds {
 			else if (PUSH_BACK.equals(purpose)) w = new String[] { "push back", "overrun", "overrun with a reserve" };
 			else if (ARM.equals(purpose)) w = new String[] { "arm them 30 days", "arm them 60 days", "fill the depot" };
 			else if (ORBIT.equals(purpose)) w = new String[] { "lift the orbit", "add a margin", "add a reserve" };
+			else if (MEET.equals(purpose)) w = new String[] { "meet the strike", "add a margin", "add a reserve" };
 			else if (NAVY.equals(purpose)) w = new String[] { "rebuild the navy", "add a margin", "add a reserve" };
 			else if (FLEET.equals(purpose)) w = new String[] { "field a task force", "add a margin", "add a reserve" };
 			else if (EXPEDITION.equals(purpose)) w = new String[] { "sail", "sail with a margin", "sail the full voyage" };
@@ -163,7 +166,7 @@ public class ThreatNeeds {
 	/** Standing weight for giving toward a purpose (docs/war-effort-rework.md section 4); null = a good nobody needs. */
 	public static float weight(String purpose) {
 		if (purpose == null) return ThreatIncConfig.aidRepWeightSurplus();
-		if (HOLD.equals(purpose) || ORBIT.equals(purpose)) return ThreatIncConfig.aidRepWeightCritical();
+		if (HOLD.equals(purpose) || ORBIT.equals(purpose) || MEET.equals(purpose)) return ThreatIncConfig.aidRepWeightCritical();
 		if (PUSH_BACK.equals(purpose) || ARM.equals(purpose) || EXPEDITION.equals(purpose)) {
 			return ThreatIncConfig.aidRepWeightUrgent();
 		}
@@ -228,8 +231,9 @@ public class ThreatNeeds {
 			float need = ThreatFleetOrders.guardNeed(m);
 			float bound = ThreatFleetOrders.guardPointsFor(id) + ThreatFleetOrders.playerPointsFor(m);
 			if (need * 1.25f - bound > 0f) {
-				Need n = need(m, ORBIT, FLEETS, Math.max(0f, need - bound), Math.max(0f, need * 1.25f - bound),
-						Math.max(0f, need * 1.5f - bound), CRITICAL, false);
+				// a swarm over the world is an orbit to lift; a strike still at sea is one to meet
+				Need n = need(m, blockaded ? ORBIT : MEET, FLEETS, Math.max(0f, need - bound),
+						Math.max(0f, need * 1.25f - bound), Math.max(0f, need * 1.5f - bound), CRITICAL, false);
 				n.bound = bound;
 				n.strike = strike && !blockaded;
 				out.add(n);
