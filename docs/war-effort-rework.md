@@ -116,7 +116,7 @@ the quoted passage before acceptance, and the Colony button clears every call (`
 player may send aid to any faction not at war with them (`threatinc_aidMinRelation` -1); an NPC
 faction answers the player's calls only from Favourable (`willingness`), and NPC-to-NPC aid
 (`ThreatCoalition.allyAid`) still changes no standing - nothing in vanilla or the mod ever restores
-an NPC-to-NPC standing, so a charge there waits on the user's decision. The war board section in
+an NPC-to-NPC standing, so a charge would be permanent - the user's decision 2026-10-31: "No charge"; `ThreatCoalition.allyAid` stays free. The war board section in
 docs/war-board.md "The calls and the offers" has the table. The paragraphs below are the earlier
 flows the rest still follows.
 

@@ -1136,7 +1136,7 @@ public class ThreatFactionView {
 	 * one row a world and good (the most urgent need of the good), in the player's table's columns -
 	 * World, Commodity, Age (how long the shortage has stood, ThreatAidRequests.shortageSince; a dash
 	 * for a battle's need), Answer (the convoy at sea with the good and whose it is, a task force bound
-	 * for a fleets need, else waiting), Standing (nothing changes hands between NPC factions yet), ETA
+	 * for a fleets need, else waiting), Standing (NPC-to-NPC aid charges no standing - the user, 2026-10-31), ETA
 	 * (`convoyEta`) and **Send** (BUTTON_AID_NEED: a convoy of that good alone at the colonies table's
 	 * lever for it, Med when the lever is at None, from the player's colony sparing the most,
 	 * ThreatAid.quoteAid; a fleets need sends Defend at the fronts' Fleet lever, as BUTTON_AID_DEFEND).

@@ -238,8 +238,8 @@ boards should have the same table as player one") an NPC faction's tab lists its
 its colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`), one row a world x good (the
 most urgent need of the good) - World, Commodity, Age (days the shortage has stood,
 `ThreatAidRequests.shortageSince`), Answer (the convoy at sea with the good and whose it is,
-`convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - nothing
-changes hands between NPC factions yet), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
+`convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - NPC-to-NPC aid
+charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: a convoy of that good
 alone at its lever, Med when None, from the player's colony sparing the most - `ThreatAid.quoteAid`
 through `needLevers`; a fleets need is the fronts' Defend at the Fleet lever). Until 2026-10-31 a
 request was logged from a Transfer or Deploy short of the colony's needs in the order's own confirm
