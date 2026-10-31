@@ -233,17 +233,21 @@ the player's colonies like the Requests' Colony button (`BUTTON_ATTACK_SOURCE`, 
 `ThreatFactionView.attackSource`); it defaults to the STAGING colony (`stagingColony`: the first colony that is a
 staging base for a siege, `ThreatConvoys.stagingHive`, else the first with a military industry and a Waystation,
 `IncursionManager.isBase`, else the first) - as does the Requests table's Colony toggle since the same evening
-(`requestTarget`). Fleet is the Attack's outcome tier like the Defend's (`LEVER_LEDGER_FLEET`, Max by default): a
-NEW fleet is built at the colony from its own free hulls sized against the Defense Swarms seen in the system as the
-player's reports show them (`ThreatIntel.systemFP`) - matched at Min, x `orbitTierMedMargin` at Med,
-x `orbitTierMaxMargin` at Max; nothing seen, the smallest fleet / half / all of the free hulls - never under
-`ThreatDeploy.minPoints`, never over the free hulls or one fleet (`fleetMaxFP`); `IncursionManager.attackPlan(base,
-faction, system, fleetTier, daysTier, levers)`, `Attack.free` / `swarm` / `margin` / `points`. It is loaded at the
+(`requestTarget`). Fleet (`LEVER_LEDGER_FLEET`, Max by default) sizes a NEW fleet built at the colony from its own free hulls:
+Min the siege's need (`siegeSizesFor` - the planner's own sizing: its orbit, its landing and its guns), Med half the
+colony's free hulls (the need at least), Max all of them - never under `ThreatDeploy.minPoints`, never over the free
+hulls or one fleet (`fleetMaxFP`); `IncursionManager.attackPlan(base, faction, system, fleetTier, daysTier, levers)`,
+`Attack.free` / `need` / `tier` / `points`. (For an hour that evening the tiers matched the Defense Swarms seen, as the
+Defend's do - Svarga quoted 60 FP against 21 seen; an attack razes and lands, so it is sized like a siege.) It is loaded at the
 colonies table's levers exactly as a Deploy is (`ThreatDeploy.plan`'s rule: each good the lever's share of what the
-colony spares, `ThreatConvoys.handSpare`), the fuel never under the passage and the supplies never under what the
-expedition takes (`expeditionWants`[3]) while the colony holds them above its floor; the button is off, with the
-figures, when the colony cannot field the smallest fleet, the passage's fuel or the expedition's supplies
-(`attackBlockFacts`). `launchAttack` builds it (`ThreatDeploy.build`), stages it over the colony for the moment
+colony spares, `ThreatConvoys.handSpare`), the fuel and the supplies drawing on the colony's stock above its floor
+(`ThreatReserves.available`) up to the passage and the expedition's figure whatever the lever says; that figure is
+the hulls' deposit plus the hold for the trip at the DAYS LEVER'S TERM (`expeditionWants(..., stayDays)` ->
+`expeditionHold(..., stayDays)`: the term in place of `siegeStayDays` and the `siegeHoldDays` months floor - priced as a
+Defend's hold is on its Days). The button is off, with the stock figures ("Haven has 12,400 supplies above its floor /
+The attack takes 23,589 for 60 days a world"), when the colony cannot field the smallest fleet, the passage's fuel or
+the expedition's supplies (`attackBlockFacts`); until this fix the tooltip showed the Supplies lever's share of the
+spare - "Haven has 0 supplies for it" (the user, 2026-10-31 evening). `launchAttack` builds it (`ThreatDeploy.build`), stages it over the colony for the moment
 (`guardOrder`, arrived), loads it (`ThreatDeploy.load`, the fuel topped up to the passage), then sails
 `launchSiegeExpedition(..., deployed=true, termDays)` with it and everything aboard; a launch refused after the
 build folds the fleet back (`ThreatFleetOrders.fold`). Days is the term the attack holds each world before giving its

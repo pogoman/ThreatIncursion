@@ -916,9 +916,9 @@ public class ThreatFactionView {
 		}
 		float x0 = LEVER_LABEL_W + TARGET_BUTTON_W + 14f;
 		String[] fleetTips = {
-				"Attack: a fleet from the colony matching the Defense Swarms seen in the system; nothing seen, its smallest fleet.",
-				"Attack: x" + String.format("%.2f", ThreatIncConfig.orbitTierMedMargin()) + " the swarms seen; nothing seen, half the colony's free hulls.",
-				"Attack: x" + String.format("%.2f", ThreatIncConfig.orbitTierMaxMargin()) + " the swarms seen; nothing seen, all the colony's free hulls." };
+				"Attack: the fleet the siege needs - its orbit, its landing and its guns.",
+				"Attack: half the colony's free hulls, the siege's need at least.",
+				"Attack: all the colony's free hulls, up to one fleet." };
 		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
 				BUTTON_LEVER + ThreatIncursionIntel.LEVER_LEDGER_FLEET + ":",
 				intel.lever(ThreatIncursionIntel.LEVER_LEDGER_FLEET), fleetTips, x0, TIER_LABELS, LEVER_BUTTON_W);
@@ -2991,12 +2991,15 @@ public class ThreatFactionView {
 	/** The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8): one line per fact, figures as "N to what it buys". */
 	/** The swarm the Attack at the ledger's Fleet lever is sized against, for its prompt; null when no sizing was asked. */
 	protected static String attackSized(IncursionManager.Attack a) {
-		if (a == null || a.margin <= 0f) return null;
-		if (a.swarm <= 0f) return "Nothing seen there to size against: the Fleet lever's share of the free hulls.";
-		return "Against the " + Misc.getWithDGS((int) a.swarm) + " fleet points of Defense Swarms seen in the system"
-				+ (a.margin > 1f ? ", by x" + trimZero(a.margin) : "")
-				+ (a.points < ThreatAidCapacity.taskForcePoints(a.swarm * Math.max(1f, a.margin)) - 0.5f
-						? " - cut to what " + a.base.getName() + " can field." : ".");
+		if (a == null || a.base == null) return null;
+		String need = Misc.getWithDGS((int) Math.ceil(a.need));
+		String short_ = a.points < a.need - 0.5f ? " - short of it" : "";
+		if (a.tier >= 2) {
+			return "All of " + a.base.getName() + "'s free hulls" + (a.points < a.free - 0.5f ? ", up to one fleet" : "")
+					+ "; the siege needs " + need + short_ + ".";
+		}
+		if (a.tier == 1) return "Half of " + a.base.getName() + "'s free hulls; the siege needs " + need + short_ + ".";
+		return "The fleet the siege needs: its orbit, its landing and its guns" + short_ + ".";
 	}
 
 	protected static void addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a) {
@@ -3012,7 +3015,7 @@ public class ThreatFactionView {
 		String sized = attackSized(a);
 		if (sized != null) prompt.addPara(sized, 3f);
 		prompt.addPara("Holds each world up to %s days.", 3f, h, "" + (int) a.term);
-		if (a.razeFuel > 0.5f && a.target != null) {
+		if (a.razeFuel >= 1f && a.target != null) {
 			float now = ThreatStrata.of(a.target);
 			float after = Math.max(0f, now - a.strata);
 			int sizeAfter = after <= 0f ? 0 : ThreatStrata.sizeOf(after, ThreatColonyManager.maxColonySize(a.target));

@@ -3815,6 +3815,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	public static float[] expeditionWants(MarketAPI base, StarSystemAPI system,
 			java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze,
 			float shortLanding, float downGoal) {
+		return expeditionWants(base, system, targets, fleetSizes, raze, shortLanding, downGoal, 0f);
+	}
+
+	/** As above with the hold priced on a stay of {@code stayDays} at the worlds (the player's Attack at its Days lever, 2026-10-31 evening; {@link #expeditionHold}); 0: the siege's own stay. */
+	public static float[] expeditionWants(MarketAPI base, StarSystemAPI system,
+			java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze,
+			float shortLanding, float downGoal, float stayDays) {
 		float marines = shortLanding > 0f ? shortLanding : siegeRaidStrNeeded(landTargets(targets, raze),
 				ThreatIntel.observerOf(base != null ? base.getFaction() : null));
 		// the landing force arms itself: npcFrontSupplyDays of its own burn
@@ -3827,7 +3834,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// and the HOLD (docs/fleet-provisions.md): the ships' supplies for the whole
 		// trip - what the gate prices (siegeSuppliesPerPoint) is now drawn and carried
 		supplies += expeditionHold(base, base != null ? base.getFaction() : null, system, targets, raze, points,
-				downGoal);
+				downGoal, stayDays);
 		return new float[] {marines, armaments, fuel[0] + fuel[1] + fuel[2], supplies};
 	}
 
@@ -3845,8 +3852,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/** As above at a saturation days-down goal ({@code downGoal}; 0: the commander's stop). */
 	public static float expeditionHold(MarketAPI base, FactionAPI faction, StarSystemAPI system,
 			java.util.List<MarketAPI> targets, java.util.Set<String> raze, int points, float downGoal) {
+		return expeditionHold(base, faction, system, targets, raze, points, downGoal, 0f);
+	}
+
+	/** As above with the stay given ({@code stayDays} > 0: the player's Attack at its Days lever, the term it holds a world - no siegeHoldDays floor). */
+	public static float expeditionHold(MarketAPI base, FactionAPI faction, StarSystemAPI system,
+			java.util.List<MarketAPI> targets, java.util.Set<String> raze, int points, float downGoal, float stayDays) {
 		if (!ThreatIncConfig.fleetUpkeep() || !ThreatReach.factionsBilled() || faction == null || points <= 0) return 0f;
 		float fp = points * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+		if (stayDays > 0f) return ThreatReach.tripSupplies(faction.getId(), fp, siegeTripDays(base, system, stayDays));
 		float stay = siegeStayDays(landTargets(targets, raze), razeTargets(targets, raze), fp, faction.getId(),
 				downGoal);
 		// the player's siege is provisioned for the months the ground campaign takes, not the
@@ -4733,8 +4747,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		public float points;
 		/** The colony's own free hulls, whole-fleet points (ThreatAidCapacity.ownFreeFP). */
 		public float free;
-		/** The Defense Swarms seen in the system the force is sized against (0: none seen) and the Fleet lever's margin. */
-		public float swarm, margin;
+		/** Whole-fleet points the siege needs - its orbit, its landing and its guns (siegeSizesFor): the Fleet lever's Min, and Med's least. */
+		public float need;
+		/** The Fleet lever's tier the plan was sized at. */
+		public int tier;
+		/** Fuel and supplies the colony holds above its floor (ThreatReserves.available): what the load may draw on. */
+		public float fuelHave, suppliesHave;
 		/** The passage's fuel, the fuel loaded, the fuel past the passage and the strata it razes. */
 		public float passage, fuel, razeFuel, strata;
 		/** Days of bombardment the fuel buys at the flotilla's rate. */
@@ -4772,14 +4790,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					Misc.getWithDGS((int) a.free))
 					.line("A fleet needs at least %s", Misc.getWithDGS((int) Math.ceil(ThreatDeploy.minPoints())));
 		}
+		// the colony's stock above its floor against the figures (the user, 2026-10-31 evening, "Haven has 0 supplies
+		// for it": the lever's share of the spare was shown, not what Haven held)
 		if (a.fuel < a.passage - 0.5f) {
-			return ThreatNotice.Reason.of("%s has %s fuel for it", ThreatNotice.market(base), Misc.getWithDGS((int) a.fuel))
+			return ThreatNotice.Reason.of("%s has %s fuel above its floor", ThreatNotice.market(base),
+					Misc.getWithDGS((int) a.fuelHave))
 					.line("The passage takes %s", Misc.getWithDGS((int) Math.ceil(a.passage)));
 		}
 		if (a.supplies < a.suppliesWant - 0.5f) {
-			return ThreatNotice.Reason.of("%s has %s supplies for it", ThreatNotice.market(base),
-					Misc.getWithDGS((int) a.supplies))
-					.line("The attack takes %s", Misc.getWithDGS((int) Math.ceil(a.suppliesWant)));
+			return ThreatNotice.Reason.of("%s has %s supplies above its floor", ThreatNotice.market(base),
+					Misc.getWithDGS((int) a.suppliesHave))
+					.line("The attack takes %s for %s days a world", Misc.getWithDGS((int) Math.ceil(a.suppliesWant)),
+							"" + (int) a.term);
 		}
 		return null;
 	}
@@ -4815,34 +4837,35 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI m : a.targets) {
 			if (a.target == null || ThreatStrata.of(m) > ThreatStrata.of(a.target)) a.target = m;
 		}
-		// the fleet: the Fleet lever's outcome within the colony's own free hulls and one fleet
+		// the fleet (the user, 2026-10-31 evening, Svarga quoted 60 FP "against the 21 fleet points of Defense Swarms
+		// seen": an attack razes and lands, it is no Defend): the siege's need at Min (siegeSizesFor - its orbit, its
+		// landing and its guns, the planner's own sizing), half the colony's free hulls at Med (the need at least),
+		// all of them at Max - within its own free hulls and one fleet
+		a.tier = fleetTier;
 		a.free = Math.max(0f, ThreatAidCapacity.ownFreeFP(base));
 		float least = ThreatDeploy.minPoints();
 		float cap = Math.min(a.free, ThreatIncConfig.fleetMaxFP());
-		a.swarm = ThreatIntel.systemFP(ThreatIntel.observerOf(faction), system.getId());
-		a.margin = fleetTier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
-				: fleetTier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
-		float want = a.swarm > 0f ? ThreatAidCapacity.taskForcePoints(a.swarm * Math.max(1f, a.margin))
-				: fleetTier >= 2 ? cap : fleetTier == 1 ? cap / 2f : least;
+		a.need = ThreatAidCapacity.expeditionPoints(siegeSizesFor(base, faction, a.targets, 0f));
+		float want = fleetTier >= 2 ? cap : fleetTier == 1 ? Math.max(a.need, cap / 2f) : a.need;
 		a.points = a.free < least - 0.5f ? 0f : (float) Math.floor(Math.min(cap, Math.max(least, want)));
 		if (a.points > 0f) a.sizes.add(stagedSize(a.points));
 		a.passage = expeditionPassage(base, system, a.sizes);
 		// the supplies the expedition takes: its hulls' deposit and the hold for the passage and
 		// the siege's months (expeditionWants; every world lands, nothing razed by plan)
+		// priced on the Days lever's term, as a Defend's hold is on its (expeditionHold stayDays), not the months of
+		// siegeHoldDays: the attack gives each world up after the term
 		a.suppliesWant = a.sizes.isEmpty() ? 0f
-				: expeditionWants(base, system, a.targets, a.sizes, new java.util.HashSet<String>(), 0f, 0f)[3];
-		// the load at the colonies table's levers (the Deploy's rule), the fuel floored at the passage and
-		// the supplies at the expedition's figure while the colony holds them above its floor
+				: expeditionWants(base, system, a.targets, a.sizes, new java.util.HashSet<String>(), 0f, 0f, a.term)[3];
+		// the load at the colonies table's levers (the Deploy's rule); the fuel and the supplies draw on the colony's
+		// stock above its floor up to the passage and the expedition's figure whatever the lever says
 		float[] load = new float[4];
 		for (int i = 0; i < 4; i++) {
 			load[i] = (float) Math.floor(ThreatConvoys.share(a.levers[i]) * ThreatConvoys.handSpare(base, ThreatReserves.COMMODITIES[i]));
 		}
-		if (load[2] < a.passage && ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) >= a.passage - 0.5f) {
-			load[2] = (float) Math.ceil(a.passage);
-		}
-		if (load[3] < a.suppliesWant && ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) >= a.suppliesWant - 0.5f) {
-			load[3] = (float) Math.ceil(a.suppliesWant);
-		}
+		a.fuelHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+		a.suppliesHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+		load[2] = Math.max(load[2], Math.min(a.fuelHave, (float) Math.ceil(a.passage)));
+		load[3] = Math.max(load[3], Math.min(a.suppliesHave, (float) Math.ceil(a.suppliesWant)));
 		a.marines = load[0];
 		a.arms = load[1];
 		a.fuel = load[2];
