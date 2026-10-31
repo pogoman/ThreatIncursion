@@ -2140,3 +2140,13 @@ inside its band.
 **hw335 STOPPED 18:40 at the user's word ("we need to test with all latest changes, I'm about to do a release"):** a w3,384 245 hives, b w2,810 196, c w3,734 291, 0 exc. The late histogram (hw335a w3,420, 247 hives, 97k FP of swarm fleets): 750 MB live, 4,375 CampaignFleet, 29,370 FleetMember, 3,636 FramePulse - the fleets in the heap kept growing while the swarm's own navy shrank, the leak confirmed. Live folder fast-forwarded to origin (2d5a3821: the leak fix + the other machine's 16 commits), jar 18:41:38, general seed test rerun from day 0 as hw336 (set B) / hw337 (set A), `run-seeds-49.ps1`, with a histogram of hw336a at ~w2,000 as the leak retest.
 
 **LEAK RETEST (hw336a on the fixed jar, 19:23, w2,583, 175 hives, 288k FP of swarm fleets): FIXED.** 615 MB live, 1,154 CampaignFleet, 22,779 FleetMember, 437 FramePulse - against hw335a's 2,198 / 21,056 / 1,629 at w2,119 with a navy a third smaller (191k FP). Fleets per 1k FP of navy 4.0, was 11.5; the pulses are now only the live reinforcement swarms. The heap is the navy: MutableStat 2.5M (120 MB) tracks the 22.8k members.
+
+**hw336 END (20:02, set B on the release jar 18:41:38, the same seeds as hw334; hw334 in brackets, hw334c at its 75-minute cap w3,175; `ground-read.sh` columns):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift drops / stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw336a @ 75 min | 3,660 | 242 (286) | 75 | 176 (198) | 48 (77) | 97 (107) | 82 (84) | 62 (58) | 114 / 0 | 0 |
+| hw336b | 3,826 | 261 (319) | 139 | 218 (197) | 91 (99) | 80 (23) | 110 (41) | 87 (33) | 0 / 0 | 0 |
+| hw336c | 3,809 | 344 (275) | 105 | 236 (218) | 105 (72) | 48 (71) | 57 (66) | 27 (53) | 155 / 0 | 0 |
+
+- 0 exceptions, 0 failed saves (c saved 29 MB at w3,809 where hw334c died at w3,175 - the heap the leak took back), 0 stuck shifts; the cycle (claims, consumption, lift-off, restores, retakes) on every seed; hives 242-344 inside s92's band (hw330 291 / 344 / 360, hw331 265 / 211 / 314). a slower (39 d/min, 56 on hw334; a hit the cap at w3,660) - three games plus the 19:23 histogram's full GC, read on.
