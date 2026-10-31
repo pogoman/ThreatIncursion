@@ -1627,18 +1627,18 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatDecivIntel.getSortString()` :78
 - `ThreatDecivIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :83
 
-## ThreatDeploy (372 lines)
+## ThreatDeploy (371 lines)
 - `ThreatDeploy.ok()` :63 - The colonies table's levers the plan was made at (ThreatIncursionIntel.colonyLevers).
 - `ThreatDeploy.minPoints()` :69 - Smallest fleet a Deploy makes, whole-fleet points (aidGuardMinFP in the ledger's unit).
 - `ThreatDeploy.hullsTier(int[] levers)` :74 - The Fleet lever's tier of a colonies-table lever set (ThreatIncursionIntel.colonyLevers, the sixth entry), 0 when it has none.
 - `ThreatDeploy.plan(ThreatBases.Base target, int[] levers)` :91 - The plan for a Deploy at the target at the levers:
-- `ThreatDeploy.nearestSource(ThreatBases.Base target, int[] levers, MarketAPI not)` :186 - The colony of the player's a Deploy builds at when the target has no hulls of its own (an outpost, a hive, a colony short of them):
-- `ThreatDeploy.offReason(Plan p)` :205 - The button's one-line tooltip while it is off:
-- `ThreatDeploy.loadText(float[] load)` :210 - "320 marines, 400 arms, 1,200 fuel and 3,000 supplies" - a load's non-zero parts, or "nothing".
-- `ThreatDeploy.execute(Plan p, FactionAPI faction)` :225 - Carries the plan out for the player:
-- `ThreatDeploy.build(MarketAPI source, FactionAPI faction, float combat, CampaignFleetAPI lead, ThreatBases.Base target, String label, float[] builtOut)` :273 - Builds combat combat points at the source as fleets of one fleet's size (ThreatSoftening.fleetCapFor;
-- `ThreatDeploy.load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float holdNeed, float[] backOut)` :314 - Loads the fleet to the plan's levers from the source's reserve:
-- `ThreatDeploy.isDeployed(ThreatFleetOrders.Order o)` :366 - Whether the guard order is a fleet deployed over the player's own colony (the fleets table's "Deployed").
+- `ThreatDeploy.nearestSource(ThreatBases.Base target, int[] levers, MarketAPI not)` :185 - The colony of the player's a Deploy builds at when the target has no hulls of its own (an outpost, a hive, a colony short of them):
+- `ThreatDeploy.offReason(Plan p)` :204 - The button's one-line tooltip while it is off:
+- `ThreatDeploy.loadText(float[] load)` :209 - "320 marines, 400 arms, 1,200 fuel and 3,000 supplies" - a load's non-zero parts, or "nothing".
+- `ThreatDeploy.execute(Plan p, FactionAPI faction)` :224 - Carries the plan out for the player:
+- `ThreatDeploy.build(MarketAPI source, FactionAPI faction, float combat, CampaignFleetAPI lead, ThreatBases.Base target, String label, float[] builtOut)` :272 - Builds combat combat points at the source as fleets of one fleet's size (ThreatSoftening.fleetCapFor;
+- `ThreatDeploy.load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float holdNeed, float[] backOut)` :313 - Loads the fleet to the plan's levers from the source's reserve:
+- `ThreatDeploy.isDeployed(ThreatFleetOrders.Order o)` :365 - Whether the guard order is a fleet deployed over the player's own colony (the fleets table's "Deployed").
 
 ## ThreatFabricationVisual (127 lines)
 - `ThreatFabricationVisual.ThreatFabricationVisual(SectorEntityToken target, Color colour, int count)` :52 - Rising (phase C, 2026-10-25):

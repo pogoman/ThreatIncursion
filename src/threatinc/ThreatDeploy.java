@@ -157,13 +157,12 @@ public class ThreatDeploy {
 		float fp = p.targetPts / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
 		// IN ITS OWN SYSTEM (the user, 2026-10-31, Deploy at Haven greyed "Arkoman has 993 supplies / The fleet's
 		// ships eat 2,688 on the way and there" - the two worlds share a system: "it would take the fleets 5 seconds
-		// to move to the other planet"): the hold is the hop alone, a day's burn - the fleet restocks from the
-		// system's depots as it eats (ThreatUpkeep.restockFleet, Haven's and Arkoman's alike), so the stay is never
+		// to move to the other planet"; then at a day's burn, "Arkoman has 36 supplies / eat 90": "still cant"):
+		// no supplies floor at all - the fleet restocks from the system's depots as it eats
+		// (ThreatUpkeep.restockFleet: the target's, Haven's 2,936, as readily as the source's), so nothing is
 		// priced up front; the voyage-and-stay hold is for a fleet that sails beyond, where nothing restocks it
 		float hold = ThreatReach.sortieHold(p.source.getFactionId(), fp, ly);
-		if (ly < 0.01f && ThreatIncConfig.fleetResupply()) {
-			hold = Math.min(hold, ThreatReach.tripSupplies(p.source.getFactionId(), fp, 1f));
-		}
+		if (ly < 0.01f && ThreatIncConfig.fleetResupply()) hold = 0f;
 		p.holdNeed = (float) Math.ceil(hold);
 		if (p.load[3] < p.holdNeed) {
 			float have = ThreatReserves.available(p.source, Commodities.SUPPLIES);
