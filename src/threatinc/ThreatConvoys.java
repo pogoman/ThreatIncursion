@@ -306,8 +306,8 @@ public class ThreatConvoys {
 	 * as cargo ({@code fuelLoad}, {@code suppliesLoad}); above the base from
 	 * the spendable stock beside the cargo ({@link #escortStock}). The base
 	 * escort's fuel is the voyage's ({@link #paysVoyage}), paid whatever sails.
-	 * A player convoy's escort is its ledger's business and is not charged
-	 * here.
+	 * The player's convoys pay it as the NPCs' do (2026-10-31); their hulls
+	 * stay the ledger's business.
 	 */
 	protected static float paidEscort(ThreatBases.Base donor, float want, float ly, float fuelLoad,
 			float suppliesLoad) {
@@ -395,6 +395,34 @@ public class ThreatConvoys {
 	/** Fuel a voyage of {@code ly} burns, the base escort's at escortRate, whatever escort sails: what any sailing that far costs at least. */
 	public static float haulFuel(float ly) {
 		return baseEscort() * escortRate(ly)[0];
+	}
+
+	/**
+	 * {fuel, supplies} a convoy of {@code load} (COMMODITIES order, hulls after) from
+	 * {@code donor} over {@code ly} draws beside its cargo ({@link #payEscort}): the voyage's
+	 * fuel whatever sails ({@link #haulFuel}) and the value escort's above it, and the supplies
+	 * of the escort the donor pays for ({@link #paidEscort}). What a hand order's prompt quotes
+	 * (ThreatFactionView.addTakesLine, 2026-10-31).
+	 */
+	public static float[] voyageBill(ThreatBases.Base donor, float[] load, float ly) {
+		if (donor == null || load == null || load.length < 4) return new float[] {0f, 0f};
+		float[] rate = escortRate(ly);
+		float want = ThreatIncConfig.convoyEscortFP() + escortForValue(load);
+		float escort = paidEscort(donor, want, ly, load[2], load[3]);
+		float over = Math.max(0f, escort - baseEscort());
+		return new float[] {haulFuel(ly) + over * rate[0], escort * rate[1]};
+	}
+
+	/** Whether the donor's fuel above its floor, or the fuel in the load, pays a convoy's voyage of {@code ly} ({@link #paysVoyage}): a hand order's donor rule, the player's too (2026-10-31). */
+	public static boolean canPayVoyage(ThreatBases.Base donor, float[] load, float ly) {
+		return donor != null && paysVoyage(donor, ly, load != null && load.length > 2 ? load[2] : 0f);
+	}
+
+	/** "Haven has 120 fuel above its floor; the voyage to Ogre takes 216." - why a hand order's donor sends nothing. */
+	public static String voyageShortText(ThreatBases.Base donor, float ly, String toName) {
+		return donor.name() + " has " + Misc.getWithDGS((int) Math.max(0f, voyageStock(donor, Commodities.FUEL)))
+				+ " fuel above its floor; the voyage to " + toName + " takes "
+				+ Misc.getWithDGS((int) Math.ceil(haulFuel(ly))) + ".";
 	}
 
 	/**
@@ -2024,6 +2052,12 @@ public class ThreatConvoys {
 			return base == null ? "No base in reach."
 					: base.name() + " has no marines or heavy armaments above its floor to send at the levers.";
 		}
+		// the run's voyage, paid or nothing sails (buildHulls; the player's runs pay too, 2026-10-31)
+		ThreatBases.Base base = pickFrontBase(faction, hive, false, frontWants(front, hive));
+		if (base != null) {
+			float ly = Misc.getDistanceLY(base.hyperLoc(), hive.getLocationInHyperspace());
+			if (!paysVoyage(base, ly, 0f)) return voyageShortText(base, ly, hive.getName());
+		}
 		return null;
 	}
 
@@ -2103,8 +2137,9 @@ public class ThreatConvoys {
 		SectorEntityToken door = ThreatFleetOrders.interceptPoint(hive.getStarSystem());
 		if (system == null || from == null || door == null) return null;
 
-		// (2026-09-29: closed economy) an NPC run's escort is what the base pays for
-		boolean paysEscort = !faction.isPlayerFaction();
+		// (2026-09-29: closed economy) a run's voyage and escort are what the base pays for -
+		// the player's too (2026-10-31)
+		boolean paysEscort = true;
 		float ly = Misc.getDistanceLY(base.hyperLoc(), hive.getLocationInHyperspace());
 		if (pickup) {
 			// the run grows to the whole front it will lift (2026-09-29), up to the limit
@@ -2341,7 +2376,7 @@ public class ThreatConvoys {
 		String name = target != null ? target.name() : "the world";
 		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
 		if (allNone(levers)) return "Every lever is at None.";
-		return "No colony of " + whose + " can spare a load for " + name + ".";
+		return "No colony of " + whose + " can spare a load and the voyage's fuel for " + name + ".";
 	}
 
 	/**
@@ -2374,6 +2409,9 @@ public class ThreatConvoys {
 			float[] load = stageLoad(donor, target, levers);
 			float value = cargoValue(load);
 			if (value <= 0f) continue;
+			// the voyage's fuel or nothing sails (buildHulls) - the player's hand order too (2026-10-31)
+			ThreatBases.Base from = ThreatBases.of(donor);
+			if (!paysVoyage(from, Misc.getDistanceLY(from.hyperLoc(), target.hyperLoc()), load[2])) continue;
 			boolean staging = stagingHive(donor) != null;
 			// a donor that is not itself a staging base beats one that is
 			if (best != null && staging && !bestIsStaging) continue;
@@ -2657,9 +2695,11 @@ public class ThreatConvoys {
 		if (donor.starSystem() == null || donor.entity() == null || base.entity() == null) return null;
 		if (load[0] <= 0f && load[1] + load[2] + load[3] + hullsIn(load) <= 0f) return null;
 
-		// (2026-09-29: closed economy) an NPC convoy's escort is what the donor
-		// pays for beside the cargo; the player's is the ledger's, as before
-		boolean paysEscort = !faction.isPlayerFaction();
+		// (2026-09-29: closed economy) a convoy's voyage and escort are what the donor pays for
+		// beside the cargo - the player's too since 2026-10-31 (the user: "sending supply convoys
+		// do they consume supplies and fuel? they probably should"); the ledger holds the
+		// player's hulls as before
+		boolean paysEscort = true;
 		float ly = Misc.getDistanceLY(donor.hyperLoc(), base.hyperLoc());
 		if (ledger) {
 			Hulls h = buildHulls(donor, faction, load, load, ly, paysEscort, false, false, random);
