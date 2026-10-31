@@ -91,6 +91,8 @@ public class ThreatFactionView {
 	/** An NPC tab's Send on a defence-fleet need (2026-10-31 afternoon): a Defend sized at the Send lever's figure of the need, not the swarm in orbit. */
 	/** The Send button on an NPC faction's need row (2026-10-30): "factionId:marketId:good" - a convoy of the good at its lever, or Defend for a fleets need. */
 	public static final String BUTTON_AID_NEED = "threatinc_board_aidneed:";
+	/** An NPC tab's Send on a defence-fleet ask (2026-10-31 evening): every hull free at staging for the default term - no ladder. */
+	public static final String BUTTON_AID_FLEET = "threatinc_board_aidfleet:";
 	/** The Requests toggles' Colony button (2026-10-31): the next Domain entry's id; no Confirm, ThreatIncursionIntel sets it. */
 	public static final String BUTTON_REQ_TARGET = "threatinc_board_reqtarget:";
 	/** A Requests toggle (2026-10-31): "good:targetId" - flips the call for the good at the entry; no Confirm. */
@@ -982,8 +984,6 @@ public class ThreatFactionView {
 		List<String> offReasons = new ArrayList<String>();
 		/** The button's tooltip while it can be pressed (the needs table). */
 		List<String> helps = new ArrayList<String>();
-		/** The needs table holds a defence-fleet row the player can answer: the Fleet and Days ladders float in. */
-		boolean fleets;
 		boolean aid;
 		String factionId;
 	}
@@ -1226,9 +1226,10 @@ public class ThreatFactionView {
 			keys.add(k);
 		}
 		if (rows.isEmpty()) return null;
-		int[] frontLevers = intel.frontLevers();
-		int fleetTier = frontLevers.length > 2 ? frontLevers[2] : 0;
-		float term = defendTerm(frontLevers);
+		// no ladders (the user, 2026-10-31 evening: "no modifiers ... player sends all or nothing. no buttons!"): a
+		// defence-fleet ask is every hull free at staging (the Max tier) for the default term (guardDays)
+		final int fleetTier = 2;
+		final float term = ThreatIncConfig.guardDays();
 		ThreatNotice.Reason blocked = ThreatAid.canAid(faction);
 		Requests out = new Requests();
 		out.aid = true;
@@ -1244,7 +1245,7 @@ public class ThreatFactionView {
 		// on the heading - the user, 2026-10-31: "send button is floating")
 		out.anchor = main.addSpacer(SELECTOR_ROW_H);
 		float tw = width - 24f;
-		String[] names = {"World", "Commodity", "Age", "Answer", "Standing", "ETA", "Actions"};
+		String[] names = {"World", "Request", "Age", "Answer", "Standing", "ETA", "Actions"};
 		float[] frac = {.13f, .13f, .06f, .30f, .08f, .07f, .23f};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < names.length; i++) {
@@ -1253,7 +1254,7 @@ public class ThreatFactionView {
 		}
 		out.table = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(1, "What the world asks of you: its need, cut to what you can field; the row tooltip has the purpose and the figures.");
+		main.addTableHeaderTooltip(1, "What the world asks of you: goods cut to what you can field; a defence fleet's Send sends every hull free at staging.");
 		main.addTableHeaderTooltip(2, "Days the shortage has stood.");
 		main.addTableHeaderTooltip(3, "Who answers it and with what; yours alone through the grace, then open to the sector.");
 		main.addTableHeaderTooltip(4, "Standing earned when what you send lands.");
@@ -1273,14 +1274,12 @@ public class ThreatFactionView {
 			float reward;
 			float fielded;
 			if (n.isFleets()) {
-				// the Defend at the fronts' Fleet lever - one fleet / half / all of the hulls free at staging, as a
-				// Transfer to an own world - for the Days lever's term (the user: "the player can always send defence
-				// fleet of min med or max, and this is just sized to the players hulls at staging")
+				// every hull free at staging, as a Transfer to an own world at Max, for the default term
 				q = ThreatAid.quoteDefend(m, fleetTier, term);
 				fielded = q.ok() ? q.points : 0f;
 				reward = fielded > 0f ? ThreatAid.standingFor(m, ThreatNeeds.FLEETS, fielded) : 0f;
 				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
-						+ q.source.getName() + " to take the orbit for " + (int) q.days + " days, at the Fleet lever."
+						+ q.source.getName() + " to take the orbit for " + (int) q.days + " days."
 						: "Sends a task force to take the orbit.";
 			} else {
 				// the need's figure at threatinc_aidAskTier, cut to what the colony sparing the most delivers
@@ -1295,10 +1294,12 @@ public class ThreatFactionView {
 			List<Object> cells = new ArrayList<Object>();
 			ThreatWarBoard.cell(cells, Alignment.LMID, text,
 					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
-			// the ask: what the player can field of the need; the good alone when nothing; an answered row, what was sent
+			// the ask: goods at what the player can field, the good alone when nothing; a fleet at the exact points asked
+			// ("2,679 FP defence fleet" - the user, 2026-10-31 evening: "put the exact FP they are asking for"); an
+			// answered row, what was sent
 			String asked;
 			if (answerOnly) asked = n.shown(n.max) + " " + n.goodLabel();
-			else if (n.isFleets()) asked = fielded > 0f ? "defence fleet of " + n.shown(fielded) : "defence fleet";
+			else if (n.isFleets()) asked = (askFigure(n) > 0f ? n.shown(askFigure(n)) + " " : "") + n.goodLabel();
 			else asked = (fielded > 0f ? n.shown(fielded) + " " : "") + n.goodLabel();
 			ThreatWarBoard.cell(cells, Alignment.LMID, answerOnly || fielded <= 0f ? gray : n.color(),
 					main.shortenString(asked + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
@@ -1365,14 +1366,14 @@ public class ThreatFactionView {
 			out.firstRows.add(rowIndex);
 			out.offReasons.add(off);
 			out.helps.add(help);
-			if (n.isFleets() && !answerOnly) out.fleets = true;
 			rowIndex++;
 			main.addTooltipToAddedRow(new TooltipCreator() {
 				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
 				public float getTooltipWidth(Object tooltipParam) { return 460f; }
 				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 					Color tx = Misc.getTextColor();
-					tooltip.addPara(m.getName() + ": " + n.line() + ".", tx, 0f);
+					// the purpose alone - no figures (the user, 2026-10-31 evening: "get rid of that hint shit")
+					tooltip.addPara(m.getName() + ": " + n.purpose + (n.suspended ? " - blockaded" : "") + ".", tx, 0f);
 					if (ask != null) {
 						float left = ThreatAidRequests.graceLeft(ask);
 						int age = (int) Global.getSector().getClock().getElapsedDaysSince(ask.since);
@@ -1443,11 +1444,11 @@ public class ThreatFactionView {
 		return out;
 	}
 
-	/** A Send on a fleets need is the Defend at the fronts' Fleet lever for the Days lever's term (BUTTON_AID_DEFEND; the user, 2026-10-31 evening: "sized to the players hulls at staging"); any other id passes through. */
+	/** A Send on a fleets need is a Defend of every hull free at staging for the default term (BUTTON_AID_FLEET; the user, 2026-10-31 evening: "player sends all or nothing. no buttons!"); any other id passes through. */
 	protected static String[] aidNeedParts(String[] parts) {
 		if (parts == null || !BUTTON_AID_NEED.equals(parts[0])) return parts;
 		String[] wt = withdrawTarget(parts[2]);
-		if (ThreatNeeds.FLEETS.equals(wt[1])) return new String[] {BUTTON_AID_DEFEND, parts[1], wt[0]};
+		if (ThreatNeeds.FLEETS.equals(wt[1])) return new String[] {BUTTON_AID_FLEET, parts[1], wt[0]};
 		return parts;
 	}
 
@@ -1530,27 +1531,9 @@ public class ThreatFactionView {
 				button.getPosition().belowRight(requests.table, -up).setXAlignOffset(-6f);
 				disableWith(main, button, off == null, off, requests.helps.get(i));
 			}
-			// no Send lever since 2026-10-31 evening (the user: "the player can only send or ignore the request. so
-			// there is no more min med max toggle"); a defence-fleet row's Send is the Defend, so the fronts' Fleet
-			// lever (one fleet / half / all of the hulls free at staging) and Days lever float in when one is asked
+			// no ladders at all since 2026-10-31 evening (the user: "no modifiers ... player sends all or nothing. no
+			// buttons!"): only the standing label
 			if (requests.anchor != null) {
-				if (requests.fleets) {
-					String[] fleetTips = { "One task force of the staging colony's hulls.", "Half the hulls free at staging.",
-							"All the hulls free at staging." };
-					addTierSelector(intel, main, requests.table, "Fleet", LEVER_LABEL_W,
-							BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_FLEET + ":", intel.lever(ThreatIncursionIntel.LEVER_FRONT_FLEET),
-							fleetTips, 0f, TIER_LABELS, LEVER_BUTTON_W);
-					String[] dayLabels = new String[3];
-					String[] dayTips = new String[3];
-					for (int t = 0; t < 3; t++) {
-						int d = (int) ThreatIncConfig.guardTermDays(t);
-						dayLabels[t] = d + " d";
-						dayTips[t] = "The task force holds the orbit " + d + " days; its supplies are priced on that stay.";
-					}
-					addTierSelector(intel, main, requests.table, "Days", LEVER_LABEL_W,
-							BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_DAYS + ":", intel.lever(ThreatIncursionIntel.LEVER_FRONT_DAYS),
-							dayTips, LEVER_PITCH, dayLabels, LEVER_BUTTON_W);
-				}
 				// and, right-aligned on the same row, where the player stands with the faction (the user, 2026-10-31:
 				// "show faction rep standing number right side of table ... float right")
 				FactionAPI f = Global.getSector().getFaction(requests.factionId);
@@ -2637,6 +2620,25 @@ public class ThreatFactionView {
 			MarketAPI target = wt[0] != null ? Global.getSector().getEconomy().getMarket(wt[0]) : null;
 			ThreatAid.Quote q = ThreatAid.quoteAid(target, wt[1], askFigure(needFor(target, wt[1])));
 			aidPrompt(prompt, target, q, who, h);
+		} else if (BUTTON_AID_FLEET.equals(parts[0])) {
+			// SEND on an NPC tab's defence-fleet ask (2026-10-31 evening): every hull free at staging for the default term
+			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
+			float term = ThreatIncConfig.guardDays();
+			ThreatAid.Quote q = ThreatAid.quoteDefend(target, 2, term);
+			if (!q.ok() || target == null) {
+				prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
+			} else {
+				String[] f = forcePrompt(q.points, q.free, q.fleets, "" + (int) term);
+				prompt.addPara("Send a task force of " + f[0] + " from " + q.source.getName()
+						+ " to take the orbit of " + target.getName() + " for %s days, on behalf of "
+						+ who + "? Fuel and supplies come from " + q.source.getName()
+						+ "'s reserve, and its hulls are held against that colony's capacity "
+						+ "until they are home. Standing with "
+						+ (faction != null ? faction.getDisplayName() : "the faction")
+						+ " is earned when it arrives and again when it serves its term.", 0f, h,
+						highlights(f));
+				addProvisionsLine(prompt, q);
+			}
 		} else if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			// DEFEND an ally's sieged world - or answer its ask for a defence fleet (2026-10-31 evening) - at the
@@ -2968,6 +2970,11 @@ public class ThreatFactionView {
 			String[] wt = withdrawTarget(parts[2]);
 			MarketAPI target = wt[0] != null ? Global.getSector().getEconomy().getMarket(wt[0]) : null;
 			return target != null && ThreatAid.dispatchAid(target, wt[1], askFigure(needFor(target, wt[1])), random) ? "aid-need" : null;
+		}
+		if (BUTTON_AID_FLEET.equals(parts[0])) {
+			// an NPC tab's Send on a defence-fleet ask: every hull free at staging for the default term (2026-10-31 evening)
+			return ThreatAid.dispatchDefend(Global.getSector().getEconomy().getMarket(parts[2]), 2,
+					ThreatIncConfig.guardDays()) ? "aid-fleet" : null;
 		}
 		if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			// at the fronts' Fleet lever (2026-10-29 evening), as the player's own Defend

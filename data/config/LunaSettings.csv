@@ -50,14 +50,13 @@ threatinc_outpostTier,Outpost Tier,Int,1,"1 orbital station, 2 battlestation, 3 
 threatinc_outpostCredits,Outpost Cost (Credits),Double,150000,What you pay for an outpost.,0,2000000
 threatinc_pathTithes,Pather Tithes,Boolean,true,"Pather cells on other factions' worlds send the Path supplies, fuel and recruits.",,
 playerHeader,Your War Board Header,Header,Your War Board,What the war board offers you.,,
+threatinc_noticeIntelDays,Notices Kept in Intel (days),Double,60,Days a notification stays in the Intel tab after it is posted; 0 keeps none.,0,365
 threatinc_ordersEnabled,Fleet Orders,Boolean,true,"Guard, Support, Defend, Siege and Recall orders for your own navy.",,
 threatinc_aidEnabled,Aid to Other Factions,Boolean,true,Send task forces and convoys to other factions' colonies from the board.,,
 threatinc_aidRequestsEnabled,Request Aid,Boolean,true,Call friendly factions for what a Transfer or Deploy of yours cannot meet.,,
 threatinc_aidRequestCheckDays,Request Check Days,Double,1,Days between each friendly faction's looks at a request for aid.,0.5,30
 threatinc_aidRequestBesetWeight,Request Beset Weight,Double,1.0,"How a faction's own worlds under the Threat gate its answer: 0 always answers, 1 a faction with half its worlds beset answers only from half way to Cooperative.",0,2
 threatinc_aidRequestBesetDelay,Request Beset Delay,Double,3.0,"How much slower a beset faction looks at your calls: its check days x (1 + beset share x this).",0,10
-threatinc_missionBaseReward,Contract Reward per Hive Size,Double,150000,Credits a contract pays per size of its target.,25000,1000000
-threatinc_maxPostedMissions,Contracts on Offer,Int,3,Contracts offered at once.,1,6
 threatinc_swarmBountiesEnabled,Swarm Bounties,Boolean,true,Factions whose sieges are outweighed post bounties on Threat ships.,,
 threatinc_swarmBountyPerFrigate,Bounty per Frigate,Double,1500,"Credits a swarm bounty pays per frigate (destroyers 2x, cruisers 3x, capitals 5x).",0,20000
 debugHeader,Debug and Testing Header,Header,Debug and Testing,Testing aids. Leave off to play.,,

@@ -424,6 +424,8 @@ public class ThreatIncConfig {
 	public static boolean occupationConsumeMilitary() { return b("threatinc_occupationConsumeMilitary", true); }
 	/** Days a gutted world is no strike's target and vanilla's deciv is held off after the swarm lifts off. */
 	public static float occupationGuttedDays() { return f("threatinc_occupationGuttedDays"); }
+	/** Days a notice stays in the Intel tab after it is posted (ThreatNotice.send); 0 keeps none (the user, 2026-10-31). */
+	public static float noticeIntelDays() { return f("threatinc_noticeIntelDays"); }
 	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
 	// ---- hive sieges ----
@@ -1062,6 +1064,8 @@ public class ThreatIncConfig {
 	public static float aidRepPerCredits()    { return f("threatinc_aidRepPerCredits"); }
 	/** Most standing points one delivery earns. */
 	public static float aidRepMaxPerDelivery(){ return f("threatinc_aidRepMaxPerDelivery"); }
+	/** The power a delivery's value in rate units is raised to for its standing (ThreatAid.pointsFor): 0.5 the square root (2026-10-31 evening), 1 linear. */
+	public static float aidRepCurve()         { return f("threatinc_aidRepCurve"); }
 	/** The least standing a guard earns arriving on station (its fleet points as ship hulls when worth more, ThreatAid.standingFor). */
 	public static float aidRepGuardArrived()  { return f("threatinc_aidRepGuardArrived"); }
 	/** Standing points for a guard serving its full term. */

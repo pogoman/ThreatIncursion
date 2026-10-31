@@ -130,8 +130,9 @@ need"). Ticks on the colony poll at flat rates:
   in to `frontEntrenchMaxMult` (1.0) over `frontEntrenchDays` (30) of holding - the ramp is
   spent while pushing, and past zero the push is over-extended to the same degree (strength
   / (1 + 0.5 x over-extension), full after 30 days of pushing past zero; `overExtension`) -
-  and a layer changing hands resets both sides to 0 (the user's rules 2026-10-24: never
-  worn, diluted or cut otherwise). The defenders' own cover is `defenderEntrenchDays`
+  and a layer changing hands puts the side that took it at FULL cover and the side that lost it
+  at none (the user, 2026-10-31; 2026-10-24 to 2026-10-31 both went to 0; never worn, diluted
+  or cut otherwise). The defenders' own cover is `defenderEntrenchDays`
   (ground-war-defenders.md), the same rules.
 - **Suppression states**: HOLDING (>= `frontHoldFraction`, 0.17, of the defense figure -
   lowered from 0.25 when the 1.5x entrenchment bonus went, so the old landing sizes still
@@ -239,12 +240,8 @@ only), and cannot land where one already fights.
 
 ### Player-facing readouts
 
-`ThreatGroundWarCondition` (`threatinc_ground_war`), on the colony screen for as long as
-the front stands: districts held of size and what they cost, what is seized, which
-defences are suppressed and to what, invader strength vs what the colony fields and what
-they need to hold, days to the next counter-attack, and the invaders' supply - or, dry,
-whether they are waiting for an expedition (and the days to their final push) or making
-it. The colony's own Defenses tooltip shows each suppressed structure's surviving
+`ThreatGroundWarCondition` (`threatinc_ground_war`) has no icon on the colony screen since
+2026-10-31 (the user: "all info is on the board"); the fronts table is the readout. The colony's own Defenses tooltip shows each suppressed structure's surviving
 multiplier. `HiveVitalityCondition` still covers the hive side. Announcements
 (`announceAlways`), one sentence each: the landing, each stratum taken, a wave
 reinforcing, the front battered / overrun / withered, and the colony falling.

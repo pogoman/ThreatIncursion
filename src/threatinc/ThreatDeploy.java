@@ -153,8 +153,17 @@ public class ThreatDeploy {
 		// "Aboard: nothing" and stood down "supplies low, 0 aboard" in hyperspace): the Supplies lever never
 		// loads less than the ships eat for the voyage and the stay (ThreatReach.sortieHold, as every sortie
 		// carries, docs/fleet-provisions.md), drawn from the source's stock above its floor
-		p.holdNeed = (float) Math.ceil(ThreatReach.sortieHold(p.source.getFactionId(),
-				p.targetPts / ThreatAidCapacity.TASK_FORCE_HULL_MULT, ThreatFleetOrders.sortieLY(p.source, target.hyperLoc())));
+		float ly = ThreatFleetOrders.sortieLY(p.source, target.hyperLoc());
+		float fp = p.targetPts / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
+		// IN ITS OWN SYSTEM (the user, 2026-10-31, Deploy at Haven greyed "Arkoman has 993 supplies / The fleet's
+		// ships eat 2,688 on the way and there" - the two worlds share a system: "it would take the fleets 5 seconds
+		// to move to the other planet"; then at a day's burn, "Arkoman has 36 supplies / eat 90": "still cant"):
+		// no supplies floor at all - the fleet restocks from the system's depots as it eats
+		// (ThreatUpkeep.restockFleet: the target's, Haven's 2,936, as readily as the source's), so nothing is
+		// priced up front; the voyage-and-stay hold is for a fleet that sails beyond, where nothing restocks it
+		float hold = ThreatReach.sortieHold(p.source.getFactionId(), fp, ly);
+		if (ly < 0.01f && ThreatIncConfig.fleetResupply()) hold = 0f;
+		p.holdNeed = (float) Math.ceil(hold);
 		if (p.load[3] < p.holdNeed) {
 			float have = ThreatReserves.available(p.source, Commodities.SUPPLIES);
 			if (have < p.holdNeed - 0.5f) {

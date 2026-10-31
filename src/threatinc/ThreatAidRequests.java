@@ -805,8 +805,8 @@ public class ThreatAidRequests {
 		float budget = (float) Math.floor(budget(helper));
 		int price = priceFor(target, c.good, amount);
 		if (price > budget) {
-			// the amount the standing buys: the price is linear in the amount (a cap only lowers it)
-			amount = (float) Math.floor(amount * budget / price);
+			// the amount the standing buys: the price curve inverted (ThreatAid.cutToPoints, aidRepCurve - a cap only lowers it)
+			amount = (float) Math.floor(ThreatAid.cutToPoints(amount, price, budget));
 			price = priceFor(target, c.good, amount);
 			while (amount >= minSpare(c.good) && price > budget) {
 				amount = (float) Math.floor(amount * 0.95f);
@@ -852,12 +852,17 @@ public class ThreatAidRequests {
 		// priced as the player's own guard earns; over the budget, the fleet shrinks to what the budget pays for
 		int price = priceFor(target, ThreatNeeds.FLEETS, fp);
 		if (price > budget) {
-			fp = (float) Math.floor(fp * budget / price);
+			// the curve inverted (ThreatAid.cutToPoints); a floor's rounding may leave a point over, shaved off
+			fp = (float) Math.floor(ThreatAid.cutToPoints(fp, price, budget));
+			price = priceFor(target, ThreatNeeds.FLEETS, fp);
+			while (fp >= min && price > budget) {
+				fp = (float) Math.floor(fp * 0.95f);
+				price = priceFor(target, ThreatNeeds.FLEETS, fp);
+			}
 			if (fp < min) {
 				q.why = "would take you below Favourable";
 				return q;
 			}
-			price = priceFor(target, ThreatNeeds.FLEETS, fp);
 		}
 		q.donor = base;
 		q.amount = fp;
@@ -1331,23 +1336,20 @@ public class ThreatAidRequests {
 	}
 
 	/**
-	 * What a colony can OFFER of a good: its stock above its own keep (ThreatReserves.monthsBasis x
-	 * donorKeepFraction, never under the garrison's floor; a forward base's feeding credit for
-	 * supplies; a world under a front what ThreatConvoys.frontWorldSpare allows; hulls the port's
-	 * spare units). The siege it may be staging for is NOT held back (ThreatConvoys.spare holds the
-	 * staging bank and target, which left Ilm with 4,721 marines offering 216 from Ailmar - the user,
-	 * 2026-10-31: "why on earth would they send from a colony with no marines when they have one with
-	 * 5k"): an offer the player accepts is the faction's choice to spend it.
+	 * What a colony can OFFER of a good: what it can spare by the one rule every convoy sails on,
+	 * ThreatConvoys.spare - its stock above its own keep (monthsBasis x donorKeepFraction, the garrison
+	 * floor, a forward base's feeding credit for supplies) AND above its staging bank and target - the
+	 * sieges it stages for and its commitment to a landing (ThreatReserves.stagingBank,
+	 * ThreatConvoys.stagingTarget); a world under a front what frontWorldSpare allows; hulls the port's
+	 * spare units. From 2026-10-31 evening to night the bank was NOT held back (Ilm with 4,721 marines had
+	 * offered 216 from Ailmar), and Nachiketa then offered 15,438 marines - its whole commitment to a
+	 * landing - which the player accepted; the user: "heg does not send 15k marines to the player and
+	 * effectively remove its own ability to siege threat worlds for fucking years". A faction offers what
+	 * it can spare, never sized to the player's need (sizing is for asks OF the player alone).
 	 */
 	public static float offerSpare(MarketAPI donor, String good) {
 		if (donor == null || good == null) return 0f;
-		if (Commodities.SHIPS.equals(good)) return ThreatHulls.spareUnits(donor);
-		if (ThreatGroundFronts.hasFront(donor)) return ThreatConvoys.frontWorldSpare(donor, good);
-		float keep = ThreatReserves.monthsBasis(donor, good) * ThreatIncConfig.donorKeepFraction();
-		ThreatReserves.CommodityStatus st = ThreatReserves.status(donor, good);
-		if (st != null) keep = Math.max(keep, st.floor);
-		if (Commodities.SUPPLIES.equals(good)) keep += ThreatFeeding.credit(donor);
-		return Math.max(0f, ThreatReserves.stock(donor.getId(), good) - keep);
+		return Math.max(0f, ThreatConvoys.spare(donor, good));
 	}
 
 	/** An older save's request read as parts: one good at a tier (2026-10-23), or levers and a Fleet lever (2026-10-28 / 29). */

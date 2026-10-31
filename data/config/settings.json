@@ -321,7 +321,8 @@
 	# better target of that same tier comes online. Accepted contracts are
 	# never withdrawn and do not count against the offer cap.
 	# Contracts RETIRED 2026-10-30 (ThreatIncConfig.missionsEnabled is false, no knob); the
-	# reward and posting figures are kept for an old save's accepted contract.
+	# reward and posting figures are kept for an old save's accepted contract, off the
+	# LunaLib panel (rows removed 2026-10-31).
 	"threatinc_missionBaseReward": 150000,
 	"threatinc_missionPostingDays": 90,
 	"threatinc_missionDurationDays": 120,
@@ -520,6 +521,10 @@
 	"threatinc_occupationConsumeMult": 1.0,
 	"threatinc_occupationConsumeMilitary": true,
 	"threatinc_occupationGuttedDays": 180,
+
+	# Days a notification stays in the Intel tab (Major events, and the factions it names) after it is posted,
+	# so one missed can be read again; 0 keeps none.
+	"threatinc_noticeIntelDays": 60,
 
 	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive
 	# world's one figure is its strata - its size by a doubling table (strataSizeBase
@@ -1296,12 +1301,13 @@
 	# and rebuild losses first. The player sends ship hulls from their own hull port
 	# (Aid on the war board), out of their built navy.
 	"threatinc_hullAidKeepFraction": 0.5,
-	# Credits one fleet point of ship hulls is worth - the reward of a hull contract
-	# and the standing a hull delivery earns. 0 prices a unit of hulls (fabFPPerShipUnit,
-	# 100 FP) as vanilla prices the ships good: 200 items at the receiving market's
-	# price, about 20,000 credits a unit. The game's hull table (about 9,600 an FP,
-	# 3.67M credits for a 4-unit contract) was too much (2026-10-11).
-	"threatinc_hullCreditsPerFP": 0,
+	# Credits one fleet point of ship hulls is worth - the standing a hull delivery earns or costs
+	# (ThreatAid.valueAt). 1,000 since 2026-10-31 evening (the user, at "1,944 hv armaments +100" beside
+	# "4,100 ship hulls +59": "in what world are heavy armaments worth more than ship hulls?" - a fleet
+	# point is two armaments). 0 prices a unit (fabFPPerShipUnit, 100 FP) as vanilla prices the ships
+	# good, 200 items at the receiving market's price, about 200 credits an FP - cheaper than a marine.
+	# The game's hull table (about 9,600 an FP) was too much for a credits contract (2026-10-11).
+	"threatinc_hullCreditsPerFP": 1000,
 
 	# Player aid (docs/player-aid.md): what you send from your own colonies to
 	# other factions, from the war board. Capacity is the colony's vanilla
@@ -1327,6 +1333,11 @@
 	# faction in the hive's reach
 	"threatinc_aidRepPerCredits": 10000,
 	"threatinc_aidRepMaxPerDelivery": 0,
+	# aidRepCurve (2026-10-31 evening): standing = (value / aidRepPerCredits) ^ this, earned and charged alike. 1 is
+	# linear - which read +410 for 4,100 FP of hulls while a 2,000-fuel convoy would earn nothing at any rate that
+	# read it sanely. 0.5, the square root, at 10,000 credits a unit: 2,000 fuel +3, 12,000 fuel +7, 2,375 marines
+	# +7, 1,944 armaments +10, a 590 FP hull offer 8 charged, a 3,214 FP task force +18, 4,100 FP of hulls +20.
+	"threatinc_aidRepCurve": 0.5,
 	"threatinc_aidRepGuardArrived": 3,
 	"threatinc_aidRepGuardCompleted": 2,
 	"threatinc_aidRepFrontTotal": 5,

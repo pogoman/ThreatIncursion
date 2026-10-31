@@ -87,8 +87,10 @@ is the layout it implements.
    Attrition ("N / day" - troops a day at the current stance and supply, `attritionPer30Days` over
    `perDay`; every player-facing loss figure in the mod is a rate a day), Counter
    (days to the next counter-attack, green when the front would repel it now,
-   `counterAttackRepelled`), Arms (days of armaments, "dry" red), Objective (days until this side takes the next layer, "-" while the
-   line stands or moves against it), Victory ("~N d" until this side wins the world - `victoryDays`), Space (who holds the space over the world in their colour, grey "Empty" when
+   `counterAttackRepelled`), Arms (days of armaments, "dry" red), ETA (days until this side takes the next layer, "-" while the
+   line stands or moves against it; named Objective until 2026-10-31), Objective (the industry the next district decides - the swarm's next claim in the
+   Threat's colour while the line moves its way, the world's next reclaim in the world's while it moves the world's,
+   the layer itself with no structure decided, "Extermination" once the landing holds every layer; `ThreatOccupation.nextClaim` / `nextRelease`, `landingObjective` / `worldObjective`, 2026-10-31), Victory ("~N d" until this side wins the world - `victoryDays`), Space (who holds the space over the world in their colour, grey "Empty" when
    nothing armed is there - `ThreatGroundFronts.spaceHolder`, the faction with the most armed
    points within `ORBIT_HOLD_RANGE`). The row tooltip is the arithmetic, one line per fact (`addFrontTooltip`):
    strength = troops x entrenchment x supply; defenders and the hold / grind requirements;
@@ -201,7 +203,10 @@ The hold is never under what the ships eat for the voyage and the stay (`Plan.ho
 spares, and the plan is refused with the figures when the colony cannot pay it (2026-10-31: a
 Deploy from Arkoman, whose front spared no supplies, sailed for Ogre "Aboard: nothing" and the
 upkeep pass stood it down in hyperspace "supplies low, 0 aboard" - the user: "it just gave up and
-went back for no reason"). A Returning row's Status says why it turned home (`ThreatReturns.Return.why`,
+went back for no reason"). In the colony's own system there is no supplies floor at all: the fleet
+restocks from the system's depots as it eats (`ThreatUpkeep.restockFleet`, the target's as readily as the source's), so a Deploy over Haven from
+Arkoman's hulls is never refused on supplies (2026-10-31, 993 against 2,688, then 36 against a day's 90; the user: "it
+would take the fleets 5 seconds to move to the other planet"). A Returning row's Status says why it turned home (`ThreatReturns.Return.why`,
 set by `sendHome`'s four-argument form: a stand-down's reason before its figures - "supplies low",
 "out of supplies", "badly hurt", "outmatched by X" - "time served", "station gone", "front gone",
 "support lost", "relief done", "system quiet", "raid over", "recalled"; "en route" where nothing
@@ -242,9 +247,13 @@ the player can spend with it; "Aid Offered" notice with the ETA and the price). 
 evening (the user: "factions should only make offers from surplus colonies ... the speed in which a
 faction responds to offer should be determined by how preoccupied they are with the war") a colony
 offers only with its reserve of the good in the white state - no deficit, no cover, not exhausted
-(`holdsSurplus`) - and offers what it holds above its own keep, `offerSpare` (monthsBasis x
-donorKeepFraction, the garrison floor, a forward base's feeding credit for supplies; not the staging
-bank `ThreatConvoys.spare` keeps, which had Ilm with 4,721 marines offering 216 from Ailmar); an
+(`holdsSurplus`) - and offers what it can spare, `offerSpare` = `ThreatConvoys.spare`: above its own
+keep (monthsBasis x donorKeepFraction, the garrison floor, a forward base's feeding credit for
+supplies) and above its staging bank and target - the sieges it stages for and its commitment to a
+landing. For a few hours on 2026-10-31 the bank was not held back (Ilm with 4,721 marines had
+offered 216 from Ailmar), and Nachiketa offered its whole 15,438-marine landing commitment on
+Arkoman's call; the user: a faction never strips its own ability to siege, and an offer is never
+sized to the player's need - only an ask OF the player is sized (`askFigure`). An
 offer the faction can no longer make is withdrawn ("Offer Withdrawn"); a beset faction looks less
 often - its check days x (1 + besetness x `aidRequestBesetDelay`). The table
 (`addRequests` / `addOfferRow`): World, Commodity, Age (days the call has stood), Answer ("Hegemony:
@@ -257,7 +266,7 @@ a supply run to a front (`ThreatConvoys.aidFrontRun`, the player's own cover ope
 carrying the offer's id; Dismiss (`BUTTON_REQ_REJECT`, no Confirm) clears it and the faction offers
 nothing more on that call until it is toggled again (`Call.declined`); Cancel (`BUTTON_REQ_CANCEL`)
 turns the convoy home, nothing charged. A landed offer leaves the table ("Aid Landed", the standing
-charged); with the call still on the faction may offer again - several offers of one good stand
+charged; the player's own transfer between their worlds lands as "Transfer Landed", no standing); with the call still on the faction may offer again - several offers of one good stand
 together, from different factions or in turn. An offer whose call was toggled off still sails and
 keeps its Cancel (`strays`). Since 2026-10-30 (the user: "each factions requests table should only
 show their requests"; the same table as the player's since 2026-10-31, "other human faction request
@@ -272,10 +281,11 @@ player can only send or ignore the request. so there is no more min med max togg
 the need's figure at `threatinc_aidAskTier` (Med) cut to what `ThreatAid.quoteAid(target, good, amount)`
 delivers from the player's colony sparing the most (`askFigure`, `sentOf`) - "590 ship hulls" - the good
 alone when nothing can be fielded (Send off with the quote's reason); the row tooltip keeps the need's own
-three figures. A fleets need's Send is the Defend (`aidNeedParts` -> `BUTTON_AID_DEFEND`,
-`ThreatAid.quoteDefend(market, fleetTier, term)`): one fleet / half / all of the hulls free at staging at the
-fronts' Fleet lever, as a Transfer to an own world, for the Days lever's term - the row reads "defence fleet
-of 467 FP", and the Fleet and Days ladders float in above the table when a fleet is asked (`Requests.fleets`).
+three figures. A fleets need's Send is a Defend of every hull free at staging (`aidNeedParts` -> `BUTTON_AID_FLEET`,
+`ThreatAid.quoteDefend(market, 2, guardDays)`, as a Transfer to an own world at Max) for the default term -
+the **Request** column (Commodity until 2026-10-31 evening) reads the exact points asked, "2,679 FP
+defence fleet"; the row tooltip is the purpose alone, no figures. No ladders on the table (the user: "player sends all or nothing. no
+buttons!").
 THE PLAYER FIRST, THEN THE SECTOR: every NPC-to-NPC sailing of the coalition first raises the world's need as
 an `ThreatAidRequests.Ask` (`sectorMayAnswer`), the player's alone for `threatinc_aidAskGraceDays` (4) from
 its first raise; after that friendly factions with the capacity answer it, each sailing an `Answer`

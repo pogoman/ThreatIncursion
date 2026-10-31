@@ -2494,10 +2494,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	front.pushProgress = 0f;
 	front.strataHeld++;
 	ThreatOccupation.onDistrictTaken(front, market); // and an industry claimed with it (the occupation, 2026-10-27)
-	// a district changing hands resets both sides to 0, dug in or over-extended (the
-	// user, 2026-10-24: "full wiped if the side loses a strata/district", then "same
-	// thing if a district is taken - dug in or overextension all reset to 0")
-	front.entrenchDays = 0f;
+	// a district changing hands: the side that took it stands at full cover, the side that lost it
+	// at none (the user, 2026-10-31: "when any faction takes a district or strata they should reset
+	// to cover 1.00, and the faction that was holding/defending loses all their cover"; 2026-10-24
+	// both went to 0)
+	front.entrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
 	front.defenderEntrenchDays = 0f;
 	int total = market.getSize();
 		ThreatAlarm.add(ownerOf(front), ThreatIncConfig.alarmPerStratum(),
@@ -2574,16 +2575,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatMarineXP.frontEarn(front, defense, pressure);
 		if (theatre == COLONY) ThreatMarineXP.colonyEarn(market, pressure, defense);
 		front.pushProgress = 0f;
-		front.entrenchDays = 0f; // a district changing hands resets both sides (2026-10-24)
-		front.defenderEntrenchDays = 0f;
+		front.entrenchDays = 0f; // the side that lost the district stands at no cover, the side that retook it at full (the user, 2026-10-31)
+		front.defenderEntrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
 		if (front.strataHeld > 0) {
-			// the claim goes first, while the slot it is consumed in still counts (Arkoman, 2026-10-28
-			// evening: decremented first, the release saw no active claim and freed the newest, Orbital
-			// Works, instead of the Mining being eaten); and never more claims than districts held
-			// (2026-10-30) - a front holding no district holds no industry
-			ThreatOccupation.release(front, market); // and the newest claim with it (the occupation, 2026-10-27)
+			// a district retaken releases ONE claim - the defenders' pick, military first, soonest lost
+			// (ThreatOccupation.release; the user, 2026-10-31 afternoon: "a district taken either side gives
+			// either side a claim to one industry ... humans should prioritise military buildings, whichever
+			// will be lost soonest"), read before the district count drops; then never more claims than
+			// districts held (trim, 2026-10-30)
+			ThreatOccupation.release(front, market);
 			front.strataHeld--;
 			ThreatOccupation.trim(front, market);
+
 			// a final push does not stop for a setback - it is spent either way
 			front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 			reapply(front.marketId);
@@ -2596,6 +2599,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		String by = theatre == HIVE ? "The hive's troops on %s" : "The garrison of %s";
 		ThreatNotice n = ThreatNotice.titled("Beachhead Overrun").icon(attacker);
 		if (threatFront) n.good(); else n.bad();
+		// the player's world throws the swarm back: the mission-completed chime (the user, 2026-10-31)
+		if (threatFront && market.getFaction() != null && market.getFaction().isPlayerFaction()) n.completed();
 		n.line(by + " have pushed the beachhead off the world.", ThreatNotice.market(market))
 				.line("The front is destroyed.")
 				.send();
@@ -2639,7 +2644,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// only handles on the world once decivilize has run
 		SectorEntityToken world = market.getPrimaryEntity();
 		Vector2f hyperLoc = market.getLocationInHyperspace();
-		ThreatColonyManager.eradicate(market);
+		ThreatColonyManager.eradicate(market, winner, "ground assault");
 		// nothing is raised on the freed world (user's call 2026-09-27, player and
 		// NPC alike): the front's survivors come home - an NPC's bank into its
 		// nearest base's reserve, the player's board the player's fleet
@@ -2716,7 +2721,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (!market.isInEconomy() || ThreatMapFog.conditionOnly(market)) return;
 		}
 		market.getMemoryWithoutUpdate().set(KILLED_BY_FLAG, Factions.THREAT, 60f);
-		com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker.decivilize(market, true);
+		ThreatDecivIntel.destroy(market, Factions.THREAT, "ground assault");
 	}
 
 	/**
@@ -2743,7 +2748,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 					.send();
 		}
 		ThreatIncConfig.log("Colony razed from orbit: " + market.getName() + " by " + razer);
-		DecivTracker.decivilize(market, true);
+		ThreatDecivIntel.destroy(market, razer, "bombardment");
 	}
 
 	/**
