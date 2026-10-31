@@ -1386,6 +1386,9 @@ public class ThreatConvoys {
 			planOutpostReturns(faction, random);
 			// then the forward bases' size upkeep (ThreatFeeding, 2026-10-18): sustenance before any depot
 			ThreatFeeding.shipBases(faction, markets, random);
+			// DEPOTS BEFORE THE SECTOR (the user, 2026-10-31): a colony's standing shortage is topped up from its own
+			// faction's surplus before the staging wants draw the donors (planDepotTopUps)
+			planDepotTopUps(faction, markets, random);
 			if (homeAttacked) {
 				StringBuilder names = new StringBuilder();
 				for (MarketAPI m : ThreatGroundFronts.invadedWorlds(factionId)) {
@@ -1450,6 +1453,67 @@ public class ThreatConvoys {
 								+ " zealots" : "allied staging"));
 					}
 				}
+			}
+		}
+	}
+
+	/**
+	 * DEPOTS BEFORE THE SECTOR (the user, 2026-10-31, on Chalcedon asking the sector for 4,500 supplies
+	 * for 745 days while Epiphany banked 26,953): a colony whose depot need stands on the ledger
+	 * (ThreatAidRequests.shortageStanding - vanilla's peacetime shortage the depot has left uncovered for
+	 * missionAidShortageDays or cannot cover at all, its stock pinned at the garrison floor) is topped up
+	 * from its own faction's colonies first: the one in reach sparing the most ({@link #spare}) sends the
+	 * need's Med figure (the ask x convoyExtraLoadFactor, as ThreatNeeds sizes it) net of what is at sea
+	 * to it, whole when it can, else what it spares when that is worth a sailing (as pickAllyDonor). Before,
+	 * the only in-faction traffic was the staging planner's (a base's siege stock - Chalcedon staged
+	 * nothing), the depot flow (ThreatCoalition.aidStockPlans) was allies only and the Send button the
+	 * player's, so a faction asked the sector while a sibling sat on a surplus. Runs after the forward
+	 * bases' feeding and before the staging wants, which see the donors' remainder; marines and
+	 * armaments for a world under a Threat army are the relief's. The player's faction never gets here
+	 * (nothing of the player's moves unordered).
+	 */
+	protected static void planDepotTopUps(FactionAPI faction, List<MarketAPI> markets, Random random) {
+		float extra = Math.max(1f, ThreatIncConfig.convoyExtraLoadFactor());
+		for (MarketAPI needy : markets) {
+			if (needy.getStarSystem() == null || needy.getPrimaryEntity() == null) continue;
+			boolean underArmy = ThreatAidRequests.underArmy(needy);
+			for (String c : ThreatReserves.COMMODITIES) {
+				if (underArmy && (Commodities.MARINES.equals(c) || Commodities.HAND_WEAPONS.equals(c))) continue;
+				if (!ThreatAidRequests.shortageStanding(needy, c)) continue;
+				int idx = ThreatAid.index(c);
+				if (idx < 0) continue;
+				int asked = ThreatAidRequests.requestItems(needy, c);
+				float need = asked * extra - inbound(needy.getId())[idx];
+				float unit = Math.max(1f, Global.getSettings().getCommoditySpec(c).getEconUnit());
+				if (need < unit) continue;
+				MarketAPI donor = null;
+				float bestSpare = 0f;
+				for (MarketAPI d : markets) {
+					if (d == needy || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
+					if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
+							needy.getStarSystem().getLocation()) > stockReachLY(d)) continue;
+					float s = spare(d, c);
+					if (s > bestSpare) {
+						bestSpare = s;
+						donor = d;
+					}
+				}
+				if (donor == null) continue;
+				// a spare covering the whole need sails whatever the minimum-load fraction says (as pickAllyDonor)
+				if (bestSpare < Math.min(need, capacityFor(c) * ThreatIncConfig.convoyMinLoadFraction())) {
+					ThreatIncConfig.logQuiet("depotshort:" + needy.getId() + ":" + c, "Depot: " + faction.getId()
+							+ " has no colony sparing " + ThreatReserves.label(c) + " for " + needy.getName()
+							+ " (" + asked + " asked, " + donor.getName() + " spares " + (int) bestSpare + ")");
+					continue;
+				}
+				float amount = Math.min(need, bestSpare);
+				float[] load = new float[ThreatReserves.COMMODITIES.length];
+				load[idx] = amount;
+				Convoy sent = dispatch(donor, needy, faction, load, random);
+				if (sent == null) continue;
+				ThreatIncConfig.log("Depot: " + faction.getId() + " sails " + (int) amount + " " + ThreatReserves.label(c)
+						+ " " + donor.getName() + " -> " + needy.getName() + " against its standing shortage ("
+						+ asked + " asked, " + (int) bestSpare + " spared)");
 			}
 		}
 	}

@@ -284,6 +284,30 @@ home (the user). The hive's mirror is the feeding swarm (docs/hive-stocks-and-up
 feeding"). Knob `threatinc_feedConvoys`; off, `feedSize` draws home and the faction's markets on the
 spot as before.
 
+## Depots before the sector (2026-10-31)
+
+The user, on Chalcedon's 745-day request for 4,500 supplies beside Epiphany's 26,953: "curious why
+luddic path ask for supplies when epiphany has so many?" A depot need (`ThreatNeeds.DEPOT`, "keep the
+depot") is vanilla's peacetime shortage at one colony that its own depot has left uncovered for
+`missionAidShortageDays` or cannot cover at all (`ThreatAidRequests.shortageStanding`, `exhausted`: a
+cover issue spends at most `reserveShortageCoverFraction` of the stock and never below the floor, so a
+Military Base's depot sits at its floor, full and unspendable). Nothing in the faction answered it: the
+staging planner hauls toward staging targets only, `ThreatCoalition.aidStockPlans` is allies only, Send
+is the player's.
+
+`ThreatConvoys.planDepotTopUps` (from `planLogistics`, after the feeding convoys and before the staging
+wants, which see the donors' remainder): for every colony of the faction and every reserve good whose
+depot need stands, the need is the Med figure (`ThreatAidRequests.requestItems` x
+`convoyExtraLoadFactor`) net of what is at sea to it; the faction's own colony in reach
+(`stockReachLY`) sparing the most (`spare` - its keep, staging bank, feeding credit and garrison floor
+held back) sails it whole, or what it spares when that is at least `convoyMinLoadFraction` of a hull
+load (the `pickAllyDonor` rule), as an ordinary convoy (`dispatch`). Marines and armaments for a world
+under a Threat army are the relief's (`planRelief`), not this pass's. The player's faction never reaches
+the pass (`threatinc_playerAutoConvoys`). On the NPC tab the row's Answer is the convoy at sea and the
+row goes when the need nets to nothing. Log: "Depot: {faction} sails N {good} A -> B against its
+standing shortage (asked, spared)"; quiet "Depot: {faction} has no colony sparing {good} for B" when
+none can.
+
 ## Allied staging and convoys only (2026-10-19)
 
 The user, 13:55: "yeah A is fine ... also no teleporting please. the instant part you mentioned should be done via
