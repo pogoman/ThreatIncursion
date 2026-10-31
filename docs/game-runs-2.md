@@ -2078,3 +2078,27 @@ hw328 above; the hw328 fragment (w1,400) stays as the opening read: drops 0 / 2 
 - **Balance held or up for the swarm:** hives 291 / 344 / 360; retaken down to 27 / 38 / 35 (119 / 58 / 73) and a's strikes
   down (104 against 164) - a reads as the swarm needing fewer strikes, b / c as more of everything. The merged jar also
   carries the other machine's convoy hull bills and Days lever, so the human-side shifts are not the booking's alone.
+
+**hw331 END (15:43, set A on the booking jar 13:14:11; hw327 in brackets, hw327c cut at w3,399):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift orders / spawns / drops | stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw331a | 3,817 | 265 (263) | 122 (158) | 260 (238) | 111 (126) | 75 (52) | 42 (60) | 60 (32) | 5,568 / 5,126 / 0 (56) | 0 | 0 |
+| hw331b | 3,820 | 211 (239) | 62 (100) | 114 (214) | 47 (65) | 61 (125) | 40 (73) | 56 (52) | 7,005 / 5,363 / 11 (102) | 0 | 0 |
+| hw331c @ 75 min | 3,628 | 314 (293 @ w3,399) | 98 (105) | 196 (187) | 94 (58) | 90 (82) | 55 (88) | 27 (59) | 7,391 / 6,612 / 338 (1,535) | 0 | 0 |
+
+- **Drops:** a 0, b 11 (its opening, w1,000-1,200), c 338 - ALL in one ten-day window at w2,402-2,416 (plus 20 at w2,163 /
+  2,250), not a launch day: the prongs of one big offensive sail on their own days and each pays its passage from the raw
+  stock (`ThreatOffensive` line 585 / `IncursionManager` 1272), the stock falls under the bookings, the pending orders settle,
+  their bookings free, the shift orders again, the next prong sails. The month's census shows the spend (w2,179: 797k fuel
+  spent of 759k). Bounded to the sailing window, nothing lost, the swarm at 314 hives after it.
+- **b's hw331b saved 404 days without a launch at w1,901** (watcher `savinglong`, 232k FP wanted for 5 targets) - hw327b
+  launched 23 times too; the seed's shape, not the booking.
+
+**ROUNDS 96-97 VERDICT (15:50): THE BOOKING IS KEPT.** Six day-0 games: drops 0 / 0 / 9 / 0 / 11 / 338 against 32 / 8 /
+358+ / 56 / 102 / 1,535 before, 0 stuck, 0 exceptions, orders within 10-25% of the spawns, every set-B game inside the cap.
+Balance held: hives 291 / 344 / 360 and 265 / 211 / 314 against 347 / 332 / 264+ and 263 / 239 / 293+, retaken down on five
+of six. Residual: a multi-prong launch on a fuel-poor seed (c) settles the pending shifts for its sailing window (338 in ten
+days) because the planner pays prongs from the raw stock. The user's call: leave it (the strike first), or have the offensive
+BOOK its prongs' fuel at "Offensive launched" (the same ledger the shifts use - `ThreatFuel.freeRaw`), so no shift orders
+against fuel a sailing prong will take. Recommended: the booking at launch, one method.
