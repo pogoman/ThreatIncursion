@@ -18,15 +18,17 @@ import com.fs.starfarer.api.util.Misc;
  * THE PLAYER'S OUTPOST, docked at (decided 2026-09-06, after the user found
  * the station on the board's fleets table with a Recall that scuttled it and
  * no way to see what it held). Picked for the station entity by
- * {@link ThreatIncCampaignPlugin}. Four options, one line of fact:
+ * {@link ThreatIncCampaignPlugin}. The options are vanilla's own for an
+ * orbital storage (the user, 2026-10-31: "outposts can we just have same
+ * options as vanilla"), plus Decommission:
  *
  * <ul>
- * <li>STORAGE - vanilla's cargo screen on the station's storage market
- * ({@link ThreatOutposts#ensureStorage}), the same cargo the board's
- * outpost row and every convoy and front run read. Take the marines, leave
- * the fuel: it is the resource stockpile a colony has, without the colony.
- * <li>REFIT - vanilla's refit screen docked at the same station, so hulls and
- * weapons in the storage can be fitted there (a player's ask, 2026-10-30).
+ * <li>TRANSFER CARGO [I] - vanilla's cargo screen on the station's storage
+ * market ({@link ThreatOutposts#ensureStorage}), the same cargo the board's
+ * outpost row and every convoy and front run read.
+ * <li>TRANSFER SHIPS [F] - vanilla's fleet screen on the same storage.
+ * <li>USE THE LOCAL FACILITIES TO REFIT YOUR FLEET [R] - vanilla's refit
+ * screen docked at the station, its storage a source for hulls and weapons.
  * <li>DECOMMISSION - scuttles the station after a prompt that says what is
  * lost with it. This is what the fleets-table Recall used to do silently.
  * <li>LEAVE.
@@ -35,6 +37,7 @@ import com.fs.starfarer.api.util.Misc;
 public class ThreatOutpostDialog implements InteractionDialogPlugin {
 
 	public static final String OPT_STORAGE = "threatinc_outpost_storage";
+	public static final String OPT_SHIPS = "threatinc_outpost_ships";
 	public static final String OPT_REFIT = "threatinc_outpost_refit";
 	public static final String OPT_DECOMMISSION = "threatinc_outpost_decommission";
 	public static final String OPT_CONFIRM = "threatinc_outpost_confirm";
@@ -84,9 +87,12 @@ public class ThreatOutpostDialog implements InteractionDialogPlugin {
 				+ ". Storage: " + storageText() + ".");
 		text.highlightInLastPara(Misc.getHighlightColor(), storageText());
 		if (ThreatOutposts.storeMarket(outpost) != null) {
-			options.addOption("Open the storage", OPT_STORAGE);
+			// vanilla's orbitalStorageInteraction options, wording and keys as rules.csv has them
+			options.addOption("Transfer cargo", OPT_STORAGE);
 			options.setShortcut(OPT_STORAGE, org.lwjgl.input.Keyboard.KEY_I, false, false, false, true);
-			options.addOption("Refit your ships", OPT_REFIT);
+			options.addOption("Transfer ships", OPT_SHIPS);
+			options.setShortcut(OPT_SHIPS, org.lwjgl.input.Keyboard.KEY_F, false, false, false, true);
+			options.addOption("Use the local facilities to refit your fleet", OPT_REFIT);
 			options.setShortcut(OPT_REFIT, org.lwjgl.input.Keyboard.KEY_R, false, false, false, true);
 		}
 		options.addOption("Decommission the outpost", OPT_DECOMMISSION);
@@ -114,6 +120,14 @@ public class ThreatOutpostDialog implements InteractionDialogPlugin {
 		} else if (OPT_STORAGE.equals(optionData) && outpost.entity != null) {
 			// the same recipe as vanilla's "Inspect the cargo storage areas"
 			dialog.getVisualPanel().showCore(CoreUITabId.CARGO, outpost.entity, CoreUITradeMode.OPEN,
+					new CoreInteractionListener() {
+				public void coreUIDismissed() {
+					showMain();
+				}
+			});
+		} else if (OPT_SHIPS.equals(optionData) && outpost.entity != null) {
+			// vanilla's "Transfer ships": the fleet screen with the storage as the other side
+			dialog.getVisualPanel().showCore(CoreUITabId.FLEET, outpost.entity, CoreUITradeMode.OPEN,
 					new CoreInteractionListener() {
 				public void coreUIDismissed() {
 					showMain();

@@ -252,7 +252,9 @@ progress waits), logged "rebuilt on threatinc.Occupied...". The colony screen re
 the tile's only commodity row is `getAllDeficit`, drawn in vanilla's red shortage style
 (hard-coded `IconRenderMode`), so a green production icon cannot be put there; the swarm
 icon is drawn INTO the occupied image instead - `make-icons.ps1` renders the nine images at
-2x (380x190), shaded as before, with the icon in a green highlight box top-right (fill
+2x (380x190), shaded as before, with the icon in a green highlight box top-right (since 2026-10-31 on the
+LEFT, vertically centred - the top-right box sat under vanilla's item slot, the user's Haven Military Base
+with a Beta Core over it; fill
 18/58/24 a190, edge 86/190/96), clear of the shortage row bottom-left. (3) THE ICON:
 `graphics/threatinc/icons/threat_swarm.png`, 80x80 with alpha like the cargo icons, is
 vanilla's Fabricator sprite (`graphics/ships/threat/fabricator.png`, the ship at the centre

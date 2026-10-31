@@ -504,6 +504,20 @@ public class ThreatNeeds {
 		return marketId + ":" + purpose + (EXPEDITION.equals(purpose) || DEPOT.equals(purpose) ? ":" + good : "");
 	}
 
+	/**
+	 * The market id a stage key starts with: everything before ":purpose[:good]". Split on the first colon it
+	 * was wrong for a player colony, whose id holds one (market_system_923:planet_2): the purpose read back as
+	 * "planet_2", matched nothing and fell through ThreatComms.met to "Expedition Sails" for every need of the
+	 * player's that ended (the user, 2026-10-31: "why it was firing because no expedition was sailing?").
+	 */
+	protected static String marketIdOf(String k) {
+		for (String p : new String[] { HOLD, PUSH_BACK, ARM, ORBIT, MEET, DEPOT, NAVY, FLEET, EXPEDITION }) {
+			int i = k.indexOf(":" + p);
+			if (i > 0 && (k.length() == i + 1 + p.length() || k.charAt(i + 1 + p.length()) == ':')) return k.substring(0, i);
+		}
+		return k.split(":")[0];
+	}
+
 	protected static boolean throttled(String key) {
 		Long at = commsAt().get(key);
 		return at != null && Global.getSector().getClock().getElapsedDaysSince(at) < ThreatIncConfig.aidCommsMinDays();
@@ -561,9 +575,9 @@ public class ThreatNeeds {
 				// needs gone since the last tick
 				for (String k : new ArrayList<String>(stage.keySet())) {
 					if (!k.startsWith(m.getId() + ":") || live.contains(k) || "met".equals(stage.get(k))) continue;
-					String[] parts = k.split(":");
-					String purpose = parts[1];
-					String good = parts.length > 2 ? parts[2] : null;
+					String[] parts = k.substring(m.getId().length() + 1).split(":"); // a market id may hold a colon (market_system_923:planet_2)
+					String purpose = parts[0];
+					String good = parts.length > 1 ? parts[1] : null;
 					boolean spokenHere = metSpoken.contains(m.getId());
 					if (!spokenHere && ThreatComms.met(faction, m, purpose, good, needs)) metSpoken.add(m.getId());
 					spoke(k, "met");
@@ -573,7 +587,7 @@ public class ThreatNeeds {
 		// worlds lost or gone: their entries end quietly (the colony-lost notice is the engine's)
 		for (String k : new ArrayList<String>(stage.keySet())) {
 			if (live.contains(k) || "met".equals(stage.get(k))) continue;
-			String marketId = k.split(":")[0];
+			String marketId = marketIdOf(k);
 			MarketAPI m = Global.getSector().getEconomy().getMarket(marketId);
 			if (m == null || !ThreatWarState.isAtWar(m.getFactionId())) stage.put(k, "met");
 		}

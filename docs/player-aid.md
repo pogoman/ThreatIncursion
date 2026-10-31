@@ -117,7 +117,8 @@ On arrival at an NPC colony, one `CustomRepImpact` with the receiving faction:
   relationship per 10,000 credits of goods at the receiving market's price), capped at
   `aidRepMaxPerDelivery` (+10). Value at the *receiving* market's price rewards taking
   fuel where it is short.
-- Defend: `aidRepGuardArrived` (+3) on station, plus `aidRepGuardPerFightWon` (+2) per
+- Defend: the guard's fleet points priced as ship hulls at the colony (`ThreatAid.standingFor`,
+  2026-10-31; 3,214 FP about +22), `aidRepGuardArrived` (+3) at least, on station, plus `aidRepGuardPerFightWon` (+2) per
   strike fleet it defeats there, plus `aidRepGuardCompleted` (+2) if it serves the full
   term. A guard that shows up and sees no action still counts for something.
 - Strike / intercept at the front: reputation with every faction that has a colony in

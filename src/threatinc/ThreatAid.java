@@ -980,17 +980,30 @@ public class ThreatAid {
 				factionId);
 	}
 
+	/** A standing change for a label or notice: a whole number, "+7" - never a decimal (the user, 2026-10-31: "no decimals for standing changes!"). */
+	public static String standingText(float points) { return (points < 0f ? "-" : "+") + Math.round(Math.abs(points)); }
+
 	/**
 	 * STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31: "should be parity on rep for sending and
 	 * requesting" - 12,900 hulls sent read +10, the per-delivery cap, while 700 received cost 15 at
 	 * the Max rate a unit): the points an amount of a good is worth at the market, earned when the
 	 * player's aid lands there and charged when a faction's aid lands at the player's - its value
-	 * there (valueAt) over aidRepPerCredits, no tier multiplier, no purpose weight; a defence fleet
-	 * aidRepGuardArrived flat. aidRepMaxPerDelivery caps it only when above 0 (0 by default now).
+	 * there (valueAt) over aidRepPerCredits, no tier multiplier, no purpose weight. A defence fleet
+	 * (amount = fleet points) is its fleet points of ship hulls at the market (ThreatHulls.unitFP FP
+	 * a unit - a fleet sent earns what the same hulls sent as cargo would), aidRepGuardArrived at
+	 * least: it was aidRepGuardArrived flat whatever the size until 2026-10-31 (the user, of a
+	 * 3,214 FP fleet beside 12,000 fuel at +43: "+3 standing??????????????").
+	 * aidRepMaxPerDelivery caps it only when above 0 (0 by default now).
 	 */
 	public static float standingFor(MarketAPI market, String good, float amount) {
 		if (amount <= 0f || good == null) return 0f;
-		if (ThreatNeeds.FLEETS.equals(good)) return ThreatIncConfig.aidRepGuardArrived();
+		if (ThreatNeeds.FLEETS.equals(good)) {
+			float floor = Math.max(0f, ThreatIncConfig.aidRepGuardArrived());
+			if (market == null) return floor;
+			float points = capped(valueAt(market, Commodities.SHIPS, amount / ThreatHulls.unitFP())
+					/ Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+			return Math.max(floor, points);
+		}
 		if (market == null) return 0f;
 		return capped(valueAt(market, good, amount) / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
 	}
@@ -1045,7 +1058,7 @@ public class ThreatAid {
 					.line("%s at %s", ThreatFactionView.cargoText(marines, armaments, fuel, supplies, ships),
 							ThreatNotice.market(base))
 					.line("Standing with %s %s", faction != null ? ThreatNotice.faction(faction) : recipientFactionId,
-							ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
+							ThreatNotice.hl(standingText(points)))
 					.send();
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
@@ -1054,19 +1067,23 @@ public class ThreatAid {
 	}
 
 	/**
-	 * The player's guard reached the colony it defends: aidRepGuardArrived standing points, the figure in
-	 * the notice (the user, 2026-10-31, of a guard over Nomios: "i dont think i got any rep" - it was
+	 * The player's guard reached the colony it defends: standingFor of its fleet points at the colony
+	 * (an outpost's at the player's nearest colony), aidRepGuardArrived at least, the figure in the
+	 * notice (the user, 2026-10-31, of a guard over Nomios: "i dont think i got any rep" - it was
 	 * credited silently). Once credited the guard serves its term: the fleets table's Recall is off.
 	 */
 	public static void onGuardArrived(ThreatFleetOrders.Order o) {
 		if (o == null || o.recipientFactionId == null) return;
 		FactionAPI faction = Global.getSector().getFaction(o.recipientFactionId);
-		float points = ThreatIncConfig.aidRepGuardArrived();
+		ThreatBases.Base base = ThreatBases.of(o.targetId);
+		MarketAPI market = base != null && base.market != null ? base.market : ThreatAidRequests.priceMarket(base);
+		float fp = o.fleet != null ? o.fleet.getFleetPoints() : 0f;
+		float points = standingFor(market, ThreatNeeds.FLEETS, fp);
 		rep(o.recipientFactionId, points, null);
 		ThreatIncConfig.log("Guard on station over " + o.targetName + " for " + o.recipientFactionId + ": rep +" + points);
 		ThreatNotice.titled("Task Force On Station").icon(Global.getSector().getPlayerFaction())
 				.line("Over %s", target(o))
-				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
+				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl(standingText(points)))
 				.send();
 	}
 
@@ -1078,7 +1095,7 @@ public class ThreatAid {
 		ThreatIncConfig.log("Guard term served over " + o.targetName + " for " + o.recipientFactionId + ": rep +" + points);
 		ThreatNotice.titled("Task Force Returning").icon(Global.getSector().getPlayerFaction())
 				.line("Term served over %s", target(o))
-				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
+				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl(standingText(points)))
 				.send();
 	}
 

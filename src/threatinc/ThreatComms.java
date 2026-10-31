@@ -140,11 +140,6 @@ public class ThreatComms {
 			"{Faction} admiralty: the fleet is whole again.",
 			"Every slip at {World} has delivered. Our thanks.",
 			"The navy's losses are replaced" };
-	static final String[] SAILS = { "{Faction} Expedition Sails",
-			"Fuelled and stored. The expedition sails from {World}.",
-			"{Faction} command: the fleet is under way.",
-			"The expedition is provisioned. The swarm will hear from us.",
-			"The expedition sails" };
 
 	// ---- 6.3 the player's requests answered ----
 
@@ -238,7 +233,10 @@ public class ThreatComms {
 	 * arms need gone with the army still there - the line holds (a push back need remains) or
 	 * pushes back (none); the army gone - the world is clear; the orbit gone - the sky is clear;
 	 * arms gone with the army still there - rearmed; a depot need gone - that good restored; hulls -
-	 * the navy rebuilt; the expedition's last need - it sails. False when nothing is said.
+	 * the navy rebuilt. Anything else - an expedition's provisions, or a purpose this build no longer
+	 * raises (a stale stage key from an older save) - says nothing: "Expedition Sails" kept firing from the
+	 * fall-through after 2248051 (the user, 2026-10-31: "still getting spammed with these ... delete them").
+	 * False when nothing is said.
 	 */
 	public static boolean met(FactionAPI faction, MarketAPI m, String purpose, String good, List<ThreatNeeds.Need> now) {
 		if (m == null || faction == null) return false;
@@ -273,9 +271,8 @@ public class ThreatComms {
 			notice(REBUILT, faction, m, null).send();
 			return true;
 		}
-		if (ThreatNeeds.find(now, ThreatNeeds.EXPEDITION, null) != null) return false; // the other provision still short
-		notice(SAILS, faction, m, null).send();
-		return true;
+		ThreatIncConfig.log("Comms (quiet): need met unspoken at " + m.getName() + ": " + purpose + (good != null ? " " + good : ""));
+		return false;
 	}
 
 	// ---- 6.3 ----

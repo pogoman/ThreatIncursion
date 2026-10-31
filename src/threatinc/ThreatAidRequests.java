@@ -590,7 +590,8 @@ public class ThreatAidRequests {
 	 * (ThreatFleetOrders.pickBase) of the fleet points its navy has free (ThreatHulls.freeFP; with
 	 * hulls off, what threatens the target, ThreatFleetOrders.guardNeed), no more than the base's depot
 	 * provisions for the passage (sortiePayableFP), at least a fleet (ThreatDeploy.minPoints), cut to
-	 * the standing budget at the Max rate of aidRepGuardArrived a point.
+	 * the standing budget by its price a fleet point (ThreatAid.standingFor: its FP as ship hulls at the
+	 * target's price market, aidRepGuardArrived at least - flat whatever the size until 2026-10-31).
 	 */
 	protected static Quote quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target) {
 		MarketAPI base = ThreatFleetOrders.pickBase(helper, target.hyperLoc());
@@ -608,11 +609,15 @@ public class ThreatAidRequests {
 			return q;
 		}
 		float budget = (float) Math.floor(budget(helper));
-		// a guard's price is flat (aidRepGuardArrived - what the player's own guard earns), whatever its size
+		// priced as the player's own guard earns; over the budget, the fleet shrinks to what the budget pays for
 		int price = priceFor(target, ThreatNeeds.FLEETS, fp);
 		if (price > budget) {
-			q.why = "would take you below Favourable";
-			return q;
+			fp = (float) Math.floor(fp * budget / price);
+			if (fp < min) {
+				q.why = "would take you below Favourable";
+				return q;
+			}
+			price = priceFor(target, ThreatNeeds.FLEETS, fp);
 		}
 		q.donor = base;
 		q.amount = fp;

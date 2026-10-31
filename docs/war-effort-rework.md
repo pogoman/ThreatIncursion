@@ -223,8 +223,13 @@ stand; "on the next slow tick" is now "at once".) Then, on the next slow tick:
 **Since 2026-10-31 late (the user: "should be parity on rep for sending and requesting"): one rate,
 either way.** `ThreatAid.standingFor(market, good, amount)` is the standing any aid is worth: the
 goods' value at the receiving market (`valueAt`) / `aidRepPerCredits` (10,000 credits a point), a
-defence fleet `aidRepGuardArrived`. The player earns it when their convoy lands (`onDelivered`, the
-same figure the NPC tab's Standing column quoted) and pays it when an accepted offer lands
+defence fleet its fleet points of ship hulls at the market (`ThreatHulls.unitFP` FP a unit, so a fleet
+sent earns what the same hulls sent as cargo would), `aidRepGuardArrived` at least - it was
+`aidRepGuardArrived` flat whatever the size until 2026-10-31 (the user, of a 3,214 FP fleet beside
+12,000 fuel at +43: "+3 standing??????????????"); a fleet offer over the standing budget shrinks to
+the fleet points the budget pays for (`quoteFleet`). The player earns it when their convoy lands
+(`onDelivered`, the same figure the NPC tab's Standing column quoted) or their guard reaches its
+station (`onGuardArrived`, its fleet points then) and pays it when an accepted offer lands
 (`ThreatAidRequests.priceFor` on what the offer carries, a whole point at least). The purpose weights
 of the table below, the Min / Med / Max price tiers and the +10 cap are gone: `aidRepMaxPerDelivery`
 defaults 0 (off) and stays a knob; `aidAskPrice*` and `aidRepWeight*` are retired keys. What made

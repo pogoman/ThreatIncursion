@@ -1,6 +1,7 @@
 # The occupied industry images (docs/occupation.md fixes 4-5): vanilla's producing-industry images
 # at 2x, shaded dark green, with the swarm icon (graphics/threatinc/icons/threat_swarm.png) in a green
-# highlight box top-right. Vanilla swaps some images by condition (farmland, ore, orbital), so every
+# highlight box on the left, vertically centred - clear of vanilla's name strip (top), item slot (top-right),
+# shortage row (bottom-left) and build bar (bottom); it sat top-right until 2026-10-31, under the AI core. Vanilla swaps some images by condition (farmland, ore, orbital), so every
 # variant gets a copy; a name added here goes in ThreatOccupation.IMAGES too.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\occupied-images.ps1
 Add-Type -AssemblyName System.Drawing
@@ -50,7 +51,7 @@ foreach ($n in $names) {
     }
     $g = [System.Drawing.Graphics]::FromImage($out)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-    $bx = $w - $margin - $box; $by = $margin
+    $bx = $margin; $by = [int](($h - $box) / 2)
     $g.FillRectangle((New-Object System.Drawing.SolidBrush $fill), $bx, $by, $box, $box)
     $g.DrawRectangle((New-Object System.Drawing.Pen $edge, 2), $bx + 1, $by + 1, $box - 2, $box - 2)
     $g.DrawImage($boxIcon, $bx + $pad, $by + $pad, $box - 2 * $pad, $box - 2 * $pad)

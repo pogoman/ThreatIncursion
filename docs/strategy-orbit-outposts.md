@@ -326,9 +326,14 @@ scuttled it, and no way to supply it, send a fleet to it, or see what it held. D
   the entity.
 - **Docking at the station** opens `ThreatOutpostDialog` (picked by
   `ThreatIncCampaignPlugin`, registered transient on load): the station's fleet panel, one
-  line of what the storage holds, **Open the storage** (vanilla's cargo screen in OPEN
-  trade mode on the station - take the marines, leave the fuel), **Decommission** with a
-  prompt that says what is lost, and Leave. The planet's reminder line points at it.
+  line of what the storage holds, then vanilla's own orbital-storage options word for word
+  (the user, 2026-10-31: "outposts can we just have same options as vanilla") - **Transfer
+  cargo [I]** (CARGO tab in OPEN trade mode on the station's storage), **Transfer ships
+  [F]** (FLEET tab), **Use the local facilities to refit your fleet [R]** (REFIT tab) -
+  plus **Decommission** with a prompt that says what is lost, and Leave. The planet's
+  reminder line points at it. The swarm ignores outposts: the storage market is neutral
+  and never in the economy, and `ThreatSwarmIntel` sweeps economy markets only, so no
+  strike is ever aimed at one.
 - **Gone:** the outpost row in the fleets table and its Recall; `recall("outpost:i")`.
 
 **Carry-over on colonisation (built 2026-09-05, untested).** When the world under an
