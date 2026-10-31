@@ -3105,11 +3105,20 @@ public class ThreatFactionView {
 			if (target == null) return null;
 			// Transfer at the Fleet lever is the Deploy (2026-10-31)
 			if (fleetLeverSet(levers) && faction.isPlayerFaction()) return ThreatDeploy.execute(ThreatDeploy.plan(target, levers), faction);
-			ThreatConvoys.Convoy c = ThreatConvoys.stageTo(target, faction, levers, random);
+			// the donor first, so a refusal says which it is: nothing to spare (stageOffReason, the button's
+			// own reason, a sentence a line) or a convoy from the donor that could not be built, paid or
+			// loaded (2026-10-31 night: "within convoy range" of a 137 FP colony a system away)
+			MarketAPI donor = ThreatConvoys.stageDonor(target, faction, levers);
+			ThreatConvoys.Convoy c = donor != null ? ThreatConvoys.stageTo(target, faction, levers, random) : null;
 			if (c == null) {
 				ThreatNotice n = ThreatNotice.titled("Stage Refused").bad().icon(faction);
-				if (faction.isPlayerFaction()) {
-					n.line("No colony within convoy range can spare materiel for %s", ThreatNotice.base(target));
+				if (donor != null) {
+					n.line("A convoy from %s to %s could not be built, paid or loaded",
+							ThreatNotice.market(donor), ThreatNotice.base(target));
+				} else if (faction.isPlayerFaction()) {
+					for (String fact : ThreatConvoys.stageOffReason(target, levers, "yours").split("(?<=\\.) (?=[A-Z])")) {
+						n.line(fact);
+					}
 				} else {
 					n.line("No %s colony within convoy range can spare materiel for %s",
 							ThreatNotice.faction(faction), ThreatNotice.base(target));
