@@ -272,10 +272,10 @@ player can only send or ignore the request. so there is no more min med max togg
 the need's figure at `threatinc_aidAskTier` (Med) cut to what `ThreatAid.quoteAid(target, good, amount)`
 delivers from the player's colony sparing the most (`askFigure`, `sentOf`) - "590 ship hulls" - the good
 alone when nothing can be fielded (Send off with the quote's reason); the row tooltip keeps the need's own
-three figures. A fleets need's Send is the Defend (`aidNeedParts` -> `BUTTON_AID_DEFEND`,
-`ThreatAid.quoteDefend(market, fleetTier, term)`): one fleet / half / all of the hulls free at staging at the
-fronts' Fleet lever, as a Transfer to an own world, for the Days lever's term - the row reads "defence fleet
-of 467 FP", and the Fleet and Days ladders float in above the table when a fleet is asked (`Requests.fleets`).
+three figures. A fleets need's Send is a Defend of every hull free at staging (`aidNeedParts` -> `BUTTON_AID_FLEET`,
+`ThreatAid.quoteDefend(market, 2, guardDays)`, as a Transfer to an own world at Max) for the default term -
+the row reads "defence fleet of 472 FP". No ladders on the table (the user: "player sends all or nothing. no
+buttons!").
 THE PLAYER FIRST, THEN THE SECTOR: every NPC-to-NPC sailing of the coalition first raises the world's need as
 an `ThreatAidRequests.Ask` (`sectorMayAnswer`), the player's alone for `threatinc_aidAskGraceDays` (4) from
 its first raise; after that friendly factions with the capacity answer it, each sailing an `Answer`
