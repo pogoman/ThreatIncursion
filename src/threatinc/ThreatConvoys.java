@@ -256,11 +256,38 @@ public class ThreatConvoys {
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
 		}
 		if (ownHulls && tiers.length > 4 && donor.isPlayerOwned() && ThreatHulls.enabled()) {
-			float free = ThreatAidCapacity.ownFreeFP(donor) - ThreatAidCapacity.convoyPoints(load);
-			int units = (int) Math.floor(Math.max(0f, free) / ThreatHulls.unitFP());
-			load[4] = (float) Math.floor(share(tiers[4]) * units);
+			load[4] = (float) Math.floor(share(tiers[4]) * hullUnitsSpared(donor, load));
 		}
 		return load;
+	}
+
+	/**
+	 * Whole units of its own free hulls a player colony spares to a hull-moving convoy of
+	 * {@code load} (AID_COMMODITIES order; its hull entry is scratch here and left 0): the free
+	 * points less the convoy's own - ThreatAidCapacity.convoyPoints of the load WITH its hulls
+	 * aboard, the escort and the freighters, 40 FP for a small one - by ThreatHulls.unitFP. The
+	 * figure ThreatHulls.takeShare takes at sail, so the quote is the take. Until 2026-10-31 night
+	 * the quote kept back the points of the load without its hulls - 0 for a hull-only convoy -
+	 * and Arkoman at 137 FP quoted a unit the take (137 - 40 = 97) could not deliver: the convoy
+	 * sailed empty, sail() expired it, and the board read "Stage Refused / No colony within convoy
+	 * range can spare materiel for Haven" (log 555330, 741715).
+	 */
+	public static int hullUnitsSpared(MarketAPI donor, float[] load) {
+		if (donor == null || load == null || load.length < 5 || !ThreatHulls.enabled()) return 0;
+		float free = ThreatAidCapacity.ownFreeFP(donor);
+		float unit = ThreatHulls.unitFP();
+		load[4] = 0f;
+		int units = (int) Math.floor(Math.max(0f, free - ThreatAidCapacity.convoyPoints(load)) / unit);
+		// the hulls aboard are cargo the freighters are sized to: settle in a pass or two (the points only rise
+		// with the hulls, so the units only fall)
+		for (int i = 0; i < 4 && units > 0; i++) {
+			load[4] = units;
+			int can = (int) Math.floor(Math.max(0f, free - ThreatAidCapacity.convoyPoints(load)) / unit);
+			if (can >= units) break;
+			units = can;
+		}
+		load[4] = 0f;
+		return Math.max(0, units);
 	}
 
 	/** Units of ship hulls at sea to the market (Convoy.ships), net of what the fleets have lost. */
@@ -2489,7 +2516,33 @@ public class ThreatConvoys {
 		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
 		if (allNone(levers)) return "Every lever is at None.";
 		return "No colony of " + whose + " can spare a load and the voyage's fuel for " + name + "."
-				+ (target != null && target.market != null && target.market.getFaction() != null ? sealedNote(target.market.getFactionId()) : "");
+				+ (target != null && target.market != null && target.market.getFaction() != null ? sealedNote(target.market.getFactionId()) : "")
+				+ ("yours".equals(whose) ? hullShortNote(target, levers) : "");
+	}
+
+	/**
+	 * " Arkoman has 137 fleet points free: a hull unit is 100 and the convoy's own ships hold 40."
+	 * for every colony of the player's with hulls free but not a whole unit to spare once the
+	 * convoy's own points are kept back ({@link #hullUnitsSpared}), at the Hulls lever to another
+	 * of the player's colonies; else "". The tail of a disabled reason (the user, 2026-10-31 night:
+	 * "Stage Refused" said "within convoy range" of a 137 FP colony a system away).
+	 */
+	public static String hullShortNote(ThreatBases.Base target, int[] levers) {
+		if (target == null || target.market == null || !target.market.isPlayerOwned()) return "";
+		if (levers == null || levers.length < 5 || levers[4] <= 0 || !ThreatHulls.enabled()) return "";
+		String out = "";
+		for (MarketAPI m : ThreatReserves.marketsOf(Global.getSector().getPlayerFaction().getId())) {
+			if (m == target.market || !m.isPlayerOwned() || m.getStarSystem() == null) continue;
+			float free = ThreatAidCapacity.ownFreeFP(m);
+			if (free < 1f) continue;
+			float[] probe = leverLoad(m, levers, false);
+			if (hullUnitsSpared(m, probe) > 0) continue;
+			probe[4] = 1f;
+			out += " " + m.getName() + " has " + Misc.getWithDGS((int) free) + " fleet points free: a hull unit is "
+					+ Misc.getWithDGS((int) ThreatHulls.unitFP()) + " and the convoy's own ships hold "
+					+ Misc.getWithDGS((int) Math.ceil(ThreatAidCapacity.convoyPoints(probe))) + ".";
+		}
+		return out;
 	}
 
 	/**
