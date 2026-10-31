@@ -217,6 +217,9 @@ stand; "on the next slow tick" is now "at once".) Then, on the next slow tick:
   reading `shortageStanding` / `requestItems` and answers the ledger's needs by willingness, as
   it does today for stock plans and hulls. No standing changes between NPC factions (vanilla
   does not model it usefully).
+- 2026-10-31 evening: that path is now the SECTOR'S ASKS OF THE PLAYER - every NPC-NPC sailing first raises
+  the need as an ask of the player (`ThreatAidRequests.sectorMayAnswer`), the player's alone for
+  `threatinc_aidAskGraceDays`, then answered and logged (`answered`, shown on the tab with its ETA). facts.md.
 
 ## 4. Reputation for giving
 
@@ -255,9 +258,9 @@ says they sail from the hull port by convoy. With no need: "The station commande
 to ask of you." After a hand-over the text panel gives the thanks line of section 6 and the
 rep change.
 
-## 6. War comms - the text
+## 6. War comms - the text (REMOVED 2026-10-31)
 
-> The live text is `ThreatComms`; the tables below are the plan. Revised 2026-10-24 13:50 on the user's review: one met table per good/purpose, no "Need met", no medieval voice (`docs/facts.md`, that day's decision).
+> `ThreatComms` and the omens (`ThreatOmens`, `docs/omens.md`) were deleted on 2026-10-31 - the user: "i only want to see technical reports carrying information. so none of the narrative style ones". The board's Requests tables show every need; what follows is the retired design. The live text was `ThreatComms`; the tables below are the plan. Revised 2026-10-24 13:50 on the user's review: one met table per good/purpose, no "Need met", no medieval voice (`docs/facts.md`, that day's decision).
 
 The user: "war flavour messages rather than clinical sterile text". Rules, so they stay inside
 the notice discipline (CLAUDE.md "Notifications go through ThreatNotice"):

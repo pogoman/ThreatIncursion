@@ -250,8 +250,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// daily latch, and before ThreatPosture.poll reads the reports (off, it
 		// only drops its seeding flags, so switching it back on seeds again)
 		ThreatSwarmIntel.poll();
-		// until a hive is found the sector only hears it (docs/omens.md)
-		ThreatOmens.poll();
 		// what each faction sees today, then what it plans from it (docs/attack-planner.md)
 		ThreatIntel.poll();
 		ThreatWarCouncil.poll(random);
@@ -446,7 +444,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatCoalition.tick(random);
 		// shortages are dated for the comms; the player's calls for aid run on the interval above (ThreatAidRequests.tick)
 		ThreatAidRequests.tickShortages();
-		// the war comms speak of the ledger's needs (docs/war-effort-rework.md)
+		// the ledger's slow tick: the dock flag on every mobilised NPC colony (the war comms are gone, 2026-10-31)
 		ThreatNeeds.tick(random);
 		manageMissions();
 		checkPhaseAnnouncements();
@@ -1287,7 +1285,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// SEEN (detectStrikes), not when it is launched - without strike
 		// detection that is the same moment
 		if (strike.isDetected()) onStrikeDetected(strike);
-		else ThreatOmens.onStrikeLaunched(target);
 
 		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
 				+ " (" + target.getFactionId() + ", " + (int) ly + " ly, ~" + (int) ThreatReach.strikeDays(ly)

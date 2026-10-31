@@ -1639,17 +1639,22 @@ public class ThreatWarBoard {
 					continue;
 				}
 				// DEFEND an ally's sieged world (2026-10-29 evening): the player's task force over it at the
-				// Fleet lever's outcome - match the swarm / x1.25 / x1.5 (ThreatAid.quoteDefend)
+				// Fleet lever - one fleet / half / all of the hulls free at staging (ThreatAid.quoteDefend ->
+				// forcePoints), as a Transfer to an own world
 				int orbitTier = fl.length > 2 ? fl[2] : 0;
 				com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
 						FRONT_DEFEND_W, "Defend",
 						ThreatFactionView.BUTTON_AID_DEFEND + r.market.getFactionId() + ":" + r.market.getId());
 				defend.getPosition().belowRight(fronts.table, -up).setXAlignOffset(-6f);
-				ThreatAid.Quote d = ThreatAid.quoteDefend(r.market, orbitTier);
+				// for the Days lever's term, the hold priced on it (2026-10-31)
+				float term = ThreatIncConfig.guardTermDays(fl.length > 3 ? fl[3] : 1);
+				ThreatAid.Quote d = ThreatAid.quoteDefend(r.market, orbitTier, term);
 				ThreatFactionView.disableWith(main, defend, d.ok(), d.ok() ? null : ThreatNotice.text(d.reason),
 						d.ok() ? "A task force of " + ThreatFactionView.forceText(d) + " from " + d.source.getName()
-								+ " holds this orbit for " + (int) ThreatIncConfig.guardDays()
+								+ " holds this orbit for " + (int) term
 								+ " days. Paid from that colony's reserve; earns standing on arrival."
+								+ (d.provisions != null ? "\nTakes " + Misc.getWithDGS((int) Math.ceil(d.provisions[0]))
+										+ " fuel and " + Misc.getWithDGS((int) Math.ceil(d.provisions[1])) + " supplies." : "")
 								+ (d.sized != null ? "\n" + d.sized : "") : null);
 				continue;
 			}

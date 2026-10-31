@@ -1759,13 +1759,35 @@ public class ThreatFleetOrders {
 	/** As above at the board's Force tier. */
 	public static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
 			boolean aid, int tier) {
+		return dispatchGuard(faction, target, base, aid, tier, 0f);
+	}
+
+	/**
+	 * As above for a term of {@code termDays} (an ally's Defend at the fronts' Days lever, 2026-10-31):
+	 * the order's days, and the stay the player's force is provisioned for (ThreatReach.setStay) - the
+	 * hold follows the term. 0 = guardDays (guardOwnDays over an own colony) and the sortie's default stay.
+	 */
+	public static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
+			boolean aid, int tier, float termDays) {
+		return dispatchGuard(faction, target, base, aid, tier, 0f, termDays);
+	}
+
+	/** As above for a player force of {@code askFP} combat points (an NPC tab's Send on a defence-fleet need at the Send lever, 2026-10-31 afternoon), built as fleets until it is met (buildPlayerForce). */
+	public static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
+			boolean aid, float askFP, float termDays) {
+		return dispatchGuard(faction, target, base, aid, 0, askFP, termDays);
+	}
+
+	/** The guard: at the Force tier, or - {@code askFP} above 0 - sized in combat points. */
+	protected static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
+			boolean aid, int tier, float askFP, float termDays) {
 		if (faction == null || target == null || target.entity() == null) return null;
 		if (base == null) return null;
 		boolean own = faction.isPlayerFaction() && !aid && ownBase(faction, target);
 		// a colony's guard over itself is its own ships made real: sized by its
 		// own free points, and nothing staged there folds into it
 		boolean self = own && target.market != null && base == target.market;
-		float days = own ? ThreatIncConfig.guardOwnDays() : ThreatIncConfig.guardDays();
+		float days = termDays > 0f ? termDays : own ? ThreatIncConfig.guardOwnDays() : ThreatIncConfig.guardDays();
 		if (!faction.isPlayerFaction()) {
 			// an NPC guard is sized to what threatens the colony (buildSortie), and
 			// sails with what the depot can pay toward it
@@ -1779,8 +1801,17 @@ public class ThreatFleetOrders {
 			}
 			return lead;
 		}
-		List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, self, tier, target.hyperLoc(),
-				"guard of " + target.name());
+		// the force is provisioned for the term it will serve (ThreatReach.setStay)
+		float was = ThreatReach.setStay(termDays);
+		List<CampaignFleetAPI> fleets;
+		try {
+			fleets = askFP > 0f
+					? buildPlayerForce(base, faction, self, Math.max(askFP, ThreatIncConfig.aidGuardMinFP()), true,
+							target.hyperLoc(), "guard of " + target.name())
+					: buildPlayerForce(base, faction, self, tier, target.hyperLoc(), "guard of " + target.name());
+		} finally {
+			ThreatReach.setStay(was);
+		}
 		if (fleets == null) return null;
 		Order o = null;
 		for (CampaignFleetAPI fleet : fleets) {

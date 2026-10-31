@@ -177,8 +177,15 @@ pay the voyage is no donor for a hand order (`stageDonor`, `supplyBlockReason`,
 `ThreatAid.quoteAid` / `quoteBattle` via `canPayVoyage`), and the prompt quotes the bill
 ("Takes N fuel and M supplies from X's F fuel and S supplies for the voyage.", `voyageBill`,
 `ThreatFactionView.addTakesLine`; the Convoy Sails notice a line). Only the player's hulls stay
-the capacity ledger's business. The bill is the base escort's, not the freighters': a 12,000-fuel
-convoy pays the same voyage as a 500-supplies one. An NPC convoy whose donor is gone or has
+the capacity ledger's business. **Since 2026-10-31 afternoon the bill is the hulls' that sail**
+(`hullPoints`: escort, freighters, tankers, transports as `buildHulls` sizes them; the user, on a
+2,365-marine convoy quoted 151 fuel beside a 467 FP task force's 2,252: "the difference is
+ridiculous"): their voyage fuel at the sortie rate (`voyageFuel`, gated before the build on the
+ask and after it on the built fleet - `payEscort` returns null and nothing is placed), the
+escort's deposit, and their maintenance for the days there and back (`voyageHold`), paid as far
+as the stock above the floor and the supplies cargo go. `voyageBill` and `canPayVoyage` quote and
+gate the same hulls; `stockReachLY` and the pools' `haulPerUnit` still read the base escort's 12 a
+light-year. An NPC convoy whose donor is gone or has
 changed hands settles at its faction's nearest base (`ThreatFleetOrders.pickBase`), else its
 nearest colony (`fallbackHome`, `homeBase`); a front run's arrival no longer deposits leftovers
 into a depot that changed hands. A convoy that times out turns home and settles too (see

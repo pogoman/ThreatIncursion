@@ -6345,7 +6345,6 @@ public class ThreatColonyManager {
 		ThreatSwarmScouts.reset();
 		ThreatSwarmPatrols.reset();
 		Global.getSector().getPersistentData().remove(KEY_STRIKE_FUND);
-		ThreatOmens.reset();
 		ThreatIntel.reset();
 		ThreatSwarmIntel.reset();
 		ThreatAttackPlanner.reset();

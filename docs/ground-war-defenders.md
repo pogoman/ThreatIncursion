@@ -169,6 +169,9 @@ since 2026-10-24 a colony under an army itself spares its heavy armaments above 
 defenders' want (`frontWorldSpare` over `defenderArmsWant`; the user, Sindria: Volturn, the
 Diktat's one armaments maker, sat invaded on 1,800 while Sindria ran dry) - its marines, fuel
 and supplies still stay home.
+The cap is the NPC donors' only: a player colony spares everything above its floor to a hand order,
+front or no front (`handSpare`, and `ThreatReserves.frontKeep` is 0 on a player world - the user,
+2026-10-31: "if i want to transfer 300 marines from a world that is being overrun then i can do it").
 
 What asks for them: `defenderArmsNeed` = `frontResupplyDays` (60) of the burn the defenders
 will have once `reliefNeed`'s marines stand with them, less the stock. NPC relief convoys
@@ -494,6 +497,15 @@ and after `convoyBlockadeWaitDays` (30) still blockaded it turns for home with i
 (`returnHome`). Front runs keep their own door (`pollFrontRun`, Defense Swarms over a hive);
 an outpost has no market to blockade. Log: `Convoy holding off X: blockaded by the Threat`,
 `Convoy runs in to X: blockade lifted after N days`, `Convoy gave up at X`.
+
+**The door shuts both ways** (2026-10-31, the user: "if threat controls space then no convoys
+should leave"). A colony whose `ThreatBlockade.penalty` reads above 0 sends nothing while the
+orbit is held: `ThreatConvoys.sealed` refuses it in `dispatch`, `dispatchFrontRun` and
+`dispatchFounding`, and every donor pick passes it over (`stageDonor`, `reinforceDonor`,
+`pickDonor`, `pickAllyDonor`, `pickFrontBase`, `ThreatAidRequests.donors`), so the board's
+Transfer / Reinforce / Supply grey with "X's orbit is blockaded by the Threat." on the tail
+(`sealedNote`). Deployed fleets and their Attack are not convoys and sail regardless. Log:
+`Convoy refused at X: blockaded by the Threat, nothing leaves`, `Front run refused at X`.
 
 ### When the colony falls
 

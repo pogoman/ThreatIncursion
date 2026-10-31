@@ -196,8 +196,24 @@ public class ThreatReach {
 		return tripSupplies(factionId, fp, daysAway(ly, true, sortieStay(ly)));
 	}
 
-	/** Days a task force stays out at a world {@code ly} from its base: sortieHomeStayDays in the base's own system (it restocks from the base when low), sortieStayDays beyond. */
+	/** The stay set for the order being priced or built ({@link #setStay}); 0 = none. */
+	private static float stayOverride = 0f;
+
+	/**
+	 * Sets the stay every hold is priced on until it is set back (an ally's Defend at the fronts'
+	 * Days lever, 2026-10-31: ThreatAid.quoteDefend and ThreatFleetOrders.dispatchGuard wrap the
+	 * quote and the build in it, so the quote, the gate, the staged fleets' gap and the launch
+	 * draw all read the term). Returns the stay that was set, for the caller's finally. 0 clears it.
+	 */
+	public static float setStay(float days) {
+		float was = stayOverride;
+		stayOverride = Math.max(0f, days);
+		return was;
+	}
+
+	/** Days a task force stays out at a world {@code ly} from its base: the stay set for this order ({@link #setStay}), else sortieHomeStayDays in the base's own system (it restocks from the base when low), sortieStayDays beyond. */
 	public static float sortieStay(float ly) {
+		if (stayOverride > 0f) return stayOverride;
 		return ly < 0.01f ? ThreatIncConfig.sortieHomeStayDays() : ThreatIncConfig.sortieStayDays();
 	}
 

@@ -21,7 +21,7 @@ import com.fs.starfarer.api.util.Misc;
  * at any given planet"): what a colony is short of, by PURPOSE, computed live from the engine's
  * own figures - never posted, accepted, failed or expired, and nothing pays credits. A need is
  * (colony, purpose, good, min / med / max); the purpose names why and is the word the board's
- * Needs column, the dock and the war comms all use. The player's Aid button serves the most urgent
+ * Needs column and the dock use. The player's Aid button serves the most urgent
  * one ({@link ThreatAid#quoteAid}), the dock lists them all ({@link ThreatincAidCMD}), allies
  * answer them by willingness ({@link ThreatCoalition#allyAid}), the player asks for them at a rep
  * price ({@link ThreatAidRequests}), and standing for giving is weighted by them
@@ -31,8 +31,8 @@ import com.fs.starfarer.api.util.Misc;
  * needs are SUSPENDED (the blockade door holds every convoy): shown grey on the board, asked of
  * nobody, still listed at the dock for the player who fought their way in.
  *
- * <p>{@link #tick} is the war comms: one voiced notice when a need appears, one when it
- * escalates, one when it is met ({@link ThreatComms}), throttled per world and purpose.
+ * <p>{@link #tick} sets the dock flag on every mobilised NPC colony (the war comms that spoke here were
+ * removed on 2026-10-31: technical reports only).
  */
 public class ThreatNeeds {
 
@@ -56,9 +56,9 @@ public class ThreatNeeds {
 
 	/** Persistent: base market id -> "systemId|fuelShort|fuelFull|suppliesShort|suppliesFull|timestamp" (a postponed siege). */
 	public static final String KEY_POSTPONED = "threatinc_needPostponed";
-	/** Persistent: "marketId:purpose" -> the stage word the comms last spoke for it ("", "overrun", "exhausted", "met"). */
+	/** Older saves' comms stage map, removed on tick (the war comms are gone, 2026-10-31). */
 	public static final String KEY_COMMS_STAGE = "threatinc_needCommsStage";
-	/** Persistent: "marketId:purpose" -> when the comms last spoke of it. */
+	/** Older saves' comms clock map, removed on tick. */
 	public static final String KEY_COMMS_AT = "threatinc_needCommsAt";
 
 	/** One need of one colony. Figures are net of what will land (convoys not held off) or is bound (guards). */
@@ -477,119 +477,27 @@ public class ThreatNeeds {
 	}
 
 	// ------------------------------------------------------------------
-	// the war comms (section 6)
+	// the slow tick
 	// ------------------------------------------------------------------
 
-	@SuppressWarnings("unchecked")
-	protected static Map<String, String> commsStage() {
-		Object val = Global.getSector().getPersistentData().get(KEY_COMMS_STAGE);
-		if (!(val instanceof Map)) {
-			val = new LinkedHashMap<String, String>();
-			Global.getSector().getPersistentData().put(KEY_COMMS_STAGE, val);
-		}
-		return (Map<String, String>) val;
-	}
-
-	@SuppressWarnings("unchecked")
-	protected static Map<String, Long> commsAt() {
-		Object val = Global.getSector().getPersistentData().get(KEY_COMMS_AT);
-		if (!(val instanceof Map)) {
-			val = new LinkedHashMap<String, Long>();
-			Global.getSector().getPersistentData().put(KEY_COMMS_AT, val);
-		}
-		return (Map<String, Long>) val;
-	}
-
-	protected static String key(String marketId, String purpose, String good) {
-		return marketId + ":" + purpose + (EXPEDITION.equals(purpose) || DEPOT.equals(purpose) ? ":" + good : "");
-	}
-
 	/**
-	 * The market id a stage key starts with: everything before ":purpose[:good]". Split on the first colon it
-	 * was wrong for a player colony, whose id holds one (market_system_923:planet_2): the purpose read back as
-	 * "planet_2", matched nothing and fell through ThreatComms.met to "Expedition Sails" for every need of the
-	 * player's that ended (the user, 2026-10-31: "why it was firing because no expedition was sailing?").
-	 */
-	protected static String marketIdOf(String k) {
-		for (String p : new String[] { HOLD, PUSH_BACK, ARM, ORBIT, MEET, DEPOT, NAVY, FLEET, EXPEDITION }) {
-			int i = k.indexOf(":" + p);
-			if (i > 0 && (k.length() == i + 1 + p.length() || k.charAt(i + 1 + p.length()) == ':')) return k.substring(0, i);
-		}
-		return k.split(":")[0];
-	}
-
-	protected static boolean throttled(String key) {
-		Long at = commsAt().get(key);
-		return at != null && Global.getSector().getClock().getElapsedDaysSince(at) < ThreatIncConfig.aidCommsMinDays();
-	}
-
-	protected static void spoke(String key, String stage) {
-		commsStage().put(key, stage);
-		commsAt().put(key, Global.getSector().getClock().getTimestamp());
-	}
-
-	/**
-	 * Slow tick: the dock's flag on every mobilised NPC colony, then the comms - a need that is new
-	 * speaks once, one that escalates (hold the line -> overrun, a depot -> exhausted) once, one
-	 * that is gone once (the line holds / pushes back / the world is clear / the sky is clear /
-	 * resupplied / sails); aidCommsMinDays between notices for one world and purpose, one met
-	 * notice a world a tick. Nothing on a figure changing.
+	 * Slow tick: the dock's flag on every mobilised NPC colony. The war comms that spoke here - a voiced
+	 * notice when a need appeared, escalated or was met (ThreatComms, deleted) - are gone: the user,
+	 * 2026-10-31, "i only want to see technical reports carrying information. so none of the narrative style
+	 * ones"; the board's Requests tables show every need. An older save's comms maps are dropped here.
 	 */
 	public static void tick(Random random) {
 		if (!ThreatWarState.enabled()) return;
-		Map<String, String> stage = commsStage();
-		List<String> live = new ArrayList<String>();
-		List<String> metSpoken = new ArrayList<String>();
-		boolean comms = ThreatIncConfig.aidCommsEnabled();
+		Global.getSector().getPersistentData().remove(KEY_COMMS_STAGE);
+		Global.getSector().getPersistentData().remove(KEY_COMMS_AT);
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
-			if (faction == null) continue;
+			if (faction == null || faction.isPlayerFaction()) continue;
 			for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
 				if (m.getPrimaryEntity() == null || m.getStarSystem() == null) continue;
-				if (!faction.isPlayerFaction()) {
-					// the station commander takes a hand-over at any mobilised colony (rules.csv)
-					m.getMemoryWithoutUpdate().set(ThreatAidMissionIntel.MEM_REQUEST, true, 2f);
-				}
-				List<Need> needs = of(m);
-				for (Need n : needs) {
-					if (n.suspended) continue;
-					String k = key(m.getId(), n.purpose, n.good);
-					live.add(k);
-					String was = stage.get(k);
-					String now = n.overrun ? "overrun" : n.exhausted ? "exhausted" : "";
-					if (!comms) {
-						stage.put(k, now);
-						continue;
-					}
-					if (was == null || "met".equals(was)) {
-						if (throttled(k)) continue;
-						ThreatComms.appears(faction, m, n);
-						spoke(k, now);
-					} else if (!now.isEmpty() && !now.equals(was)) {
-						if (throttled(k)) continue;
-						ThreatComms.appears(faction, m, n);
-						spoke(k, now);
-					}
-				}
-				if (!comms) continue;
-				// needs gone since the last tick
-				for (String k : new ArrayList<String>(stage.keySet())) {
-					if (!k.startsWith(m.getId() + ":") || live.contains(k) || "met".equals(stage.get(k))) continue;
-					String[] parts = k.substring(m.getId().length() + 1).split(":"); // a market id may hold a colon (market_system_923:planet_2)
-					String purpose = parts[0];
-					String good = parts.length > 1 ? parts[1] : null;
-					boolean spokenHere = metSpoken.contains(m.getId());
-					if (!spokenHere && ThreatComms.met(faction, m, purpose, good, needs)) metSpoken.add(m.getId());
-					spoke(k, "met");
-				}
+				// the station commander takes a hand-over at any mobilised colony (rules.csv)
+				m.getMemoryWithoutUpdate().set(ThreatAidMissionIntel.MEM_REQUEST, true, 2f);
 			}
-		}
-		// worlds lost or gone: their entries end quietly (the colony-lost notice is the engine's)
-		for (String k : new ArrayList<String>(stage.keySet())) {
-			if (live.contains(k) || "met".equals(stage.get(k))) continue;
-			String marketId = marketIdOf(k);
-			MarketAPI m = Global.getSector().getEconomy().getMarket(marketId);
-			if (m == null || !ThreatWarState.isAtWar(m.getFactionId())) stage.put(k, "met");
 		}
 	}
 }

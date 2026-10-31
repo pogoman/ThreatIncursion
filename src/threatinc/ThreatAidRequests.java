@@ -51,6 +51,24 @@ import com.fs.starfarer.api.util.Misc;
  * factions accepted and sailed on their own; those classes stay so an older save loads, and its
  * open parts become calls, its parts at sea accepted offers ({@link #migrateOld}).
  *
+ * <p>THE SECTOR'S ASKS OF THE PLAYER (the user, 2026-10-31 evening: "if a faction is requesting something we
+ * need to assume its directed at the player and with knowledge of the players availability ... the amount asked
+ * should always be an amount the player can field. and the player can only send or ignore the request ... any
+ * standing requests by a faction have a grace period of a few days where they ask the player first. but after
+ * that period other factions can fulfill the request if they have capacity and are friendly with each other.
+ * in which case the request should be logged as answered by that faction and should stay there with the ETA
+ * etc. all faction war trade should go via this route"). The other way round from the calls above: an NPC
+ * world's need - on the ledger (ThreatNeeds), its faction's stock plan short of fuel or supplies, its navy
+ * short of hulls - is an {@link Ask} of the player. The coalition's loops raise it ({@link #sectorMayAnswer})
+ * before any faction answers it, and for aidAskGraceDays from its first raise the ask is the player's alone;
+ * the faction's tab shows it from the first raise at what the player can field (ThreatFactionView.addFactionNeeds)
+ * with Send or nothing. After the grace every friendly faction with the capacity answers it, each sailing
+ * recorded as an {@link Answer} ({@link #answered}: who, what, from where, the ETA) that the convoy or order
+ * carries as its requestId and that stays on the tab until aidAnswerShownDays after it lands
+ * ({@link #onAnswerLanded}, {@link #tickAsks}). Every raise, answer, landing and loss is logged. The
+ * factions' own sharing between their colonies (ThreatConvoys.planLogistics) runs before the coalition, so a
+ * need a faction can cover itself is never asked.
+ *
  * <p>The mission board is gone since 2026-10-23: until then this class posted vanilla missions
  * ({@link ThreatAidMissionIntel}) for the same shortages. Its readers of a colony's state -
  * {@link #shortageStanding}, {@link #requestItems}, {@link #needsDefence} - feed the ledger.
@@ -211,6 +229,227 @@ public class ThreatAidRequests {
 		return market.getId() + ":" + commodityId;
 	}
 
+	// ------------------------------------------------------------------
+	// the sector's asks of the player, and the answers (2026-10-31 evening)
+	// ------------------------------------------------------------------
+
+	/** Persistent: the asks NPC worlds make of the player (2026-10-31 evening). */
+	public static final String KEY_ASKS = "threatinc_aidAsks";
+	/** Persistent: the other factions' answers to them, at sea and lately landed. */
+	public static final String KEY_ANSWERS = "threatinc_aidAnswers";
+
+	/**
+	 * An NPC world's standing ask of the player: raised by the coalition's loops every tick the need
+	 * stands ({@link #sectorMayAnswer}), the player's alone for aidAskGraceDays from its first raise,
+	 * then open to every friendly faction with the capacity. Gone three days after its last raise.
+	 */
+	public static class Ask {
+		/** The market id. */
+		public String targetId;
+		/** A commodity id, or {@link ThreatNeeds#FLEETS}. */
+		public String good;
+		/** The purpose (ThreatNeeds.HOLD and the rest). */
+		public String purpose;
+		/** The need as the asker counts it, in the good's units (a fleets ask: fleet points); what the sector answers. */
+		public float amount;
+		public long since;
+		public long seenAt;
+
+		public String key() { return targetId + ":" + good; }
+	}
+
+	/** A faction's answer to an ask: what sailed from where, when it is due, and when it landed (0 at sea). */
+	public static class Answer {
+		/** Unique; the convoy or order carries it (requestId) so its landing is known. */
+		public String id;
+		public String targetId;
+		public String good;
+		public String purpose;
+		public String factionId;
+		public String fromMarketId;
+		public String fromName;
+		public float amount;
+		public float etaDays;
+		public long sentAt;
+		public long deliveredAt;
+		/** A relief with no fleet handle to follow: counted landed when its ETA passes. */
+		public boolean untracked;
+
+		public boolean atSea() { return deliveredAt == 0L; }
+		public boolean isFleets() { return ThreatNeeds.FLEETS.equals(good); }
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<Ask> asks() {
+		Object val = Global.getSector().getPersistentData().get(KEY_ASKS);
+		if (!(val instanceof List)) {
+			val = new ArrayList<Ask>();
+			Global.getSector().getPersistentData().put(KEY_ASKS, val);
+		}
+		return (List<Ask>) val;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<Answer> answers() {
+		Object val = Global.getSector().getPersistentData().get(KEY_ANSWERS);
+		if (!(val instanceof List)) {
+			val = new ArrayList<Answer>();
+			Global.getSector().getPersistentData().put(KEY_ANSWERS, val);
+		}
+		return (List<Answer>) val;
+	}
+
+	/** The world's standing ask of the good; null with none. */
+	public static Ask askOf(String marketId, String good) {
+		if (marketId == null || good == null) return null;
+		for (Ask a : asks()) {
+			if (marketId.equals(a.targetId) && good.equals(a.good)) return a;
+		}
+		return null;
+	}
+
+	/**
+	 * The coalition raises an NPC world's need here before any faction answers it: the ask is dated on
+	 * its first raise and kept while it is raised (seenAt), its amount refreshed. True once the player's
+	 * grace has passed (aidAskGraceDays from the first raise), or at once while the player is not
+	 * mobilised - nobody is being asked then.
+	 */
+	public static boolean sectorMayAnswer(MarketAPI target, String good, String purpose, float amount) {
+		if (target == null || good == null) return true;
+		long now = Global.getSector().getClock().getTimestamp();
+		Ask a = askOf(target.getId(), good);
+		if (a == null) {
+			a = new Ask();
+			a.targetId = target.getId();
+			a.good = good;
+			a.since = now;
+			asks().add(a);
+			ThreatIncConfig.log("Aid ask: " + target.getName() + " (" + target.getFactionId() + ") asks for " + (int) amount
+					+ " " + good + " (" + purpose + "); the player's for " + (int) ThreatIncConfig.aidAskGraceDays() + " d");
+		}
+		a.purpose = purpose;
+		a.amount = amount;
+		a.seenAt = now;
+		return graceLeft(a) <= 0f;
+	}
+
+	/** Days of the player's grace left on an ask; 0 once the sector may answer, and always while the player is not mobilised. */
+	public static float graceLeft(Ask a) {
+		if (a == null || !ThreatWarState.isAtWar(Factions.PLAYER)) return 0f;
+		return Math.max(0f, ThreatIncConfig.aidAskGraceDays() - Global.getSector().getClock().getElapsedDaysSince(a.since));
+	}
+
+	/**
+	 * A faction answered an ask: logged, and listed on the tab until aidAnswerShownDays after it lands.
+	 * The caller puts the id on the convoy or order (requestId); {@code untracked} for a relief with no
+	 * handle, counted landed when its ETA passes.
+	 */
+	public static Answer answered(MarketAPI target, String good, String purpose, FactionAPI helper, MarketAPI donor,
+			float amount, boolean untracked) {
+		Answer a = new Answer();
+		long now = Global.getSector().getClock().getTimestamp();
+		a.id = target.getId() + ":" + good + ":" + helper.getId() + ":" + now + ":" + answers().size();
+		a.targetId = target.getId();
+		a.good = good;
+		a.purpose = purpose;
+		a.factionId = helper.getId();
+		a.fromMarketId = donor != null ? donor.getId() : null;
+		a.fromName = donor != null ? donor.getName() : helper.getDisplayName();
+		a.amount = amount;
+		a.etaDays = donor != null ? eta(donor, target) : 1f;
+		a.sentAt = now;
+		a.untracked = untracked;
+		answers().add(a);
+		ThreatIncConfig.log("Aid answer: " + helper.getId() + " sends " + (int) amount + " " + good + " from " + a.fromName
+				+ " to " + target.getName() + " (" + target.getFactionId() + ", " + purpose + "), ETA "
+				+ (int) Math.ceil(a.etaDays) + " d");
+		return a;
+	}
+
+	/** The answers to a world's ask of a good: at sea first, then the landed, newest first. */
+	public static List<Answer> answersFor(String marketId, String good) {
+		List<Answer> out = new ArrayList<Answer>();
+		if (marketId == null || good == null) return out;
+		for (Answer a : answers()) {
+			if (marketId.equals(a.targetId) && good.equals(a.good) && a.atSea()) out.add(a);
+		}
+		List<Answer> landed = new ArrayList<Answer>();
+		for (Answer a : answers()) {
+			if (marketId.equals(a.targetId) && good.equals(a.good) && !a.atSea()) landed.add(a);
+		}
+		Collections.sort(landed, new Comparator<Answer>() {
+			public int compare(Answer x, Answer y) {
+				return y.deliveredAt < x.deliveredAt ? -1 : y.deliveredAt > x.deliveredAt ? 1 : 0;
+			}
+		});
+		out.addAll(landed);
+		return out;
+	}
+
+	/** Days until an answer is due, 0 once overdue or landed. */
+	public static float etaLeft(Answer a) {
+		if (a == null || !a.atSea()) return 0f;
+		return Math.max(0f, a.etaDays - Global.getSector().getClock().getElapsedDaysSince(a.sentAt));
+	}
+
+	/** "1,200 supplies" / "a task force of 900 FP" - an answer's amount. */
+	public static String answerText(Answer a) {
+		if (a == null) return "";
+		if (a.isFleets()) return "a task force of " + Misc.getWithDGS(Math.round(a.amount)) + " FP";
+		return Misc.getWithDGS(ThreatHulls.shown(a.good, Math.round(a.amount))) + " " + ThreatReserves.label(a.good);
+	}
+
+	/** Each tick: an ask not raised for three days is gone; an answer lost at sea goes; a landed one leaves aidAnswerShownDays after landing. */
+	protected static void tickAsks() {
+		long now = Global.getSector().getClock().getTimestamp();
+		for (Ask a : new ArrayList<Ask>(asks())) {
+			if (Global.getSector().getClock().getElapsedDaysSince(a.seenAt) > 3f) asks().remove(a);
+		}
+		for (Answer a : new ArrayList<Answer>(answers())) {
+			if (a.atSea()) {
+				if (a.untracked) {
+					if (Global.getSector().getClock().getElapsedDaysSince(a.sentAt) >= a.etaDays) a.deliveredAt = now;
+					continue;
+				}
+				boolean found = false;
+				if (a.isFleets()) {
+					for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+						if (a.id.equals(o.requestId)) { found = true; break; }
+					}
+				} else {
+					for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
+						if (a.id.equals(c.requestId)) { found = true; break; }
+					}
+				}
+				if (!found) {
+					answers().remove(a);
+					ThreatIncConfig.log("Aid answer lost: " + a.factionId + "'s " + (int) a.amount + " " + a.good + " for " + a.targetId);
+				}
+			} else if (Global.getSector().getClock().getElapsedDaysSince(a.deliveredAt) > ThreatIncConfig.aidAnswerShownDays()) {
+				answers().remove(a);
+			}
+		}
+	}
+
+	/** The answer a convoy or order carries, still at sea; null with none. */
+	protected static Answer answerAtSea(String requestId) {
+		if (requestId == null) return null;
+		for (Answer a : answers()) {
+			if (a.atSea() && requestId.equals(a.id)) return a;
+		}
+		return null;
+	}
+
+	/** An answer landed (its convoy at the world, its guard on station): dated and logged. True when the id was an answer's. */
+	public static boolean onAnswerLanded(String requestId) {
+		Answer a = answerAtSea(requestId);
+		if (a == null) return false;
+		a.deliveredAt = Global.getSector().getClock().getTimestamp();
+		ThreatIncConfig.log("Aid answer landed: " + a.factionId + "'s " + (int) a.amount + " " + a.good + " at " + a.targetId
+				+ " after " + (int) Math.ceil(Global.getSector().getClock().getElapsedDaysSince(a.sentAt)) + " d");
+		return true;
+	}
+
 	/** Slow tick (IncursionManager.tick): remember when shortages began. */
 	public static void tickShortages() {
 		if (!ThreatWarState.enabled()) return;
@@ -224,6 +463,7 @@ public class ThreatAidRequests {
 	 */
 	public static void tick(Random random) {
 		if (!ThreatWarState.enabled()) return;
+		tickAsks();
 		if (!ThreatIncConfig.aidRequestsEnabled()) return;
 		migrateOld();
 		for (Offer o : new ArrayList<Offer>(offers())) {
@@ -816,6 +1056,8 @@ public class ThreatAidRequests {
 	/** An answering faction's convoy landed at the player's base (a colony, an outpost, or a front's hive world): the offer is delivered and its price charged. True when the convoy was one. */
 	public static boolean onConvoyLanded(ThreatConvoys.Convoy c, ThreatBases.Base base) {
 		if (c == null || c.requestId == null) return false;
+		// a faction's answer to an NPC world's ask (2026-10-31 evening): dated, the ally's word follows
+		if (onAnswerLanded(c.requestId)) return false;
 		Offer o = offerAtSea(c.requestId, c.factionId, goodOf(c));
 		if (o == null) return false;
 		deliver(o, base);
@@ -825,6 +1067,7 @@ public class ThreatAidRequests {
 	/** An answering faction's guard reached the player's colony (an older save's task force): the offer is delivered and its price charged. */
 	public static void onGuardArrived(ThreatFleetOrders.Order o) {
 		if (o == null || o.requestId == null) return;
+		if (onAnswerLanded(o.requestId)) return;
 		Offer offer = offerAtSea(o.requestId, o.factionId, ThreatNeeds.FLEETS);
 		if (offer == null) return;
 		deliver(offer, resolveTarget(offer.targetId));
@@ -1066,6 +1309,7 @@ public class ThreatAidRequests {
 		final String g = good;
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
+			if (ThreatConvoys.sealed(donor)) continue; // the door shuts both ways (2026-10-31)
 			if (Misc.getDistanceLY(donor.getLocationInHyperspace(), at) > ThreatConvoys.stockReachLY(donor)) continue;
 			if (!holdsSurplus(donor, good)) continue;
 			if (offerSpare(donor, good) >= minSpare(good)) out.add(donor);

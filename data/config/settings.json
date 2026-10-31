@@ -1050,15 +1050,6 @@
 	# found hive system it has no report of stays on its patrols' routes.
 	# hiveFogOfWar false = the old omniscient rule.
 	"threatinc_hiveFogOfWar": true,
-	# omens (ThreatOmens, docs/omens.md): until anyone finds a hive, the
-	# sector only hears it - static when the player's fleet is within
-	# omenStaticLY of an unfound hive colony (omenStaticDays apart), and
-	# sector-wide rumours of new seeds, swarm scouts and unseen strikes
-	# (omenSectorDays apart). All stop for good once a hive is found.
-	"threatinc_omensEnabled": true,
-	"threatinc_omenStaticLY": 6,
-	"threatinc_omenStaticDays": 20,
-	"threatinc_omenSectorDays": 25,
 	"threatinc_scoutLeadRadiusLY": 6,
 	"threatinc_scoutRangeLY": 10,
 	"threatinc_scoutIntervalDays": 60,
@@ -1197,6 +1188,10 @@
 	# for this many days goes home; 0 holds it until the army on the ground is gone
 	"threatinc_reliefQuietDays": 7,
 	"threatinc_guardDays": 90,
+	# the fronts' Days lever (2026-10-31): an ally's Defend holds the orbit this long at its first / third setting
+	# (guardDays at the second), and its hold is priced on the term instead of sortieStayDays
+	"threatinc_guardDaysMin": 30,
+	"threatinc_guardDaysMax": 180,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP
 	# while it is there, and a siege / hunt / escort / guard from there
@@ -1342,8 +1337,7 @@
 	# toggles under Requests); factions at aidMinRelation or better offer from their surplus colonies,
 	# and an offer's price is standing at the ONE rate aid earns or costs either way (2026-10-31
 	# parity): the goods' value at the receiving market / aidRepPerCredits (a defence fleet: its fleet
-	# points as ship hulls, aidRepGuardArrived at least), a whole number of points charged when it lands. aidComms: the voiced war
-	# comms when a need appears, escalates or is met, aidCommsMinDays apart for one world and purpose.
+	# points as ship hulls, aidRepGuardArrived at least), a whole number of points charged when it lands.
 	# aidExpeditionNoteDays: how long a postponed siege's provisions need stands.
 	"threatinc_aidRequestsEnabled": true,
 	# aidRequestMinSpare: the least a colony must spare of a good for its faction to answer a request with it (a unit for
@@ -1359,13 +1353,19 @@
 	# aidRequestBesetDelay (2026-10-31): a beset faction looks less often - its check days x (1 + besetness x this); at 3 a
 	# faction with half its worlds under the Threat looks every 2.5 days
 	"threatinc_aidRequestBesetDelay": 3.0,
+	# THE SECTOR'S ASKS OF THE PLAYER (2026-10-31 evening): an NPC world's need on the ledger, its faction's stock plan short
+	# of fuel or supplies and its navy short of hulls are ASKS OF THE PLAYER - shown on the faction's tab at the aidAskTier
+	# figure of the need (0 Min / 1 Med / 2 Max) cut to what the player can field, Send or ignore. For aidAskGraceDays from an
+	# ask's first raise nobody else answers it; after that every friendly faction with the capacity does, and the answer stays
+	# on the tab with its ETA until aidAnswerShownDays after it lands. The factions move goods between their own colonies
+	# first (ThreatConvoys.planLogistics runs before ThreatCoalition.tick): a need a faction covers itself is never asked.
+	"threatinc_aidAskTier": 1,
+	"threatinc_aidAskGraceDays": 4,
+	"threatinc_aidAnswerShownDays": 15,
 	# aidAskPrice* and aidRepWeight* are RETIRED (2026-10-31 parity): one rate, no tier, no purpose weight
 	"threatinc_aidAskPriceMin": 1.0,
 	"threatinc_aidAskPriceMed": 1.25,
 	"threatinc_aidAskPriceMax": 1.5,
-	# off since 2026-10-31 (the user: "get rid of all this automated shit. all that stuff managed by requests area now")
-	"threatinc_aidCommsEnabled": false,
-	"threatinc_aidCommsMinDays": 15,
 	"threatinc_aidExpeditionNoteDays": 30,
 	"threatinc_aidRepWeightCritical": 2.0,
 	"threatinc_aidRepWeightUrgent": 1.5,

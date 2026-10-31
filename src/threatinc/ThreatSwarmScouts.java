@@ -134,7 +134,6 @@ public class ThreatSwarmScouts {
 				chart.when = now;
 				chart.places = ThreatSwarmIntel.looked(system);
 				carry(s, chart);
-				ThreatOmens.onSwarmScouted(system);
 				return false;
 			}
 			// in the system is enough: the swarm sees what lives there
@@ -143,7 +142,6 @@ public class ThreatSwarmScouts {
 				ThreatColonyManager.announce(ThreatNotice.titled("System Charted").bad()
 						.line("A Scouting Swarm has charted the %s.", system.getNameWithLowercaseType()));
 				ThreatIncConfig.log("Scouting Swarm charted " + system.getName());
-				ThreatOmens.onSwarmScouted(system);
 			}
 			// and, in its fog, reports every human place there (ThreatSwarmIntel)
 			if (ThreatSwarmIntel.enabled()) ThreatSwarmIntel.scouted(system);

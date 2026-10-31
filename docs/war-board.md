@@ -266,11 +266,26 @@ its colonies' needs on the ledger (`ThreatNeeds.of`, `addFactionNeeds`), one row
 most urgent need of the good) - World, Commodity, Age (days the shortage has stood,
 `ThreatAidRequests.shortageSince`), Answer (the convoy at sea with the good and whose it is,
 `convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - NPC-to-NPC aid
-charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: exactly the
-Commodity figure of that good from the player's colony sparing the most - `ThreatAid.quoteAid(target,
-good, amount)`; a fleets need is the fronts' Defend at the Fleet lever). A **Send** lever above the
-table, Min / Med / Max (`ThreatIncursionIntel.LEVER_AID_SEND`, default Med), picks which of the
-need's three figures the Commodity column shows and Send sails (the row tooltip lists all three).
+charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`). THE ASK IS WHAT THE PLAYER CAN FIELD
+(the user, 2026-10-31 evening: "the amount asked should always be an amount the player can field. and the
+player can only send or ignore the request. so there is no more min med max toggle"): the Commodity cell is
+the need's figure at `threatinc_aidAskTier` (Med) cut to what `ThreatAid.quoteAid(target, good, amount)`
+delivers from the player's colony sparing the most (`askFigure`, `sentOf`) - "590 ship hulls" - the good
+alone when nothing can be fielded (Send off with the quote's reason); the row tooltip keeps the need's own
+three figures. A fleets need's Send is the Defend (`aidNeedParts` -> `BUTTON_AID_DEFEND`,
+`ThreatAid.quoteDefend(market, fleetTier, term)`): one fleet / half / all of the hulls free at staging at the
+fronts' Fleet lever, as a Transfer to an own world, for the Days lever's term - the row reads "defence fleet
+of 467 FP", and the Fleet and Days ladders float in above the table when a fleet is asked (`Requests.fleets`).
+THE PLAYER FIRST, THEN THE SECTOR: every NPC-to-NPC sailing of the coalition first raises the world's need as
+an `ThreatAidRequests.Ask` (`sectorMayAnswer`), the player's alone for `threatinc_aidAskGraceDays` (4) from
+its first raise; after that friendly factions with the capacity answer it, each sailing an `Answer`
+(`answered`: who, what, from where, the ETA) that stays on the row - "Hegemony: 1,200 supplies from
+Chicomoztoc", "landed" once it has - until `threatinc_aidAnswerShownDays` (15) after landing; a row with no
+answer reads "asking you" through the grace and "open to the sector" after it. The rows are the ledger's
+needs, then the asks the ledger does not list (a stock plan short of fuel or supplies, a navy short of hulls),
+then answers whose need has cleared (grey, no Send). Until 2026-10-31 evening a **Send** lever above the
+table (`LEVER_AID_SEND`, Min / Med / Max of the need) sized every row and a fleets need's Send was sized at
+that figure (`BUTTON_AID_FLEET`, gone).
 Standing is one rate either way (`ThreatAid.standingFor`, 2026-10-31 late): what a Send earns on
 landing is what the same goods would cost as an accepted offer. Until 2026-10-31 a
 request was logged from a Transfer or Deploy short of the colony's needs in the order's own confirm
@@ -321,7 +336,7 @@ fronts table"; Marines and Arms sat there until then), over the colonies **Fuel*
 **Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
 all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`); since 2026-10-30 evening a lever is ONE button reading its tier, pressed it sets the next round the ladder. The Fleet lever is Support / Defend's
 outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
-ladders), for the player's own fronts and the Defend of an ally's sieged world alike; the colonies'
+ladders), for the player's own fronts and the Defend of an ally's sieged world alike; beside it since 2026-10-31 the **Days** lever (`LEVER_FRONT_DAYS`, 30 d / 90 d / 180 d from `threatinc_guardDaysMin` / `guardDays` / `guardDaysMax`, `ThreatIncConfig.guardTermDays`) is the term an ally's Defend holds the orbit AND the stay its hold is priced on (`ThreatReach.setStay` around `ThreatAid.quoteDefend` and `ThreatFleetOrders.dispatchGuard`), so a 30-day Defend quotes a third of the 90-day hold - the Defend tooltip and prompt show the term and the fuel and supplies; the colonies'
 five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms
 (`ThreatIncursionIntel.frontLevers`), and a shortfall's request asks each faction at the same tier
 (Max all one colony spares, Med half). Transfer moves hulls between the player's colonies off the

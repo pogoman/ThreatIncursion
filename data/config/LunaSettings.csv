@@ -28,7 +28,6 @@ threatinc_fabricateEnabled,Swarm Breaks Up Ships for Troops,Boolean,true,A swarm
 threatinc_alarmEnabled,Grudge,Boolean,true,The swarm strikes hardest at the factions that hurt it most.,,
 fogHeader,Fog of War Header,Header,Fog of War,What each side knows.,,
 threatinc_hiveFogOfWar,Hidden Hives,Boolean,true,Hives stay unknown until a scout finds them. Off: every hive is on the map.,,
-threatinc_omensEnabled,Omens,Boolean,true,Foreboding messages until the first hive is found. Needs Hidden Hives.,,
 threatinc_intelFogOfWar,Fog of War on the Swarm,Boolean,true,"Everyone, you included, knows the swarm's fleets only as last seen. Off: exact numbers everywhere.",,
 threatinc_swarmFogOfWar,Fog of War for the Swarm,Boolean,true,The swarm knows your fleets and bases only as last seen. Off: it reads everything.,,
 threatinc_strikeDetection,Strike Warning,Boolean,true,"A Threat strike is hidden until seen by you, a colony or a picket. Off: every strike is announced as it sails.",,
@@ -57,7 +56,6 @@ threatinc_aidRequestsEnabled,Request Aid,Boolean,true,Call friendly factions for
 threatinc_aidRequestCheckDays,Request Check Days,Double,1,Days between each friendly faction's looks at a request for aid.,0.5,30
 threatinc_aidRequestBesetWeight,Request Beset Weight,Double,1.0,"How a faction's own worlds under the Threat gate its answer: 0 always answers, 1 a faction with half its worlds beset answers only from half way to Cooperative.",0,2
 threatinc_aidRequestBesetDelay,Request Beset Delay,Double,3.0,"How much slower a beset faction looks at your calls: its check days x (1 + beset share x this).",0,10
-threatinc_aidCommsEnabled,War Comms,Boolean,false,Notices from colonies when they need something (off by default since 2026-10-31: the war board's Requests tables show it).,,
 threatinc_missionBaseReward,Contract Reward per Hive Size,Double,150000,Credits a contract pays per size of its target.,25000,1000000
 threatinc_maxPostedMissions,Contracts on Offer,Int,3,Contracts offered at once.,1,6
 threatinc_swarmBountiesEnabled,Swarm Bounties,Boolean,true,Factions whose sieges are outweighed post bounties on Threat ships.,,

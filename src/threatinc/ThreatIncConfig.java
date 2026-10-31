@@ -807,14 +807,6 @@ public class ThreatIncConfig {
 	public static float raiderMargin()        { return fd("threatinc_raiderMargin", 3f); }
 	/** Strikes hide their origin; the sector acts only on hives someone has found (ThreatScouts). Off: the old omniscient rule. */
 	public static boolean hiveFogOfWar()      { return b("threatinc_hiveFogOfWar", true); }
-	/** Foreboding messages until anyone finds a hive (ThreatOmens). */
-	public static boolean omensEnabled()      { return b("threatinc_omensEnabled", true); }
-	/** Light-years from an unfound hive colony at which the player's fleet hears it. */
-	public static float omenStaticLY()        { return f("threatinc_omenStaticLY"); }
-	/** Days between omens heard by the player's fleet. */
-	public static float omenStaticDays()      { return f("threatinc_omenStaticDays"); }
-	/** Days between sector-wide omens (spread, swarm scouts, unseen strikes). */
-	public static float omenSectorDays()      { return f("threatinc_omenSectorDays"); }
 	/** Light-years around a strike's origin a struck faction's scouts sweep. */
 	public static float scoutLeadRadiusLY()   { return f("threatinc_scoutLeadRadiusLY"); }
 	/** Light-years around a military world a mobilised faction's routine sweep covers. */
@@ -1004,6 +996,10 @@ public class ThreatIncConfig {
 	public static float reliefQuietDays() { return f("threatinc_reliefQuietDays"); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
+	/** The fronts' Days lever (2026-10-31): the term an ally's Defend holds the orbit at its three settings - guardDaysMin, guardDays, guardDaysMax - and the stay its hold is priced on. */
+	public static float guardTermDays(int tier) {
+		return tier <= 0 ? f("threatinc_guardDaysMin") : tier == 1 ? guardDays() : f("threatinc_guardDaysMax");
+	}
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */
 	public static float guardOwnDays()        { return f("threatinc_guardOwnDays"); }
 	/** Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown. Key kept from the order's old name. */
@@ -1082,14 +1078,16 @@ public class ThreatIncConfig {
 	public static float aidRequestBesetWeight() { return f("threatinc_aidRequestBesetWeight"); }
 	/** How a faction's besetness stretches the days between its looks at a call (2026-10-31): x (1 + besetness x this). */
 	public static float aidRequestBesetDelay() { return f("threatinc_aidRequestBesetDelay"); }
+	/** THE SECTOR'S ASKS OF THE PLAYER (2026-10-31 evening): which of a need's figures an NPC world asks the player for, 0 Min / 1 Med / 2 Max, cut to what the player can field (ThreatFactionView.askFigure). */
+	public static int aidAskTier()            { return Math.max(0, Math.min(2, (int) f("threatinc_aidAskTier"))); }
+	/** Days an NPC world's ask is the player's alone before other factions may answer it (ThreatAidRequests.sectorMayAnswer). */
+	public static float aidAskGraceDays()     { return f("threatinc_aidAskGraceDays"); }
+	/** Days an answered ask stays on the faction's tab after the answer lands (ThreatAidRequests.tickAsks). */
+	public static float aidAnswerShownDays()  { return f("threatinc_aidAnswerShownDays"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }
 	public static float aidAskPriceMax()      { return f("threatinc_aidAskPriceMax"); }
-	/** WAR COMMS (ThreatComms): voiced notices when a need appears, escalates or is met. */
-	public static boolean aidCommsEnabled()   { return b("threatinc_aidCommsEnabled", true); }
-	/** Days between comms notices for one world and purpose. */
-	public static float aidCommsMinDays()     { return f("threatinc_aidCommsMinDays"); }
 	/** Days a postponed siege's provisions need stands on the ledger (ThreatNeeds.notePostponed). */
 	public static float aidExpeditionNoteDays() { return f("threatinc_aidExpeditionNoteDays"); }
 	/** Standing weights for giving, by purpose (ThreatNeeds.weight): hold the line / lift the orbit; push back / arm / provision; the depot / the navy; surplus or a good nobody needs. */

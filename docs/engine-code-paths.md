@@ -25,7 +25,7 @@ a reader of the swarm or a scout order.
   `getPersistentData().remove(...)` in `ThreatIncModPlugin.onGameLoad`.
 - **Lifecycle hooks.** A system leaving the war: `ThreatIncData.clearSystem(systemId)` (it also drops
   the system from `discoveredSystems()`). A new campaign: `ThreatColonyManager.resetIncursion()`
-  (siblings `ThreatScouts.reset()`, `ThreatSwarmScouts.reset()`, `ThreatOmens.reset()`).
+  (siblings `ThreatScouts.reset()`, `ThreatSwarmScouts.reset()`).
 - **Statics.** `ThreatIncModPlugin.onGameLoad` clears every static that holds sector state
   (`ThreatPosture.forget`, `ThreatStance.forget`, `ThreatReach.forget`, `ThreatFactionStance.forget`,
   `ThreatFuel.forget`, `IncursionManager.forgetThinned`, `ThreatFrontlines.forgetCaches`,
@@ -42,7 +42,7 @@ a reader of the swarm or a scout order.
 - **The poll**: `IntervalUtil(0.4f, 0.6f)` days, about two per day; then `ThreatIncConfig.enabled()`
   and `ThreatIncData.isStarted()`. Order: `ThreatWarState.poll` -> `ThreatReserves.poll` ->
   `ThreatConvoys.poll` -> `ThreatRaiders.poll` -> `ThreatScouts.poll` -> `ThreatSwarmScouts.poll` ->
-  `ThreatOmens.poll` -> `ThreatIntel.poll` -> the war council (`ThreatWarCouncil.poll`) ->
+  `ThreatIntel.poll` -> the war council (`ThreatWarCouncil.poll`) ->
   `ThreatAttackPlanner.poll` -> `ThreatFleetOrders.poll` -> `ThreatSoftening.advanceHunts` -> the siege
   pass (if `siegePassPending`) -> `ThreatReturns.poll` -> `ThreatUpkeep.poll` ->
   `ThreatAidCapacity.poll` -> `ThreatOutposts.poll` -> `ThreatFrontlines.poll` -> `detectStrikes` ->
