@@ -930,6 +930,9 @@ public class ThreatFactionView {
 				+ "'s reserve and the hulls your built navy; the convoy waits at the jump-point while the "
 				+ "Threat blockades the world, and can be intercepted on the way. Standing follows the goods' "
 				+ "value at " + target.getName() + "'s prices, weighted by the need.", 0f, h, aidCargo(q));
+		// the voyage's bill (the player's convoys pay it too, 2026-10-31)
+		ThreatBases.Base voyageFrom = ThreatBases.of(q.source);
+		if (q.load != null) addTakesLine(prompt, voyageFrom, ThreatConvoys.voyageBill(voyageFrom, q.load, q.distLY));
 	}
 
 	/** An aid convoy's cargo: "320 marines, 1,200 arms, 400 ship hulls", or the one good. */
@@ -1532,6 +1535,15 @@ public class ThreatFactionView {
 				Misc.getHighlightColor(), Misc.getWithDGS((int) Math.ceil(fuel)), Misc.getWithDGS((int) Math.ceil(supplies)),
 				Misc.getWithDGS((int) Math.max(0f, ThreatReserves.available(base, Commodities.FUEL))),
 				Misc.getWithDGS((int) Math.max(0f, ThreatReserves.available(base, Commodities.SUPPLIES))));
+	}
+
+	/** As above from either kind of base, {@code bill} = {fuel, supplies} a convoy's voyage draws (ThreatConvoys.voyageBill, 2026-10-31). */
+	protected static void addTakesLine(TooltipMakerAPI prompt, ThreatBases.Base base, float[] bill) {
+		if (base == null || bill == null || bill.length < 2) return;
+		prompt.addPara("Takes %s fuel and %s supplies from " + base.name() + "'s %s fuel and %s supplies for the voyage.", 3f,
+				Misc.getHighlightColor(), Misc.getWithDGS((int) Math.ceil(bill[0])), Misc.getWithDGS((int) Math.ceil(bill[1])),
+				Misc.getWithDGS((int) Math.max(0f, ThreatBases.available(base, Commodities.FUEL))),
+				Misc.getWithDGS((int) Math.max(0f, ThreatBases.available(base, Commodities.SUPPLIES))));
 	}
 
 	/** A quote's size as a prompt's format and highlights, {@code more} highlights appended (ThreatAid.forcePrompt). */
@@ -2375,6 +2387,10 @@ public class ThreatFactionView {
 				prompt.addPara("Order a convoy from " + donor.getName() + " to " + target.name()
 						+ " with %s? It can be intercepted on the way.", 0f, h,
 						cargoText(load[0], load[1], load[2], load[3], ThreatConvoys.hullsIn(load)));
+				// the voyage's bill (the player's convoys pay it too, 2026-10-31)
+				ThreatBases.Base voyageFrom = ThreatBases.of(donor);
+				addTakesLine(prompt, voyageFrom, ThreatConvoys.voyageBill(voyageFrom, load,
+						Misc.getDistanceLY(voyageFrom.hyperLoc(), target.hyperLoc())));
 			}
 		} else if (BUTTON_HUNT.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
@@ -2630,6 +2646,14 @@ public class ThreatFactionView {
 						+ "jump-point while Defense Swarms hold the orbit, and can be intercepted "
 						+ "on the way.", 0f, h,
 						Misc.getWithDGS((int) asked[0]), Misc.getWithDGS((int) asked[1]));
+				// the run's voyage bill from the base that sails it (the player's runs pay too, 2026-10-31)
+				ThreatBases.Base voyageFrom = ThreatConvoys.pickFrontBase(faction, hive, false,
+						ThreatConvoys.frontWants(front, hive));
+				if (voyageFrom != null) {
+					float[] run = {asked[0], asked[1], 0f, 0f};
+					addTakesLine(prompt, voyageFrom, ThreatConvoys.voyageBill(voyageFrom, run,
+							Misc.getDistanceLY(voyageFrom.hyperLoc(), hive.getLocationInHyperspace())));
+				}
 			} else {
 				prompt.addPara("Send an evacuation convoy from " + (base != null ? base.getName()
 						: "the nearest base") + " to lift the front off " + hive.getName()

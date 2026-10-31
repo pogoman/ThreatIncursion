@@ -167,8 +167,18 @@ spendable stock (an outpost's whole stockpile) beyond the cargo it ships, and sh
 is paid (`paidEscort`), to none. Since 2026-10-01 the voyage's fuel is paid whatever the escort,
 or nothing sails (below). The convoy
 comes home on the tracked leg (`ThreatReturns.sendHome`), its hulls re-banked at what
-survived. A convoy that never sailed refunds the escort in full (`refundEscort`). A player
-convoy's escort is its capacity ledger's business. An NPC convoy whose donor is gone or has
+survived. A convoy that never sailed refunds the escort in full (`refundEscort`). **The player's convoys
+pay the voyage and the escort the same way since 2026-10-31** (the user: "sending supply convoys
+do they consume supplies and fuel? they probably should. for npc human factions as well" - the
+NPCs' already did): `paysEscort` is true for every faction in `dispatch` and `dispatchFrontRun`,
+so Send, Supplies / Transfer and the front Supply run draw the voyage's fuel and the paid escort's
+supplies from the player's donor, stock above the floor first, then the cargo; a donor that cannot
+pay the voyage is no donor for a hand order (`stageDonor`, `supplyBlockReason`,
+`ThreatAid.quoteAid` / `quoteBattle` via `canPayVoyage`), and the prompt quotes the bill
+("Takes N fuel and M supplies from X's F fuel and S supplies for the voyage.", `voyageBill`,
+`ThreatFactionView.addTakesLine`; the Convoy Sails notice a line). Only the player's hulls stay
+the capacity ledger's business. The bill is the base escort's, not the freighters': a 12,000-fuel
+convoy pays the same voyage as a 500-supplies one. An NPC convoy whose donor is gone or has
 changed hands settles at its faction's nearest base (`ThreatFleetOrders.pickBase`), else its
 nearest colony (`fallbackHome`, `homeBase`); a front run's arrival no longer deposits leftovers
 into a depot that changed hands. A convoy that times out turns home and settles too (see

@@ -623,6 +623,9 @@ public class ThreatAid {
 			if (hullUnits > 0 && m == port) load[4] = hullUnits;
 			float value = ThreatConvoys.cargoValue(load);
 			if (value <= bestValue) continue;
+			// the voyage's fuel or nothing sails (ThreatConvoys.buildHulls; the player's convoys pay too, 2026-10-31)
+			if (!ThreatConvoys.canPayVoyage(ThreatBases.of(m), load,
+					Misc.getDistanceLY(m.getStarSystem().getLocation(), loc))) continue;
 			best = m;
 			bestLoad = load;
 			bestValue = value;
@@ -631,15 +634,16 @@ public class ThreatAid {
 			if (donors.isEmpty()) {
 				q.reason = ThreatNotice.Reason.of("You have no colony to send from");
 			} else {
-				q.reason = ThreatNotice.Reason.of("No colony of yours can spare anything at the levers for %s",
+				q.reason = ThreatNotice.Reason.of("No colony of yours can spare a load and the voyage's fuel at the levers for %s",
 						ThreatNotice.market(target));
 				for (MarketAPI m : donors) {
-					q.reason.line("%s has %s marines, %s heavy armaments, %s fuel and %s supplies spare, %s fleet points free",
+					q.reason.line("%s has %s marines, %s heavy armaments, %s fuel and %s supplies spare, %s fleet points free; the voyage takes %s fuel",
 							ThreatNotice.market(m), (int) ThreatConvoys.handSpare(m, Commodities.MARINES),
 							(int) ThreatConvoys.handSpare(m, Commodities.HAND_WEAPONS),
 							(int) ThreatConvoys.handSpare(m, Commodities.FUEL),
 							(int) ThreatConvoys.handSpare(m, Commodities.SUPPLIES),
-							(int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)));
+							(int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)),
+							(int) Math.ceil(ThreatConvoys.haulFuel(Misc.getDistanceLY(m.getStarSystem().getLocation(), loc))));
 				}
 			}
 			return q;
@@ -651,7 +655,10 @@ public class ThreatAid {
 		q.quantity = first >= 0 ? Math.round(bestLoad[first]) : 0;
 		q.points = ThreatAidCapacity.convoyPoints(bestLoad);
 		q.distLY = Misc.getDistanceLY(best.getStarSystem().getLocation(), loc);
-		if (hullUnits > 0 && port != null && port != best && ThreatConvoys.hullsIn(bestLoad) <= 0f) {
+		// the hull port's own convoy pays its voyage too, or no hull convoy is quoted
+		boolean portPays = port != null && port.getStarSystem() != null && ThreatConvoys.canPayVoyage(
+				ThreatBases.of(port), null, Misc.getDistanceLY(port.getStarSystem().getLocation(), loc));
+		if (hullUnits > 0 && port != null && port != best && portPays && ThreatConvoys.hullsIn(bestLoad) <= 0f) {
 			q.hullSource = port;
 			q.hullUnits = hullUnits;
 		}
@@ -806,6 +813,9 @@ public class ThreatAid {
 		for (MarketAPI m : donors) {
 			float[] fitted = ThreatConvoys.leverLoad(m, levers, false);
 			if (marines && fitted[0] < 1f) continue;
+			// the voyage's fuel or nothing sails (the player's convoys pay too, 2026-10-31)
+			if (!ThreatConvoys.canPayVoyage(ThreatBases.of(m), fitted,
+					Misc.getDistanceLY(m.getStarSystem().getLocation(), loc))) continue;
 			float value = ThreatConvoys.cargoValue(fitted[0], fitted[1], 0f, 0f);
 			if (value <= bestValue) continue;
 			best = m;
@@ -915,6 +925,8 @@ public class ThreatAid {
 			ThreatNotice.titled("Aid Refused").bad().icon(player).lines(q.reason).send();
 			return false;
 		}
+		// the voyage's bill, read before the draw (ThreatConvoys.voyageBill, 2026-10-31)
+		float[] bill = ThreatConvoys.voyageBill(ThreatBases.of(q.source), q.load, q.distLY);
 		ThreatConvoys.Convoy c = ThreatConvoys.dispatch(q.source, target, player, q.load, random,
 				target.getFactionId(), true);
 		if (c == null) {
@@ -924,7 +936,9 @@ public class ThreatAid {
 		}
 		ThreatNotice n = ThreatNotice.titled("Convoy Sails").icon(player)
 				.line("From %s, %s", ThreatNotice.market(q.source),
-						ThreatFactionView.cargoText(q.load[0], q.load[1], q.load[2], q.load[3], ThreatConvoys.hullsIn(q.load)));
+						ThreatFactionView.cargoText(q.load[0], q.load[1], q.load[2], q.load[3], ThreatConvoys.hullsIn(q.load)))
+				.line("%s fuel and %s supplies for the voyage", Misc.getWithDGS((int) Math.ceil(bill[0])),
+						Misc.getWithDGS((int) Math.ceil(bill[1])));
 		if (q.hullSource != null && q.hullUnits > 0) {
 			float[] hulls = new float[ThreatReserves.AID_COMMODITIES.length];
 			hulls[4] = q.hullUnits;
