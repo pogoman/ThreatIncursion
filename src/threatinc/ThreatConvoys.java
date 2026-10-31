@@ -166,6 +166,8 @@ public class ThreatConvoys {
 
 	/** cargoValue of a load in AID_COMMODITIES order (a 4-long load carries no hulls). */
 	public static float cargoValue(float[] load) {
+		// null: an empty load - the hull port's own convoy is gated with none (ThreatAid.quoteAid, portPays; the NPE of 2026-10-31 evening)
+		if (load == null) return 0f;
 		return cargoValue(load[0], load[1], load[2], load[3]) + hullsIn(load) * 1f;
 	}
 
