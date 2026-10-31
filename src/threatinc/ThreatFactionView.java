@@ -680,7 +680,7 @@ public class ThreatFactionView {
 				// with the Fleet lever set, Transfer deploys a fleet over the hive (ThreatDeploy); else the supply run
 				ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(hm), levers);
 				boolean deploy = fleetLeverSet(levers);
-				ButtonAPI supply = intel.addGenericButton(main, TRANSFER_W, "Transfer",
+				ButtonAPI supply = intel.addGenericButton(main, TRANSFER_W, deploy ? "Deploy" : "Transfer",
 						BUTTON_SUPPLY + factionId + ":" + hm.getId());
 				supply.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
 				if (deploy) {
@@ -721,7 +721,7 @@ public class ThreatFactionView {
 						- (ThreatWarBoard.ROW_H - 20f) / 2f;
 				ThreatDeploy.Plan d = ThreatDeploy.plan(b, levers);
 				boolean deploy = fleetLeverSet(levers);
-				ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
+				ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, deploy ? "Deploy" : "Transfer",
 						BUTTON_STAGE + factionId + ":" + b.id());
 				stage.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
 				MarketAPI donor = deploy ? null : ThreatConvoys.stageDonor(b, faction, levers);
@@ -755,10 +755,12 @@ public class ThreatFactionView {
 					// to 2026-10-30 22:00); a convoy between colonies is "Transfer" ("Fleet" / "Supplies" from
 					// 2026-09-05 to then)
 					// since 2026-10-31 the Deploy button is gone: with the Fleet lever set, Transfer IS the Deploy - a
-					// new fleet of the source's free hulls carrying the goods (ThreatDeploy); at None, a convoy
+					// new fleet of the source's free hulls carrying the goods (ThreatDeploy); at None, a convoy - and the
+					// button READS "Deploy" while the Fleet lever is Med or Max (the user, 2026-10-31 late: "when fleet toggle
+					// is med or max can we relabel transfer to deploy")
 					ThreatDeploy.Plan d = ThreatDeploy.plan(ThreatBases.of(r.market), levers);
 					boolean deploy = fleetLeverSet(levers);
-					ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, "Transfer",
+					ButtonAPI stage = intel.addGenericButton(main, TRANSFER_W, deploy ? "Deploy" : "Transfer",
 							BUTTON_STAGE + factionId + ":" + r.market.getId());
 					stage.getPosition().belowRight(colonyTable, -up).setXAlignOffset(-6f);
 					// the order fails after Confirm otherwise: the gate is on the button
