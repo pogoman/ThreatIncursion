@@ -1498,7 +1498,7 @@ public class ThreatFactionView {
 	/** A Withdraw button's "marketId:good" - the market id, then the good (null when the id carries none). */
 	protected static String[] withdrawTarget(String rest) {
 		if (rest == null) return new String[] {null, null};
-		int colon = rest.indexOf(':');
+		int colon = rest.lastIndexOf(':'); // the last: a player market id holds a colon (market_system_923:planet_2), a good never does
 		if (colon < 0) return new String[] {rest, null};
 		return new String[] {rest.substring(0, colon), rest.substring(colon + 1)};
 	}
