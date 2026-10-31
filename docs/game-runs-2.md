@@ -1971,3 +1971,47 @@ against hw322 at the same war day.
 cost: the shift swarms are the same size (377-404 FP mean), the drops on fuel are rare (5 / 65 a game, 2 / 10
 settles), and the balance reads at or above hw322 - hives 269 / 324 against 228 / 315 at the same day,
 campaigns and strikes up, retaken down. KEPT. Set A's a seed and set B untested on this jar.
+
+## 92. hw326-hw327 - rounds 94-95, GENERAL SEED TEST from day 0 on the merged jar 08:20:52 (2026-10-31 08:23-)
+
+The user, 08:15: "git pull and build and run general seed test". Pulled 6ee74ef5 (the other machine's
+Fleet-lever / aid-parity rework, da05c946, on the passage-sizes-the-shift build), jar 08:20:52, symbols
+5,072 methods. Driver `run-seeds-43.ps1`: hw326 set B (OceanPena / ZhiFarah / AphelionDysnomia), hw327
+set A (AmaruDugas / PoseidonDeimos / AresDaniels), from day 0 `-Days 3800 -Snapshots 300 -MaxMinutes 75`;
+watcher `watch-seeds-43.sh` with `check-shift.sh`, tasks ThreatIncSeeds43 / WatchSeeds43 (/sd 01.01.2030,
+run then disabled). Read against hw320 / hw321 (the last day-0 rounds, s89: hives 251-377, retaken 32-88)
+and hw325 (0 stuck shifts). What to see: 0 exceptions on the merged UI code, 0 stuck shifts from day 0, the
+balance inside s89's band.
+
+- **08:53 watcher FAIL on c at w1,415, read on (watcher relaunched as WatchSeeds43b with both ignored):**
+  `shiftdrops` 358 "drops its shift ... the fuel pays" lines (hw325 5 / 65 all war) and `deadstrike` (check-siege's
+  old take-over signal). The drops are the SHARED FREE FUEL moving under far donors: `ThreatBudding.shift` orders a
+  donor whose give is min(buddable, fuelAffordFP) at order time, every concurrent order reads the same
+  `ThreatFuel.free` figure, and a 21-25 ly donor's pool fills over 10-15 days at 400 FP a day while strikes and
+  nearer shifts spend that fuel - a same-day dip takes its passage under the floor (afford 53-70 FP against
+  591-665 wanted) and `advance` settles the pool back (Beta Cormoran II / Meros / Bascule -> Delta Deina I, w836, all
+  in one tick). Strata not lost; c had 1,456 orders, 976 shift spawns, 32 settles, 358 drops (a 19, b 92) - churn on
+  a fuel-poor swarm (c's fuel 1.2-1.8k pre-opening against 28-39k wanted), not a stuck navy. Candidate fix for the
+  user: book the shift's passage fuel at order time (as held strikes book their shortfall) or a drop dwell.
+
+**hw326 END (09:38, set B on the merged jar; hw320 in brackets, hw320c cut at c's day):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | staged shifts | stuck | drops | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw326a | 3,811 | 347 (341) | 164 (138) | 248 (228) | 104 (103) | 79 (93) | 119 (88) | 67 (51) | 2,524 (0) | 0 (0) | 32 | 0 |
+| hw326b | 3,830 | 332 (352) | 121 (72) | 198 (155) | 100 (72) | 46 (93) | 58 (68) | 42 (49) | 2,505 (0) | 2 (10) | 8 | 0 |
+| hw326c @ 75 min | 2,732 | 264 (252) | 61 (74) | 112 (156) | 31 (68) | 65 (22) | 73 (31) | 73 (20) | 3,260 (0) | 0 (0) | 7 | 0 |
+
+- **Balance inside s89's band from day 0:** hives 347 / 332 at the end and 264 at c's cut against 341 / 352 / 252,
+  strikes up (164 / 121 against 138 / 72), consumed and lift-offs at or above. Retaken and dig-ins run higher on a
+  and c (119 / 73 against 88 / 31; 67 / 73 against 51 / 20) - the humans' ground game is livelier on this jar, one
+  round's reading. hw326c ran at ~45 d/min late and hit the 75-minute cap at w2,732 (hw320c reached 3,815: this
+  machine ran three games beside the session).
+- **Shifts:** 0 / 2 / 0 stuck (hw325's fix holds from day 0), drops 32 / 8 / 7 by the strategy read (the watcher's
+  358 on c at w1,415 counts the pre-opening churn, see above), 2,500-3,300 shift swarms staged for strikes a game.
+
+**10:20 the user: "ok try A" (of A book the passage at order time / B a drop dwell / C share the figure).** BUILT 10:35:
+`ThreatBudding.bookFuel` / `bookedFuel` / `KEY_FUEL`, `fuelAffordFP(from, to, ownBooked)`, `ThreatFuel.freeRaw`, `canPay(FUEL)`
+above the bookings (facts). javac clean against the scratch dir while hw327 holds the jar; jar built after hw327 closes.
+Retest: hw328 set B / hw329 set A from day 0 (`run-seeds-44.ps1`), read against hw326 / hw327: drops near 0, orders
+about the spawns, the strike planner's fuel line lower by the bookings, balance held. No new commits on origin at 10:30.
