@@ -2063,3 +2063,52 @@ Static on the deep saves: 40 classes, 0 missing, 0 undeclared mod fields. facts:
 with the other machine's ThreatComms / ThreatOmens deletion, convoy hull bills, the fronts' Days lever):** driver
 `run-seeds-45.ps1`, watcher `watch-seeds-45.sh` (shiftdrops armed), tasks ThreatIncSeeds45 / WatchSeeds45. Read as for
 hw328 above; the hw328 fragment (w1,400) stays as the opening read: drops 0 / 2 / 75.
+
+**hw330 END (14:26, set B on the booking jar 13:14:11; hw326 in brackets, hw326c cut at w2,732):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift orders / spawns / drops | stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw330a | 3,820 | 291 (347) | 104 (164) | 202 (248) | 109 (104) | 36 (79) | 27 (119) | 35 (67) | 3,714 / 3,340 / 0 (32) | 0 | 0 |
+| hw330b | 3,833 | 344 (332) | 126 (121) | 229 (198) | 119 (100) | 81 (46) | 38 (58) | 40 (42) | 6,251 / 5,275 / 0 (8) | 0 (2) | 0 |
+| hw330c | 3,827 | 360 (264 @ w2,732) | 136 (61) | 253 (112) | 140 (31) | 59 (65) | 35 (73) | 35 (73) | 3,945 / 3,769 / 9 (358 @ w1,415) | 0 | 0 |
+
+- **The booking ends the churn:** drops 0 / 0 / 9 all war (c's nine at its opening launch, w1,000-1,200) against 32 / 8 / 358+,
+  orders within 10-15% of the spawns, 0 stuck, 0 exceptions, and every game ran its 3,800 days inside the cap (hw326c had hit
+  it at w2,732 - fewer order-and-settle cycles per day).
+- **Balance held or up for the swarm:** hives 291 / 344 / 360; retaken down to 27 / 38 / 35 (119 / 58 / 73) and a's strikes
+  down (104 against 164) - a reads as the swarm needing fewer strikes, b / c as more of everything. The merged jar also
+  carries the other machine's convoy hull bills and Days lever, so the human-side shifts are not the booking's alone.
+
+**hw331 END (15:43, set A on the booking jar 13:14:11; hw327 in brackets, hw327c cut at w3,399):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift orders / spawns / drops | stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw331a | 3,817 | 265 (263) | 122 (158) | 260 (238) | 111 (126) | 75 (52) | 42 (60) | 60 (32) | 5,568 / 5,126 / 0 (56) | 0 | 0 |
+| hw331b | 3,820 | 211 (239) | 62 (100) | 114 (214) | 47 (65) | 61 (125) | 40 (73) | 56 (52) | 7,005 / 5,363 / 11 (102) | 0 | 0 |
+| hw331c @ 75 min | 3,628 | 314 (293 @ w3,399) | 98 (105) | 196 (187) | 94 (58) | 90 (82) | 55 (88) | 27 (59) | 7,391 / 6,612 / 338 (1,535) | 0 | 0 |
+
+- **Drops:** a 0, b 11 (its opening, w1,000-1,200), c 338 - ALL in one ten-day window at w2,402-2,416 (plus 20 at w2,163 /
+  2,250), not a launch day: the prongs of one big offensive sail on their own days and each pays its passage from the raw
+  stock (`ThreatOffensive` line 585 / `IncursionManager` 1272), the stock falls under the bookings, the pending orders settle,
+  their bookings free, the shift orders again, the next prong sails. The month's census shows the spend (w2,179: 797k fuel
+  spent of 759k). Bounded to the sailing window, nothing lost, the swarm at 314 hives after it.
+- **b's hw331b saved 404 days without a launch at w1,901** (watcher `savinglong`, 232k FP wanted for 5 targets) - hw327b
+  launched 23 times too; the seed's shape, not the booking.
+
+**ROUNDS 96-97 VERDICT (15:50): THE BOOKING IS KEPT.** Six day-0 games: drops 0 / 0 / 9 / 0 / 11 / 338 against 32 / 8 /
+358+ / 56 / 102 / 1,535 before, 0 stuck, 0 exceptions, orders within 10-25% of the spawns, every set-B game inside the cap.
+Balance held: hives 291 / 344 / 360 and 265 / 211 / 314 against 347 / 332 / 264+ and 263 / 239 / 293+, retaken down on five
+of six. Residual: a multi-prong launch on a fuel-poor seed (c) settles the pending shifts for its sailing window (338 in ten
+days) because the planner pays prongs from the raw stock. The user's call: leave it (the strike first), or have the offensive
+BOOK its prongs' fuel at "Offensive launched" (the same ledger the shifts use - `ThreatFuel.freeRaw`), so no shift orders
+against fuel a sailing prong will take. Recommended: the booking at launch, one method.
+
+## 93. hw332-hw333 - rounds 98-99, GENERAL SEED TEST from day 0 on the merged jar 15:54:25 (2026-10-31 15:55-)
+
+The user, 15:52: "pull and build and run general seed testing". Origin up to date (54e3a91e: the booking build merged with
+the other machine's 23 commits - standing curve both ways, hull credits 1,000 / FP, the Request column, no ladders on the
+Requests table, no Ground War icon, ThreatDecivIntel), jar rebuilt 15:54:25 (1,333,778 bytes). Driver `run-seeds-46.ps1`:
+hw332 set B, hw333 set A, day 0 `-Days 3800 -Snapshots 300 -MaxMinutes 75`, watcher `watch-seeds-46.sh` (shiftdrops armed),
+tasks ThreatIncSeeds46 / WatchSeeds46. Read against hw330 / hw331 (s92: hives 291 / 344 / 360, 265 / 211 / 314, drops
+0 / 0 / 9 / 0 / 11 / 338, 0 exc). What to see: 0 exceptions on the merged UI / standing code, drops at or under s92, balance
+inside its band.
