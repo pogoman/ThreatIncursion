@@ -5244,7 +5244,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatUpkeep.charge(CampaignFleetAPI f, long now, Map<String, float[]> tally)` :243
 - `ThreatUpkeep.restockFleet(CampaignFleetAPI f, String factionId)` :316 - Fills a fleet's hold back to its launch load from its faction's bases in its system;
 
-## ThreatWarBoard (2987 lines)
+## ThreatWarBoard (2919 lines)
 - `ThreatWarBoard.isRelevant(String commodityId)` :103
 - `ThreatWarBoard.production(String id)` :121
 - `ThreatWarBoard.demand(String id)` :126
@@ -5324,53 +5324,49 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2148
 - `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2149
 - `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2150
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2227
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2228
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2229
-- `ThreatWarBoard.cell(List<Object> cells, Alignment align, Color color, String text)` :2255
-- `ThreatWarBoard.sizeDigits(Entry e, Cols c)` :2262 - "5 4 4 4 4 4", largest first, capped to what the column fits;
-- `ThreatWarBoard.rewardShort(int reward)` :2279
-- `ThreatWarBoard.missionCode(ThreatMissionIntel b)` :2288 - S/I for the board, then the offer's priority on it - or once the player holds it.
-- `ThreatWarBoard.render(float alphaMult)` :2314
-- `ThreatWarBoard.addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow)` :2378
-- `ThreatWarBoard.addDetailHeading(TooltipMakerAPI main, float opad, Entry e)` :2445 - The selected system's heading line;
-- `ThreatWarBoard.addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e, List<Object[]> cardsOut)` :2464 - The selected system's colony cards (or the seeding note), after its fronts.
-- `ThreatWarBoard.addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e)` :2474
-- `ThreatWarBoard.addCards(TooltipMakerAPI main, float width, final Entry e, List<Object[]> cardsOut)` :2491 - Cards three across on a wide panel, two on a narrow one;
-- `ThreatWarBoard.organsOf(MarketAPI market)` :2515 - The organ icons a card shows, in a fixed order;
-- `ThreatWarBoard.commodityIcon(String commodityId)` :2532
-- `ThreatWarBoard.iconRow(TooltipMakerAPI tm, List<String> ids, List<Integer> nums, List<IconRenderMode> modes)` :2545 - A vanilla icon group:
-- `ThreatWarBoard.buildCard(TooltipMakerAPI main, final MarketAPI market, float cardW, Entry e)` :2559 - Measured name widths from the last card build, so the Map button can sit right of the name.
-- `ThreatWarBoard.positionChanged(PositionAPI position)` :2573
-- `ThreatWarBoard.render(float alphaMult)` :2574
-- `ThreatWarBoard.industryTooltip(final MarketAPI market, final Industry ind)` :2674 - What vanilla's colony screen says about an industry tile:
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2676
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2677
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2678
-- `ThreatWarBoard.forecastParts(MarketAPI market, float health)` :2752 - The size line, right-aligned on the card:
-- `ThreatWarBoard.forecastShort(MarketAPI market, float health)` :2786 - Plain-text form of the size line for tooltips.
-- `ThreatWarBoard.roleLabel(MarketAPI market)` :2791
-- `ThreatWarBoard.commodityName(String commodityId)` :2808
+- `ThreatWarBoard.cell(List<Object> cells, Alignment align, Color color, String text)` :2251
+- `ThreatWarBoard.sizeDigits(Entry e, Cols c)` :2258 - "5 4 4 4 4 4", largest first, capped to what the column fits;
+- `ThreatWarBoard.rewardShort(int reward)` :2275
+- `ThreatWarBoard.missionCode(ThreatMissionIntel b)` :2284 - S/I for the board, then the offer's priority on it - or once the player holds it.
+- `ThreatWarBoard.render(float alphaMult)` :2310
+- `ThreatWarBoard.addDetailHeading(TooltipMakerAPI main, float opad, Entry e)` :2377 - The selected system's heading line;
+- `ThreatWarBoard.addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e, List<Object[]> cardsOut)` :2396 - The selected system's colony cards (or the seeding note), after its fronts.
+- `ThreatWarBoard.addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e)` :2406
+- `ThreatWarBoard.addCards(TooltipMakerAPI main, float width, final Entry e, List<Object[]> cardsOut)` :2423 - Cards three across on a wide panel, two on a narrow one;
+- `ThreatWarBoard.organsOf(MarketAPI market)` :2447 - The organ icons a card shows, in a fixed order;
+- `ThreatWarBoard.commodityIcon(String commodityId)` :2464
+- `ThreatWarBoard.iconRow(TooltipMakerAPI tm, List<String> ids, List<Integer> nums, List<IconRenderMode> modes)` :2477 - A vanilla icon group:
+- `ThreatWarBoard.buildCard(TooltipMakerAPI main, final MarketAPI market, float cardW, Entry e)` :2491 - Measured name widths from the last card build, so the Map button can sit right of the name.
+- `ThreatWarBoard.positionChanged(PositionAPI position)` :2505
+- `ThreatWarBoard.render(float alphaMult)` :2506
+- `ThreatWarBoard.industryTooltip(final MarketAPI market, final Industry ind)` :2606 - What vanilla's colony screen says about an industry tile:
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2608
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2609
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2610
+- `ThreatWarBoard.forecastParts(MarketAPI market, float health)` :2684 - The size line, right-aligned on the card:
+- `ThreatWarBoard.forecastShort(MarketAPI market, float health)` :2718 - Plain-text form of the size line for tooltips.
+- `ThreatWarBoard.roleLabel(MarketAPI market)` :2723
+- `ThreatWarBoard.commodityName(String commodityId)` :2740
 ### helpers
-- `ThreatWarBoard.needLine(ThreatGroundFronts.GroundFront f, MarketAPI m, boolean forLanding, float s, float band, float overrun, boolean pushing, boolean worldPushes, String unit)` :2828 - " Needs 520 troops to push." - the count that side needs for the next tier its way (losing:
-- `ThreatWarBoard.n(float v)` :2856 - A figure with digit grouping, rounded.
-- `ThreatWarBoard.f2(float v)` :2858 - Two decimals.
-- `ThreatWarBoard.f1(float v)` :2860 - One decimal.
-- `ThreatWarBoard.join(List<String> parts)` :2862
-- `ThreatWarBoard.healthColor(float health)` :2872
-- `ThreatWarBoard.fedState(MarketAPI market)` :2888 - A hive world's Fabrication Core state (2026-10-25), on the engine's own clocks:
-- `ThreatWarBoard.fedStateName(int state)` :2894
-- `ThreatWarBoard.stateColor(int state)` :2899 - A Core state in the reserve key's colours:
-- `ThreatWarBoard.fedColor(float fed)` :2910 - A share of the supplies upkeep paid in the reserve key's colours:
-- `ThreatWarBoard.pct(float share)` :2919 - A share as a whole percentage, rounded.
-- `ThreatWarBoard.seenOver(ThreatIntel.Report r, MarketAPI world)` :2928 - A report's view of one world (ThreatIntel):
-- `ThreatWarBoard.grounded(MarketAPI market)` :2933 - Billed reach:
-- `ThreatWarBoard.swarmSource(List<MarketAPI> markets, MarketAPI staging)` :2943 - The world a system's swarm is judged by for billed reach:
-- `ThreatWarBoard.reachText(boolean grounded, String facedFaction, float facedLY)` :2954 - Billed reach's figure:
-- `ThreatWarBoard.reachColor(boolean grounded, String facedFaction)` :2961 - Its colour:
-- `ThreatWarBoard.factionColor(String factionId)` :2967 - A faction's own colour;
-- `ThreatWarBoard.getSystem(String systemId)` :2972
-- `ThreatWarBoard.findMarker(String systemId)` :2980
+- `ThreatWarBoard.needLine(ThreatGroundFronts.GroundFront f, MarketAPI m, boolean forLanding, float s, float band, float overrun, boolean pushing, boolean worldPushes, String unit)` :2760 - " Needs 520 troops to push." - the count that side needs for the next tier its way (losing:
+- `ThreatWarBoard.n(float v)` :2788 - A figure with digit grouping, rounded.
+- `ThreatWarBoard.f2(float v)` :2790 - Two decimals.
+- `ThreatWarBoard.f1(float v)` :2792 - One decimal.
+- `ThreatWarBoard.join(List<String> parts)` :2794
+- `ThreatWarBoard.healthColor(float health)` :2804
+- `ThreatWarBoard.fedState(MarketAPI market)` :2820 - A hive world's Fabrication Core state (2026-10-25), on the engine's own clocks:
+- `ThreatWarBoard.fedStateName(int state)` :2826
+- `ThreatWarBoard.stateColor(int state)` :2831 - A Core state in the reserve key's colours:
+- `ThreatWarBoard.fedColor(float fed)` :2842 - A share of the supplies upkeep paid in the reserve key's colours:
+- `ThreatWarBoard.pct(float share)` :2851 - A share as a whole percentage, rounded.
+- `ThreatWarBoard.seenOver(ThreatIntel.Report r, MarketAPI world)` :2860 - A report's view of one world (ThreatIntel):
+- `ThreatWarBoard.grounded(MarketAPI market)` :2865 - Billed reach:
+- `ThreatWarBoard.swarmSource(List<MarketAPI> markets, MarketAPI staging)` :2875 - The world a system's swarm is judged by for billed reach:
+- `ThreatWarBoard.reachText(boolean grounded, String facedFaction, float facedLY)` :2886 - Billed reach's figure:
+- `ThreatWarBoard.reachColor(boolean grounded, String facedFaction)` :2893 - Its colour:
+- `ThreatWarBoard.factionColor(String factionId)` :2899 - A faction's own colour;
+- `ThreatWarBoard.getSystem(String systemId)` :2904
+- `ThreatWarBoard.findMarker(String systemId)` :2912
 
 ## ThreatWarCouncil (636 lines)
 - `ThreatWarCouncil.inReach()` :96

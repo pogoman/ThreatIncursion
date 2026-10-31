@@ -2222,15 +2222,11 @@ public class ThreatWarBoard {
 			}
 			cell(cells, Alignment.MID, gray, ""); // Attack + Map float here (addLedgerButtons)
 
+			// no hover tooltip on a ledger row since 2026-10-31 evening (the user: "when i hover over the system a
+			// dialog pops up with all this cheating information get rid of it" - the map, what it makes, the
+			// expeditions out and in, its first target, its days in stage, the objectives): the row's cells are the
+			// scouts' report, and clicking it opens the drill-down
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
-			main.addTooltipToAddedRow(new TooltipCreator() {
-				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-				public float getTooltipWidth(Object tooltipParam) { return 440f; }
-				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-					addRowTooltip(tooltip, e, c.narrow);
-					ThreatObjectives.addTooltip(tooltip, e, 10f);
-				}
-			}, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(e.systemId);
 			rowObjects.add(row);
 			rowEntries.add(e);
@@ -2373,70 +2369,6 @@ public class ThreatWarBoard {
 			}
 			glEnd();
 		}
-	}
-
-	protected static void addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow) {
-		Color h = Misc.getHighlightColor();
-		Color gray = Misc.getGrayColor();
-		Color text = Misc.getTextColor();
-		float w = tooltip.getWidthSoFar();
-		tooltip.addSectorMap(w, Math.round(w / 1.8f), e.system, 0f);
-		tooltip.addSpacer(10f);
-		String title = e.system.getNameWithNoType();
-		if (e.isColony()) {
-			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds");
-		}
-		tooltip.addPara(title, Global.getSector().getFaction(Factions.THREAT).getBrightUIColor(), 6f);
-		tooltip.addPara(e.chip + " - " + e.reason, e.reasonColor, 4f);
-		// no growth states or starving lines since 2026-10-30 16:00: live figures; the Notes lines below carry the report
-		if (!e.supplies.isEmpty()) {
-			tooltip.addPara("Makes:", text, 6f);
-			List<String> ids = new ArrayList<String>(e.supplies);
-			List<Integer> nums = new ArrayList<Integer>();
-			List<IconRenderMode> modes = new ArrayList<IconRenderMode>();
-			for (int i = 0; i < ids.size(); i++) {
-				nums.add(1);
-				modes.add(IconRenderMode.NORMAL);
-			}
-			iconRow(tooltip, ids, nums, modes);
-		}
-		for (Op op : e.outbound) tooltip.addPara(op.detail, op.color, 4f);
-		for (Op op : e.inbound) tooltip.addPara(op.detail, op.color, 4f);
-		for (ThreatMissionIntel b : e.missions) {
-			MarketAPI market = ThreatIncData.resolveColonyMarket(b.getMarketId());
-			String target = ThreatMissionIntel.typeNoun(b.getType()) + " on "
-					+ (market != null ? market.getName() : "a hive world");
-			if (b.isAccepted()) {
-				tooltip.addPara("Accepted " + ThreatMissionIntel.tierName(b.getTier()).toLowerCase()
-						+ " contract - " + target + ": %s, %s days left to complete.",
-						4f, text, h, Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
-			} else {
-				tooltip.addPara(ThreatMissionIntel.tierName(b.getTier()) + " contract offered, priority "
-						+ b.currentRank() + " - " + target + ": %s, %s days left to accept.",
-						4f, text, h, Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
-			}
-		}
-		if (ThreatReach.enabled()) {
-			if (e.grounded) {
-				tooltip.addPara("%s: " + (ThreatFuel.stock() <= 0f ? "the hive has no fuel."
-						: "the hive can keep no swarm away."), 4f, text, ThreatNotice.goodColor(), "Grounded");
-			} else if (e.staging != null && e.facedFaction != null) {
-				tooltip.addPara("First target: %s, %s.", 4f,
-						new Color[] {factionColor(e.facedFaction), h},
-						ThreatWarState.displayName(e.facedFaction), (int) Math.ceil(e.facedLY) + " ly");
-			}
-		} else if (!e.inReach.isEmpty()) {
-			tooltip.addPara("Within strike reach: %s.", 4f, text, h, join(
-					e.inReach.size() > 6 ? e.inReach.subList(0, 6) : e.inReach)
-					+ (e.inReach.size() > 6 ? " and " + (e.inReach.size() - 6) + " more" : ""));
-		}
-		List<String> geo = new ArrayList<String>();
-		// distances place a system on the map as surely as its name; none for one unfound
-		if (e.coreLY >= 0f) geo.add((int) Math.ceil(e.coreLY) + " ly from the nearest major world");
-		if (e.playerLY >= 0f) geo.add((int) Math.ceil(e.playerLY) + " ly from your nearest colony");
-		geo.add((int) ThreatIncData.daysInStage(e.systemId) + " days in its current stage");
-		tooltip.addPara(join(geo) + ".", gray, 4f);
-		tooltip.addPara("Click to select", gray, 6f);
 	}
 
 	// ---- the drill-down: colony cards across the full width ----

@@ -64,7 +64,7 @@ is the layout it implements.
    when idle"; the strip's Swarm fleet figure and the tiles' Swarm fleet line went with it, the tiles'
    Strata line reads the report's strata, never the live figure), System, Worlds (a count), Strikes (count), Activity (crests, drawn: every siege
    expedition, task force, intercept, Support or Defend sortie, front run and ground front against
-   the system - as many as fit the column, the rest in the row tooltip), Supply (commodity icons,
+   the system - as many as fit the column), Supply (commodity icons,
    drawn, what the scouts saw it produce), Notes (above), **Actions** (since 2026-10-30 13:30: Attack, the
    player board's order - the fleet deployed at the nearest player colony sails against the system,
    `IncursionManager.attackBase` / `attackBlockReason` - and Map, which selects the system on the map;
@@ -72,8 +72,9 @@ is the layout it implements.
    hive systems" table went the same day). Mass, the Cores' state (with its trend
    glyph), Reach ("cant the threat sail as far as they like fuel permitting") and Flow are gone -
    their `Cols` widths are 0 and every cell and tooltip is guarded by `c.has`. The Threat/reason
-   column was removed for space; the reason opens the row tooltip. Clicking a row selects the
-   system (`tableRowClicked` with a String id).
+   column was removed for space. No hover tooltip on a row since 2026-10-31 evening (`addRowTooltip` and the
+   objectives block are gone - the user: "a dialog pops up with all this cheating information get rid of it");
+   the header tooltips stay. Clicking a row selects the system (`tableRowClicked` with a String id).
 4. **Selected system heading**, then that system's **Ground fronts table** (2026-09-05, shared
    with the faction view - `ThreatWarBoard.addFronts(rows, tableFaction)` - the System column went 2026-10-30 evening; the
    hive view passes `frontRowsIn(selected)` and no System column, a faction view passes
