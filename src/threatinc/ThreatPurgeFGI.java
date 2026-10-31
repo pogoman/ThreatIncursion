@@ -282,16 +282,33 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	/** Saturation days-down goal of the Bombard order's tier (IncursionManager.bombardGoalDays; 0: the commander's stop, and every save from before tiers). */
 	protected float downGoal = 0f;
 
-	/** The term the player's Attack holds each world (the ledger's Days lever, 2026-10-31 evening; IncursionManager.launchSiegeExpedition termDays); 0 - and every older save - siegeOrbitDays. */
+	/**
+	 * The term the player's Attack STAYS IN THE SYSTEM, every world together (the ledger's Days lever;
+	 * IncursionManager.launchSiegeExpedition termDays; the user, 2026-10-31 evening, on "Holds each world up
+	 * to 240 days": "so theres 6 colonies in a system it can stay in the system over 1200 days?" - it could,
+	 * for an hour); 0 - and every older save - the NPC rule, siegeOrbitDays a world.
+	 */
 	protected float orbitTermDays;
+	/** Days the daily siege has run in the system (the raid segment's elapsed, {@link #dailyDay}): what the term is spent against. */
+	protected float termElapsed;
 
 	public void setOrbitTerm(float days) {
 		orbitTermDays = Math.max(0f, days);
 	}
 
-	/** Days this expedition holds orbit over each world before it gives that world's siege up: its own term, else siegeOrbitDays. */
+	/** Days one world's siege may run: the whole term for a player's Attack (spent across its worlds, {@link #worldDaysUp}), else siegeOrbitDays a world. */
 	public float orbitDays() {
 		return orbitTermDays > 0f ? orbitTermDays : ThreatIncConfig.siegeOrbitDays();
+	}
+
+	/** Whether the days are up on the world under siege: the term spent in the system (an Attack), else siegeOrbitDays over this world. */
+	protected boolean worldDaysUp() {
+		return orbitTermDays > 0f ? termElapsed >= orbitTermDays - 0.5f : abstractWorldDays >= ThreatIncConfig.siegeOrbitDays();
+	}
+
+	/** Days left on the world under siege when live fleets take it up ({@link #spawnBuiltAndStaged}'s re-timing): the term less the days spent, else siegeOrbitDays less this world's. */
+	protected float worldDaysLeft() {
+		return Math.max(1f, orbitTermDays > 0f ? orbitTermDays - termElapsed : ThreatIncConfig.siegeOrbitDays() - abstractWorldDays);
 	}
 
 	public void setDownGoal(float days) {
@@ -2059,7 +2076,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			if (at != null) {
 				stages.remove(at);
 				stages.add(0, at);
-				at.maxDuration = Math.max(1f, purge.orbitDays() - purge.abstractWorldDays);
+				at.maxDuration = purge.worldDaysLeft();
 			}
 			ThreatIncConfig.log("Daily siege taken up by live fleets: " + stages.size() + " stage(s) left"
 					+ (at != null ? ", " + purge.abstractWorld + " first for " + (int) at.maxDuration + " d" : ""));
@@ -2889,8 +2906,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void takeDaily(SiegeRaidAction action, RouteSegment seg) {
 		dailySiege = true;
 		abstractDays = (int) Math.floor(seg.elapsed);
+		termElapsed = seg.elapsed;
 		int worlds = dailyWorlds(action).size();
-		float window = abstractDays + Math.max(1, worlds) * (orbitDays() + 10f);
+		// an Attack's term is the whole stay; an NPC siege's is a stay a world
+		float window = orbitTermDays > 0f ? Math.max(abstractDays, orbitTermDays) + 10f
+				: abstractDays + Math.max(1, worlds) * (orbitDays() + 10f);
 		if (seg.daysMax < window) seg.daysMax = window;
 		// seen before it came down - the picket, a scout, a swarm on its road: the system's
 		// swarms meet it as one (ThreatPosture.defenders); without the swarm's fog, always
@@ -2969,6 +2989,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 */
 	protected boolean dailyDay(SiegeRaidAction action, RouteSegment seg) {
 		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		if (seg != null) termElapsed = Math.max(termElapsed, seg.elapsed);
 		float frac = groupAbortsMissionFPFraction;
 		// past vanilla's abort line some other way: its abort follows this frame
 		if (faction == null || 1f - routeDamage() < frac) return false;
@@ -3046,7 +3067,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			float left = livePoints(hostile);
 			float now = abstractAllotment() + livePoints(friends);
 			if (threatinc.rules.BattleRules.orbitContested(left, now, ThreatIncConfig.orbitContestFraction())) {
-				if (abstractWorldDays >= orbitDays()) {
+				if (worldDaysUp()) {
 					endWorld(action, w, "held", false);
 					return true;
 				}
@@ -3072,7 +3093,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			return true;
 		}
 		String why;
-		if (!stays && abstractWorldDays >= orbitDays()) {
+		if (!stays && worldDaysUp()) {
 			why = "days";
 		} else if (ThreatGroundFronts.gunsWouldBreak(w, fp, abstractFull(), frac)) {
 			why = "guns";
@@ -3132,7 +3153,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// an Attack with no marines and no fuel past the passage is a blockade (phase D): it holds the
 		// orbit its stay rather than landing nothing and sailing home
 		if ("dry".equals(why) && abstractTroops(w) <= 0f && ThreatGroundFronts.strataTarget(w)
-				&& abstractWorldDays < orbitDays()) {
+				&& !worldDaysUp()) {
 			abstractWorldDays++;
 			ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + abstractWorldDays
 					+ ": blockading - nothing to bomb with, no marines to land");

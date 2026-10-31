@@ -250,17 +250,18 @@ colony spares, `ThreatConvoys.handSpare`), the fuel and the supplies drawing on 
 the hulls' deposit plus the hold for the trip at the DAYS LEVER'S TERM (`expeditionWants(..., stayDays)` ->
 `expeditionHold(..., stayDays)`: the term in place of `siegeStayDays` and the `siegeHoldDays` months floor - priced as a
 Defend's hold is on its Days). The button is off, with the stock figures ("Haven has 12,400 supplies above its floor /
-The attack takes 23,589 for 60 days a world"), when the colony cannot field the smallest fleet, the passage's fuel or
+The attack takes 23,589 for 60 days"), when the colony cannot field the smallest fleet, the passage's fuel or
 the expedition's supplies (`attackBlockFacts`); until this fix the tooltip showed the Supplies lever's share of the
 spare - "Haven has 0 supplies for it" (the user, 2026-10-31 evening). `launchAttack` builds it (`ThreatDeploy.build`), stages it over the colony for the moment
 (`guardOrder`, arrived), loads it (`ThreatDeploy.load`, the fuel topped up to the passage), then sails
 `launchSiegeExpedition(..., deployed=true, termDays)` with it and everything aboard; a launch refused after the
-build folds the fleet back (`ThreatFleetOrders.fold`). Days is the term the attack holds each world before giving its
-siege up - `threatinc_attackDaysMin` (60) / `siegeOrbitDays` (120) / `threatinc_attackDaysMax` (240),
+build folds the fleet back (`ThreatFleetOrders.fold`). Days is the term the attack STAYS IN THE SYSTEM IN ALL, every world together (the user, 2026-10-31 evening, on
+"Holds each world up to 240 days": "so theres 6 colonies in a system it can stay in the system over 1200 days?" - for an
+hour it could; `ThreatPurgeFGI.worldDaysUp` spends the term across the worlds, `termElapsed` from the raid segment, a
+live stage gets an equal share) - `threatinc_attackDaysMin` (60) / `siegeOrbitDays` (120) / `threatinc_attackDaysMax` (240),
 `ThreatIncConfig.attackTermDays` - carried as `launchSiegeExpedition`'s `termDays` into the payload window and
-`ThreatPurgeFGI.orbitTermDays`, which `orbitDays()` reads wherever the daily siege read `siegeOrbitDays` (0 on an
-NPC's or an older save's expedition: siegeOrbitDays as before). The Attack button's tooltip, the prompt ("Fleet: 1,200
-of the 3,400 fleet points free at Haven", the swarm it is sized against, "Holds each world up to N days") and the
+`ThreatPurgeFGI.orbitTermDays` (0 on an NPC's or an older save's expedition: siegeOrbitDays a world as before). The Attack button's tooltip, the prompt ("Fleet: 1,200
+of the 3,400 fleet points free at Haven", the fleets it sails as, "Stays up to N days"; the "can bud N fleet points against it" line went the same evening - the user: "no free intel for the player") and the
 Attack Sails notice carry the colony, the size and the term. The deployed fleets over a colony are left alone: an
 Attack never takes them (they were the attack from 2026-10-29 to the 31st; `ThreatFleetOrders.detachStaged`, which
 carved a share off them for an hour that evening, is gone).

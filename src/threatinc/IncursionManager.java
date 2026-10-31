@@ -3336,8 +3336,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * As above holding each world {@code termDays} (the ledger's Days lever, 2026-10-31 evening; the payload's
-	 * window and ThreatPurgeFGI.orbitDays); 0: siegeOrbitDays.
+	 * As above staying {@code termDays} in the system in all, every world together (the ledger's Days lever,
+	 * 2026-10-31 evening; the payload's window, ThreatPurgeFGI.orbitTermDays and worldDaysUp - a live stage gets an
+	 * equal share); 0: siegeOrbitDays a world, the NPC rule.
 	 */
 	public static ThreatPurgeFGI launchSiegeExpedition(MarketAPI base, FactionAPI faction,
 			StarSystemAPI system, java.util.List<MarketAPI> targets,
@@ -3358,7 +3359,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float orbitDays = termDays > 0f ? termDays : ThreatIncConfig.siegeOrbitDays();
 		params.payloadDays = orbitDays * (0.9f + 0.2f * random.nextFloat());
 		params.raidParams.maxDurationIfSpawnedFleetsConcurrent = orbitDays;
-		params.raidParams.maxDurationIfSpawnedFleetsPerSequentialStage = orbitDays;
+		// an Attack's term is the WHOLE stay (the user, 2026-10-31 evening: six worlds at 240 days a world is not
+		// 1,440 days): the daily siege spends it across the worlds (ThreatPurgeFGI.worldDaysUp), a live stage gets
+		// an equal share of it; an NPC siege holds siegeOrbitDays a world
+		params.raidParams.maxDurationIfSpawnedFleetsPerSequentialStage = termDays > 0f
+				? Math.max(1f, termDays / Math.max(1, targets.size())) : orbitDays;
 		params.raidParams.where = system;
 		params.raidParams.type = FGRaidType.SEQUENTIAL;
 		params.raidParams.tryToCaptureObjectives = false;
@@ -4761,11 +4766,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		public float marines, marinesHave, lift;
 		/** Heavy armaments and supplies loaded, and the supplies the expedition's deposit and hold take (expeditionWants) - the least the Supplies lever loads. */
 		public float arms, supplies, suppliesWant;
-		/** What the system could bud against it and the days that takes, from the player's reports. */
-		public float budFP, budDays;
 		/** Days of passage at the board's estimated speed. */
 		public float passageDays;
-		/** Days the attack holds each world (the ledger's Days lever, ThreatIncConfig.attackTermDays). */
+		/** Days the attack stays in the system in all (the ledger's Days lever, ThreatIncConfig.attackTermDays). */
 		public float term;
 		/** The colonies table's levers the load is sized at (ThreatIncursionIntel.colonyLevers). */
 		public int[] levers;
@@ -4800,7 +4803,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (a.supplies < a.suppliesWant - 0.5f) {
 			return ThreatNotice.Reason.of("%s has %s supplies above its floor", ThreatNotice.market(base),
 					Misc.getWithDGS((int) a.suppliesHave))
-					.line("The attack takes %s for %s days a world", Misc.getWithDGS((int) Math.ceil(a.suppliesWant)),
+					.line("The attack takes %s for %s days", Misc.getWithDGS((int) Math.ceil(a.suppliesWant)),
 							"" + (int) a.term);
 		}
 		return null;
@@ -4823,7 +4826,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * They are loaded at the colonies table's levers exactly as a Deploy is (ThreatDeploy.plan:
 	 * each good the lever's share of what the colony spares), the fuel never under the passage and the
 	 * supplies never under what the expedition takes while the colony holds them above its floor. The
-	 * {@code daysTier} is the term it holds each world (ThreatIncConfig.attackTermDays).
+	 * {@code daysTier} is the term it stays in the system in all (ThreatIncConfig.attackTermDays).
 	 */
 	public static Attack attackPlan(MarketAPI base, FactionAPI faction, StarSystemAPI system, int fleetTier, int daysTier,
 			int[] levers) {
@@ -4853,7 +4856,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the supplies the expedition takes: its hulls' deposit and the hold for the passage and
 		// the siege's months (expeditionWants; every world lands, nothing razed by plan)
 		// priced on the Days lever's term, as a Defend's hold is on its (expeditionHold stayDays), not the months of
-		// siegeHoldDays: the attack gives each world up after the term
+		// siegeHoldDays: the attack sails home after the term, whatever stands
 		a.suppliesWant = a.sizes.isEmpty() ? 0f
 				: expeditionWants(base, system, a.targets, a.sizes, new java.util.HashSet<String>(), 0f, 0f, a.term)[3];
 		// the load at the colonies table's levers (the Deploy's rule); the fuel and the supplies draw on the colony's
@@ -4876,12 +4879,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		a.days = perDay > 0f ? a.strata / perDay : 0f;
 		a.marinesHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 		a.lift = siegeRaidStrEstimate(a.sizes);
-		// the system's answer, as the player's reports show it (ThreatIntel.Report.budFP)
-		ThreatIntel.Report r = ThreatIntel.report(Factions.PLAYER, system);
-		if (r != null) {
-			a.budFP = r.budFP;
-			a.budDays = r.budDays;
-		}
 		float ly = base.getStarSystem() != null
 				? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
 		a.passageDays = (float) Math.ceil(ly / ThreatWarBoard.EST_LY_PER_DAY);
@@ -4893,7 +4890,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * Attack.fleetPoints), staged over it for the moment and loaded at the levers (ThreatDeploy.load on
 	 * the first; marines and arms its berths and holds could not take go aboard the others; the fuel
 	 * topped up to the passage), then the siege expedition sails in attack mode with them and
-	 * everything aboard, holding each world the Days lever's term. The plan's figures are re-read from
+	 * everything aboard, staying the Days lever's term in all. The plan's figures are re-read from
 	 * the fleets as built. Null when refused - fleets built and then refused stand down where they are,
 	 * their goods back in the reserve.
 	 */

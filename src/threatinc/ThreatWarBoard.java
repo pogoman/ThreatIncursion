@@ -949,8 +949,8 @@ public class ThreatWarBoard {
 			ThreatFactionView.disableWith(main, attack, ok, blocked != null ? blocked
 					: why != null ? why : "Nothing there to attack yet.",
 					"A fleet built at " + (base != null ? base.getName() : "the colony chosen") + " at the Fleet lever, loaded at the"
-					+ " colony levers, holds the orbit up to " + (int) ThreatIncConfig.attackTermDays(tiers[1])
-					+ " days a world, razes the strata with the fuel aboard past the passage and lands its marines.");
+					+ " colony levers, stays up to " + (int) ThreatIncConfig.attackTermDays(tiers[1])
+					+ " days, razes the strata with the fuel aboard past the passage and lands its marines.");
 			com.fs.starfarer.api.ui.ButtonAPI map = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
 					BUTTON_MAP + e.systemId);
 			map.getPosition().belowRight(ledger.table, -up)

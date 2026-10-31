@@ -891,9 +891,8 @@ public class ThreatFactionView {
 	 * THE LEDGER'S LEVERS (the user, 2026-10-31 evening: "under threat board known infested systems we have the
 	 * attack button for each. we need fleet and days toggle like we have for the defend button"), in the row
 	 * reserved under the ledger's heading (ThreatWarBoard.addLedger): Fleet is the Attack's outcome tier - the
-	 * fleet deployed sized to match the Defense Swarms seen in the system / x orbitTierMedMargin /
-	 * x orbitTierMaxMargin, the rest staying deployed (IncursionManager.attackPlan) - and Days the term it holds
-	 * each world (ThreatIncConfig.attackTermDays).
+	 * fleet's pick of hulls built at the Colony toggle's colony (IncursionManager.attackPlan, ThreatAid.forcePoints)
+	 * - and Days the term it stays in the system in all (ThreatIncConfig.attackTermDays).
 	 */
 	protected static void addLedgerLevers(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
 		// COLONY (the user, 2026-10-31 evening: "should deploy from selected colony. add the colony toggle default
@@ -928,7 +927,7 @@ public class ThreatFactionView {
 		for (int t = 0; t < 3; t++) {
 			int d = (int) ThreatIncConfig.attackTermDays(t);
 			dayLabels[t] = d + " d";
-			dayTips[t] = "Attack: holds each world " + d + " days before giving its siege up.";
+			dayTips[t] = "Attack: stays " + d + " days in the system, then sails home.";
 		}
 		addTierSelector(intel, main, anchor, "Days", LEVER_LABEL_W,
 				BUTTON_LEVER + ThreatIncursionIntel.LEVER_LEDGER_DAYS + ":",
@@ -3013,7 +3012,7 @@ public class ThreatFactionView {
 				Misc.getWithDGS((int) a.points), Misc.getWithDGS((int) a.free));
 		String sized = attackSized(a);
 		if (sized != null) prompt.addPara(sized, 3f);
-		prompt.addPara("Holds each world up to %s days.", 3f, h, "" + (int) a.term);
+		prompt.addPara("Stays up to %s days.", 3f, h, "" + (int) a.term);
 		if (a.razeFuel >= 1f && a.target != null) {
 			float now = ThreatStrata.of(a.target);
 			float after = Math.max(0f, now - a.strata);
@@ -3037,12 +3036,6 @@ public class ThreatFactionView {
 		}
 		prompt.addPara("Supplies %s aboard, the attack takes %s.", 3f, h, Misc.getWithDGS((int) a.supplies),
 				Misc.getWithDGS((int) Math.ceil(a.suppliesWant)));
-		if (a.budFP > 0f) {
-			prompt.addPara(a.system.getBaseName() + " can bud %s fleet points against it in %s days.", 3f, h,
-					Misc.getWithDGS((int) a.budFP), "" + (int) a.budDays);
-		} else {
-			prompt.addPara("Nothing seen there to bud against it.", 3f);
-		}
 		prompt.addPara("Passage %s fuel, %s days.", 3f, h, Misc.getWithDGS(Math.round(a.passage)), "" + (int) a.passageDays);
 	}
 
@@ -3169,7 +3162,7 @@ public class ThreatFactionView {
 			ThreatNotice n = ThreatNotice.titled("Attack Sails").icon(faction)
 					.line("Built at %s: %s fleet points", ThreatNotice.market(base), Misc.getWithDGS((int) a.points))
 					.line("Bound for the %s", system.getNameWithLowercaseType())
-					.line("Holds each world %s days", "" + (int) a.term);
+					.line("Stays up to %s days", "" + (int) a.term);
 			if (a.razeFuel > 0.5f) n.line("%s fuel to raze %s strata", Misc.getWithDGS(Math.round(a.razeFuel)), ThreatStrata.fmt(a.strata));
 			if (a.marines > 0f) n.line("%s marines to land", Misc.getWithDGS((int) a.marines));
 			n.line("%s supplies aboard", Misc.getWithDGS((int) a.supplies));
