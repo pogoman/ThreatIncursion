@@ -1078,6 +1078,12 @@ public class ThreatIncConfig {
 	public static float aidRequestBesetWeight() { return f("threatinc_aidRequestBesetWeight"); }
 	/** How a faction's besetness stretches the days between its looks at a call (2026-10-31): x (1 + besetness x this). */
 	public static float aidRequestBesetDelay() { return f("threatinc_aidRequestBesetDelay"); }
+	/** THE SECTOR'S ASKS OF THE PLAYER (2026-10-31 evening): which of a need's figures an NPC world asks the player for, 0 Min / 1 Med / 2 Max, cut to what the player can field (ThreatFactionView.askFigure). */
+	public static int aidAskTier()            { return Math.max(0, Math.min(2, (int) f("threatinc_aidAskTier"))); }
+	/** Days an NPC world's ask is the player's alone before other factions may answer it (ThreatAidRequests.sectorMayAnswer). */
+	public static float aidAskGraceDays()     { return f("threatinc_aidAskGraceDays"); }
+	/** Days an answered ask stays on the faction's tab after the answer lands (ThreatAidRequests.tickAsks). */
+	public static float aidAnswerShownDays()  { return f("threatinc_aidAnswerShownDays"); }
 	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }

@@ -260,7 +260,18 @@ public class ThreatCoalition {
 				// a strike coming, or a landed Threat army whose relief the owner
 				// could not pay for in full (2026-09-27: help used to stop at the landing)
 				float owed = ThreatFleetOrders.reliefShort(market);
-				if ((ThreatAidRequests.needsDefence(market) && !guardBoundFor(market)) || owed > 0f) {
+				boolean fleetsNeeded = (ThreatAidRequests.needsDefence(market) && !guardBoundFor(market)) || owed > 0f;
+				List<ThreatNeeds.Need> needs = needy.isPlayerFaction() ? null : ThreatNeeds.of(market);
+				// THE PLAYER FIRST (the user, 2026-10-31 evening: "any standing requests by a faction have a grace period of
+				// a few days where they ask the player first"): an NPC world's ask for a fleet is raised on its tab
+				// (ThreatAidRequests.sectorMayAnswer) and is the player's alone for aidAskGraceDays; the helpers answer after,
+				// each sailing recorded as the ask's answer (ThreatAidRequests.answered). The player's own worlds are
+				// guarded as before: nobody asks the player for them.
+				if (fleetsNeeded && needs != null && !ThreatAidRequests.sectorMayAnswer(market, ThreatNeeds.FLEETS,
+						owed > 0f ? ThreatNeeds.ORBIT : ThreatNeeds.FLEET, owed > 0f ? owed : fleetsAsk(needs))) {
+					fleetsNeeded = false;
+				}
+				if (fleetsNeeded) {
 					for (String helperId : ids) {
 						if (helperId.equals(needyId)) continue;
 						FactionAPI helper = Global.getSector().getFaction(helperId);
@@ -274,7 +285,8 @@ public class ThreatCoalition {
 						// 'cannot relieve' 40-100 a game). One attempt a poll, on the first willing ally's roll; the
 						// player's worlds keep the ally's own send below - the coalition has no player in it.
 						if (owed > 0f && ThreatIncConfig.allyAidJointRelief() && !needy.isPlayerFaction()) {
-							jointRelief(needy, market, null, owed);
+							float joint = jointRelief(needy, market, null, owed);
+							if (joint > 0f) ThreatAidRequests.answered(market, ThreatNeeds.FLEETS, ThreatNeeds.ORBIT, helper, null, joint, true);
 							break;
 						}
 						// relief from the nearest base that can provision it at any distance, as the
@@ -283,9 +295,16 @@ public class ThreatCoalition {
 								: ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
 						if (base == null) continue;
 						if (owed > 0f) {
-							if (ThreatFleetOrders.sendRelief(helper, market, base, owed) <= 0f) continue;
-						} else if (ThreatFleetOrders.dispatchGuard(helper, market, base, false) == null) {
-							continue;
+							float sent = ThreatFleetOrders.sendRelief(helper, market, base, owed);
+							if (sent <= 0f) continue;
+							if (needs != null) ThreatAidRequests.answered(market, ThreatNeeds.FLEETS, ThreatNeeds.ORBIT, helper, base, sent, true);
+						} else {
+							ThreatFleetOrders.Order ord = ThreatFleetOrders.dispatchGuard(helper, market, base, false);
+							if (ord == null) continue;
+							if (needs != null) {
+								ord.requestId = ThreatAidRequests.answered(market, ThreatNeeds.FLEETS, ThreatNeeds.FLEET, helper, base,
+										ord.fleet != null ? ord.fleet.getFleetPoints() : 0f, false).id;
+							}
 						}
 						report(helper, needy, "Allied Task Force Sails", "sends a task force to guard %s",
 								ThreatNotice.market(market));
@@ -298,12 +317,14 @@ public class ThreatCoalition {
 				// and hulls are aidHulls' (the navy need at the hull port). The player's colonies ask at a
 				// standing price instead (ThreatAidRequests): no goods sail to them unasked. (2026-09-29: one
 				// convoy per helped colony, one helper per need and a hull-load clip were caps.)
-				if (needy.isPlayerFaction()) continue;
-				for (ThreatNeeds.Need n : ThreatNeeds.of(market)) {
+				if (needs == null) continue;
+				for (ThreatNeeds.Need n : needs) {
 					if (n.suspended || n.isFleets() || Commodities.SHIPS.equals(n.good)) continue;
 					String c = n.good;
 					float need = ThreatNeeds.HOLD.equals(n.purpose) || ThreatNeeds.PUSH_BACK.equals(n.purpose) ? n.med : n.min;
 					if (need < 1f) continue;
+					// the player first (ThreatAidRequests.sectorMayAnswer, 2026-10-31 evening): the ask stands on the tab through the grace
+					if (!ThreatAidRequests.sectorMayAnswer(market, c, n.purpose, need)) continue;
 					for (String helperId : ids) {
 						if (need < 1f) break;
 						if (helperId.equals(needyId)) continue;
@@ -323,6 +344,7 @@ public class ThreatCoalition {
 						ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, market, helper, load,
 								random, needyId, false);
 						if (convoy == null) continue;
+						convoy.requestId = ThreatAidRequests.answered(market, c, n.purpose, helper, donor, amount, false).id;
 						report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
 								Misc.getWithDGS((int) amount), ThreatReserves.label(c),
 								ThreatNotice.market(donor), ThreatNotice.market(market), n.purpose);
@@ -332,6 +354,16 @@ public class ThreatCoalition {
 			}
 		}
 		aidStockPlans(ids, random);
+	}
+
+	/** The fleet points a world's fleets need asks for (ThreatNeeds.FLEET / MEET), its Med figure; 0 with none on the ledger. */
+	protected static float fleetsAsk(List<ThreatNeeds.Need> needs) {
+		float out = 0f;
+		if (needs == null) return out;
+		for (ThreatNeeds.Need n : needs) {
+			if (n.isFleets()) out = Math.max(out, n.tier(1));
+		}
+		return out;
 	}
 
 	/**
@@ -360,6 +392,8 @@ public class ThreatCoalition {
 				need -= ThreatConvoys.inbound(to.getId())[ThreatAid.index(c)];
 				float unit = Global.getSettings().getCommoditySpec(c).getEconUnit();
 				if (need < unit) continue;
+				// the player first (ThreatAidRequests.sectorMayAnswer, 2026-10-31 evening)
+				if (!ThreatAidRequests.sectorMayAnswer(to, c, ThreatNeeds.DEPOT, need)) continue;
 				boolean sailed = false;
 				for (String helperId : ids) {
 					if (need < unit) break;
@@ -376,6 +410,7 @@ public class ThreatCoalition {
 					load[ThreatAid.index(c)] = amount;
 					ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, to, helper, load, random, needyId, false);
 					if (convoy == null) continue;
+					convoy.requestId = ThreatAidRequests.answered(to, c, ThreatNeeds.DEPOT, helper, donor, amount, false).id;
 					String held = ThreatFactionStock.heldIndustry(to);
 					report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
 							Misc.getWithDGS((int) amount), ThreatReserves.label(c), ThreatNotice.market(donor),
@@ -411,6 +446,8 @@ public class ThreatCoalition {
 		String reason = lend > lost ? "a siege short of hulls" : "hulls lost to rebuild";
 		float need = Math.max(lost, lend) - ThreatConvoys.inboundShips(to.getId());
 		if (need < 1f) return;
+		// the player first (ThreatAidRequests.sectorMayAnswer, 2026-10-31 evening)
+		if (!ThreatAidRequests.sectorMayAnswer(to, c, ThreatNeeds.NAVY, need)) return;
 		boolean sailed = false;
 		// why no helper sent any, for the log: the gate each stopped at (hw60-62: no hull convoy in nine games)
 		StringBuilder why = new StringBuilder();
@@ -436,6 +473,7 @@ public class ThreatCoalition {
 			load[ThreatAid.index(c)] = (float) Math.floor(amount);
 			ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, to, helper, load, random, needyId, false);
 			if (convoy == null) continue;
+			convoy.requestId = ThreatAidRequests.answered(to, c, ThreatNeeds.NAVY, helper, donor, convoy.ships, false).id;
 			report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
 					Misc.getWithDGS((int) convoy.ships), ThreatReserves.label(c), ThreatNotice.market(donor),
 					ThreatNotice.market(to), reason);

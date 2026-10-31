@@ -217,6 +217,9 @@ stand; "on the next slow tick" is now "at once".) Then, on the next slow tick:
   reading `shortageStanding` / `requestItems` and answers the ledger's needs by willingness, as
   it does today for stock plans and hulls. No standing changes between NPC factions (vanilla
   does not model it usefully).
+- 2026-10-31 evening: that path is now the SECTOR'S ASKS OF THE PLAYER - every NPC-NPC sailing first raises
+  the need as an ask of the player (`ThreatAidRequests.sectorMayAnswer`), the player's alone for
+  `threatinc_aidAskGraceDays`, then answered and logged (`answered`, shown on the tab with its ETA). facts.md.
 
 ## 4. Reputation for giving
 

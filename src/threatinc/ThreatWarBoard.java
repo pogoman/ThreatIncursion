@@ -1639,7 +1639,8 @@ public class ThreatWarBoard {
 					continue;
 				}
 				// DEFEND an ally's sieged world (2026-10-29 evening): the player's task force over it at the
-				// Fleet lever's outcome - match the swarm / x1.25 / x1.5 (ThreatAid.quoteDefend)
+				// Fleet lever - one fleet / half / all of the hulls free at staging (ThreatAid.quoteDefend ->
+				// forcePoints), as a Transfer to an own world
 				int orbitTier = fl.length > 2 ? fl[2] : 0;
 				com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
 						FRONT_DEFEND_W, "Defend",
