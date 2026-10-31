@@ -2150,3 +2150,13 @@ inside its band.
 | hw336c | 3,809 | 344 (275) | 105 | 236 (218) | 105 (72) | 48 (71) | 57 (66) | 27 (53) | 155 / 0 | 0 |
 
 - 0 exceptions, 0 failed saves (c saved 29 MB at w3,809 where hw334c died at w3,175 - the heap the leak took back), 0 stuck shifts; the cycle (claims, consumption, lift-off, restores, retakes) on every seed; hives 242-344 inside s92's band (hw330 291 / 344 / 360, hw331 265 / 211 / 314). a slower (39 d/min, 56 on hw334; a hit the cap at w3,660) - three games plus the 19:23 histogram's full GC, read on.
+
+**hw337 END (21:22, set A on the release jar; hw331 in brackets, hw335 at its 18:40 stop in braces):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift drops / stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw337a | 3,824 | 259 (265) {245 @3,384} | 166 | 176 | 116 | 18 | 83 | 76 | 0 / 0 | 0 |
+| hw337b | 3,826 | 295 (211) {196 @2,810} | 164 | 238 | 102 | 96 | 88 | 65 | 5 / 0 | 0 |
+| hw337c | 3,812 | 271 (314) {291 @3,734} | 113 | 216 | 64 | 123 | 93 | 86 | 452 / 0 | 0 |
+
+**ROUNDS 98-99 VERDICT (the release test, jar 18:41:38 = the leak fix + the other machine's commits to 2d5a3821): PASS.** Six games to 3,660-3,826 war days, 0 exceptions, 0 failed saves, 0 stuck shifts, 47 d/min on set A (hw336a's 39 was the histogram's GC and three games); hives 242-344, inside the hw330 / hw331 band on every seed; the occupation cycle on all six. Residual, not a regression: hw337c 452 shift drops in the launch windows (hw331c 338, hw334c 232 - s92's open item, the offensive paying its prongs from the raw stock); the watcher flagged it at w2,400, read on. Not in this jar: the 20:03 hull-transfer quote / Stage-refusal wording (af9f444e, a player-mechanics change, the user: "it will go in the release"); the next round pulls and builds first (the user).
