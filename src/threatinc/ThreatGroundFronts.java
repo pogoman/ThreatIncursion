@@ -2494,10 +2494,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	front.pushProgress = 0f;
 	front.strataHeld++;
 	ThreatOccupation.onDistrictTaken(front, market); // and an industry claimed with it (the occupation, 2026-10-27)
-	// a district changing hands resets both sides to 0, dug in or over-extended (the
-	// user, 2026-10-24: "full wiped if the side loses a strata/district", then "same
-	// thing if a district is taken - dug in or overextension all reset to 0")
-	front.entrenchDays = 0f;
+	// a district changing hands: the side that took it stands at full cover, the side that lost it
+	// at none (the user, 2026-10-31: "when any faction takes a district or strata they should reset
+	// to cover 1.00, and the faction that was holding/defending loses all their cover"; 2026-10-24
+	// both went to 0)
+	front.entrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
 	front.defenderEntrenchDays = 0f;
 	int total = market.getSize();
 		ThreatAlarm.add(ownerOf(front), ThreatIncConfig.alarmPerStratum(),
@@ -2574,8 +2575,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatMarineXP.frontEarn(front, defense, pressure);
 		if (theatre == COLONY) ThreatMarineXP.colonyEarn(market, pressure, defense);
 		front.pushProgress = 0f;
-		front.entrenchDays = 0f; // a district changing hands resets both sides (2026-10-24)
-		front.defenderEntrenchDays = 0f;
+		front.entrenchDays = 0f; // the side that lost the district stands at no cover, the side that retook it at full (the user, 2026-10-31)
+		front.defenderEntrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
 		if (front.strataHeld > 0) {
 			// the claim goes first, while the slot it is consumed in still counts (Arkoman, 2026-10-28
 			// evening: decremented first, the release saw no active claim and freed the newest, Orbital

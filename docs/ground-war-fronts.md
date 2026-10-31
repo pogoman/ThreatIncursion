@@ -130,8 +130,9 @@ need"). Ticks on the colony poll at flat rates:
   in to `frontEntrenchMaxMult` (1.0) over `frontEntrenchDays` (30) of holding - the ramp is
   spent while pushing, and past zero the push is over-extended to the same degree (strength
   / (1 + 0.5 x over-extension), full after 30 days of pushing past zero; `overExtension`) -
-  and a layer changing hands resets both sides to 0 (the user's rules 2026-10-24: never
-  worn, diluted or cut otherwise). The defenders' own cover is `defenderEntrenchDays`
+  and a layer changing hands puts the side that took it at FULL cover and the side that lost it
+  at none (the user, 2026-10-31; 2026-10-24 to 2026-10-31 both went to 0; never worn, diluted
+  or cut otherwise). The defenders' own cover is `defenderEntrenchDays`
   (ground-war-defenders.md), the same rules.
 - **Suppression states**: HOLDING (>= `frontHoldFraction`, 0.17, of the defense figure -
   lowered from 0.25 when the 1.5x entrenchment bonus went, so the old landing sizes still
