@@ -264,7 +264,7 @@ a supply run to a front (`ThreatConvoys.aidFrontRun`, the player's own cover ope
 carrying the offer's id; Dismiss (`BUTTON_REQ_REJECT`, no Confirm) clears it and the faction offers
 nothing more on that call until it is toggled again (`Call.declined`); Cancel (`BUTTON_REQ_CANCEL`)
 turns the convoy home, nothing charged. A landed offer leaves the table ("Aid Landed", the standing
-charged); with the call still on the faction may offer again - several offers of one good stand
+charged; the player's own transfer between their worlds lands as "Transfer Landed", no standing); with the call still on the faction may offer again - several offers of one good stand
 together, from different factions or in turn. An offer whose call was toggled off still sails and
 keeps its Cancel (`strays`). Since 2026-10-30 (the user: "each factions requests table should only
 show their requests"; the same table as the player's since 2026-10-31, "other human faction request

@@ -3685,6 +3685,14 @@ public class ThreatConvoys {
 				if (!ThreatAidRequests.onConvoyLanded(c, base) && base.market != null) ThreatCoalition.onAllyDelivered(c, base.market);
 			}
 		}
+		// the player's own transfer between their worlds and outposts lands: the same notice as aid landing
+		// (the user, 2026-10-31: "can we also get this notification when player's own aid arrives")
+		if (c.recipientFactionId == null && sender != null && sender.isPlayerFaction() && !c.feeding) {
+			ThreatNotice.titled("Transfer Landed").icon(sender)
+					.line("%s from %s at %s", ThreatNotice.hl(ThreatFactionView.cargoText(marines, armaments, fuel, supplies, ships)),
+							ThreatNotice.hl(c.fromName()), ThreatAidRequests.targetNotice(base))
+					.send();
+		}
 
 		if (c.feeding) {
 			// absorbed where it lands (the user, 2026-10-18): no leg home
