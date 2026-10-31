@@ -1627,18 +1627,18 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatDecivIntel.getSortString()` :78
 - `ThreatDecivIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :83
 
-## ThreatDeploy (362 lines)
+## ThreatDeploy (372 lines)
 - `ThreatDeploy.ok()` :63 - The colonies table's levers the plan was made at (ThreatIncursionIntel.colonyLevers).
 - `ThreatDeploy.minPoints()` :69 - Smallest fleet a Deploy makes, whole-fleet points (aidGuardMinFP in the ledger's unit).
 - `ThreatDeploy.hullsTier(int[] levers)` :74 - The Fleet lever's tier of a colonies-table lever set (ThreatIncursionIntel.colonyLevers, the sixth entry), 0 when it has none.
 - `ThreatDeploy.plan(ThreatBases.Base target, int[] levers)` :91 - The plan for a Deploy at the target at the levers:
-- `ThreatDeploy.nearestSource(ThreatBases.Base target, int[] levers, MarketAPI not)` :176 - The colony of the player's a Deploy builds at when the target has no hulls of its own (an outpost, a hive, a colony short of them):
-- `ThreatDeploy.offReason(Plan p)` :195 - The button's one-line tooltip while it is off:
-- `ThreatDeploy.loadText(float[] load)` :200 - "320 marines, 400 arms, 1,200 fuel and 3,000 supplies" - a load's non-zero parts, or "nothing".
-- `ThreatDeploy.execute(Plan p, FactionAPI faction)` :215 - Carries the plan out for the player:
-- `ThreatDeploy.build(MarketAPI source, FactionAPI faction, float combat, CampaignFleetAPI lead, ThreatBases.Base target, String label, float[] builtOut)` :263 - Builds combat combat points at the source as fleets of one fleet's size (ThreatSoftening.fleetCapFor;
-- `ThreatDeploy.load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float holdNeed, float[] backOut)` :304 - Loads the fleet to the plan's levers from the source's reserve:
-- `ThreatDeploy.isDeployed(ThreatFleetOrders.Order o)` :356 - Whether the guard order is a fleet deployed over the player's own colony (the fleets table's "Deployed").
+- `ThreatDeploy.nearestSource(ThreatBases.Base target, int[] levers, MarketAPI not)` :186 - The colony of the player's a Deploy builds at when the target has no hulls of its own (an outpost, a hive, a colony short of them):
+- `ThreatDeploy.offReason(Plan p)` :205 - The button's one-line tooltip while it is off:
+- `ThreatDeploy.loadText(float[] load)` :210 - "320 marines, 400 arms, 1,200 fuel and 3,000 supplies" - a load's non-zero parts, or "nothing".
+- `ThreatDeploy.execute(Plan p, FactionAPI faction)` :225 - Carries the plan out for the player:
+- `ThreatDeploy.build(MarketAPI source, FactionAPI faction, float combat, CampaignFleetAPI lead, ThreatBases.Base target, String label, float[] builtOut)` :273 - Builds combat combat points at the source as fleets of one fleet's size (ThreatSoftening.fleetCapFor;
+- `ThreatDeploy.load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float holdNeed, float[] backOut)` :314 - Loads the fleet to the plan's levers from the source's reserve:
+- `ThreatDeploy.isDeployed(ThreatFleetOrders.Order o)` :366 - Whether the guard order is a fleet deployed over the player's own colony (the fleets table's "Deployed").
 
 ## ThreatFabricationVisual (127 lines)
 - `ThreatFabricationVisual.ThreatFabricationVisual(SectorEntityToken target, Color colour, int count)` :52 - Rising (phase C, 2026-10-25):
@@ -2710,14 +2710,11 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundFronts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :5732 - SAVE COMPATIBILITY ONLY (2026-10-27):
 - `ThreatGroundFronts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :5736
 
-## ThreatGroundWarCondition (269 lines)
-- `ThreatGroundWarCondition.apply(String id)` :36 - THE INFESTATION.
-- `ThreatGroundWarCondition.unapply(String id)` :76
-- `ThreatGroundWarCondition.unmark(Industry ind, String id)` :84 - Takes the marker's production off an industry without creating the entry (clearUnmodified drops it).
-- `ThreatGroundWarCondition.hasCustomTooltip()` :91
-- `ThreatGroundWarCondition.createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded)` :96
-- `ThreatGroundWarCondition.days(float d)` :260
-- `ThreatGroundWarCondition.fmt(float f)` :265
+## ThreatGroundWarCondition (86 lines)
+- `ThreatGroundWarCondition.apply(String id)` :27 - THE INFESTATION.
+- `ThreatGroundWarCondition.unapply(String id)` :67
+- `ThreatGroundWarCondition.unmark(Industry ind, String id)` :75 - Takes the marker's production off an industry without creating the entry (clearUnmodified drops it).
+- `ThreatGroundWarCondition.showIcon()` :83 - No icon on the colony screen (the user, 2026-10-31):
 
 ## ThreatHiveCover (108 lines)
 - `ThreatHiveCover.covered(String commodityId)` :39

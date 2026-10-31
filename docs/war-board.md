@@ -201,7 +201,10 @@ The hold is never under what the ships eat for the voyage and the stay (`Plan.ho
 spares, and the plan is refused with the figures when the colony cannot pay it (2026-10-31: a
 Deploy from Arkoman, whose front spared no supplies, sailed for Ogre "Aboard: nothing" and the
 upkeep pass stood it down in hyperspace "supplies low, 0 aboard" - the user: "it just gave up and
-went back for no reason"). A Returning row's Status says why it turned home (`ThreatReturns.Return.why`,
+went back for no reason"). In the colony's own system the hold need is the hop alone, a day's burn: the fleet
+restocks from the system's depots as it eats (`ThreatUpkeep.restockFleet`), so a Deploy over Haven from
+Arkoman's hulls is never refused on the stay's supplies (2026-10-31, 993 against 2,688; the user: "it
+would take the fleets 5 seconds to move to the other planet"). A Returning row's Status says why it turned home (`ThreatReturns.Return.why`,
 set by `sendHome`'s four-argument form: a stand-down's reason before its figures - "supplies low",
 "out of supplies", "badly hurt", "outmatched by X" - "time served", "station gone", "front gone",
 "support lost", "relief done", "system quiet", "raid over", "recalled"; "en route" where nothing
