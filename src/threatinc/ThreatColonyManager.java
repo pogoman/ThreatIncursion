@@ -5524,9 +5524,19 @@ public class ThreatColonyManager {
 				? String.format("%.4f", mem.getExpire("$ai_moveDest")) : "none");
 	}
 
-	/** Attaches the frame pulse to a reinforcement swarm once. */
+	/**
+	 * Attaches the frame pulse to a reinforcement swarm once. Pulses of dead fleets are dropped
+	 * first: the map is static and a pulse holds its fleet, so without this every reinforcement
+	 * swarm ever sent stayed in the heap with all its members (hw335a at w2,119: 2,198 fleets and
+	 * 21,056 members live in the heap against ~650 fleets in the save; 1,629 pulses).
+	 */
 	protected static void pulse(CampaignFleetAPI fleet) {
-		if (fleet == null || PULSES.containsKey(fleet.getId())) return;
+		if (fleet == null) return;
+		for (java.util.Iterator<FramePulse> it = PULSES.values().iterator(); it.hasNext();) {
+			FramePulse old = it.next();
+			if (old.fleet == null || !old.fleet.isAlive()) { old.fleet = null; it.remove(); }
+		}
+		if (PULSES.containsKey(fleet.getId())) return;
 		FramePulse p = new FramePulse(fleet);
 		PULSES.put(fleet.getId(), p);
 		fleet.addScript(p);
