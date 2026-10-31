@@ -178,33 +178,63 @@ public class ThreatAid {
 	}
 
 	/**
-	 * Combat points the player's force at the board's tier asks for in all (the colony table's
-	 * Amount for Fleet and Defend, the hives table's Force for Hunt and Support; the user,
-	 * 2026-10-11: "min med max should apply to all"): one fleet (0, {@link #taskForceFP}), half
-	 * the hulls free (1), every hull free (2). Built as several fleets of one fleet's size each
-	 * (ThreatFleetOrders.buildPlayerForce).
+	 * Combat points the player's force at the Fleet lever sails with - THE PLAYER'S PICK OF HULLS,
+	 * NOTHING SIZED (the user, 2026-10-31 evening: "we dont size we deploy what we have its up to
+	 * the player ... player owns fleet size select"; the Defend and the Attack alike): one fleet
+	 * (0: up to ThreatIncConfig.fleetMaxFP), half the hulls free (1), every hull free (2) -
+	 * {@link #forcePoints} / TASK_FORCE_HULL_MULT. Built as the fleets {@link #forceFleetSizes}
+	 * lists (ThreatFleetOrders.buildPlayerForce).
 	 */
 	public static float forceFP(MarketAPI base, boolean ownOnly, int tier) {
-		float one = taskForceFP(base, ownOnly);
-		if (tier <= 0 || base == null || !ThreatAidCapacity.enabled()) return one;
-		float all = freePoints(base, ownOnly) / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
-		return tier == 1 ? Math.max(one, all / 2f) : Math.max(one, all);
+		return forcePoints(base, ownOnly, tier) / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
 	}
 
-	/** {@link #forceFP} in whole-fleet points: the figure the board quotes for the force. */
+	/**
+	 * {@link #forceFP} in whole-fleet points, the figure the board quotes: one fleet (fleetMaxFP, or
+	 * all that is free) / half the free hulls / all of them, never under ThreatIncConfig.forceMinFP
+	 * while the colony has that much free - and 0 when it has not (the user, 2026-10-31 evening:
+	 * "min should be 300fp if that doesnt exist then attack not available").
+	 */
 	public static float forcePoints(MarketAPI base, boolean ownOnly, int tier) {
-		float one = taskForcePoints(base, ownOnly);
-		if (tier <= 0 || base == null || !ThreatAidCapacity.enabled()) return one;
-		float all = freePoints(base, ownOnly);
-		return tier == 1 ? Math.max(one, all / 2f) : Math.max(one, all);
+		if (base == null) return 0f;
+		if (!ThreatAidCapacity.enabled()) return ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
+		float free = (float) Math.floor(Math.max(0f, freePoints(base, ownOnly)));
+		float least = ThreatIncConfig.forceMinFP();
+		float pick = tier >= 2 ? free : tier == 1 ? (float) Math.floor(free / 2f) : Math.min(free, ThreatIncConfig.fleetMaxFP());
+		pick = Math.max(pick, Math.min(free, least));
+		return pick < least - 0.5f ? 0f : pick;
 	}
 
-	/** Fleets a force of {@code points} sails as: one of a fleet's size each (ThreatSoftening.builtCapPoints), at least one. */
+	/**
+	 * The fleets a force of {@code points} whole-fleet points sails as (the user, 2026-10-31 evening:
+	 * 7,000 hulls at Max is "2 2.4k FP fleets, one 1.2k FP fleet, one 1k FP fleet"): fleets of
+	 * ThreatIncConfig.fleetMaxFP while the points fill them, a half-fleet while they fill one, then
+	 * the rest as a fleet of its own (never under the smallest task force, aidGuardMinFP, unless it
+	 * is the only one).
+	 */
+	public static java.util.List<Float> forceFleetSizes(float points) {
+		java.util.List<Float> out = new java.util.ArrayList<Float>();
+		float full = ThreatIncConfig.fleetMaxFP();
+		if (full >= Float.MAX_VALUE || full <= 0f) full = Math.max(1f, points);
+		float half = (float) Math.floor(full / 2f);
+		float least = ThreatAidCapacity.taskForcePoints(ThreatIncConfig.aidGuardMinFP());
+		float left = (float) Math.floor(points);
+		while (left >= full - 0.5f && out.size() < 40) {
+			out.add(full);
+			left -= full;
+		}
+		if (left >= half - 0.5f) {
+			out.add(half);
+			left -= half;
+		}
+		if (left >= least - 0.5f || (out.isEmpty() && left >= 1f)) out.add(left);
+		return out;
+	}
+
+	/** Fleets a force of {@code points} sails as ({@link #forceFleetSizes}), at least one. */
 	public static int forceFleets(MarketAPI base, float points) {
-		if (base == null || points <= 0f) return 1;
-		float cap = ThreatSoftening.builtCapPoints(base.getFactionId());
-		if (cap >= Float.MAX_VALUE || cap <= 0f) return 1;
-		return Math.max(1, (int) Math.ceil(points / cap - 0.05f));
+		if (points <= 0f) return 1;
+		return Math.max(1, forceFleetSizes(points).size());
 	}
 
 	/**
@@ -244,22 +274,6 @@ public class ThreatAid {
 				+ ThreatFactionView.trimZero(ThreatSoftening.margin()) : "") + ".";
 	}
 
-	/**
-	 * Combat fleet points the board's Support or Defend over a world asks for at its Force tier
-	 * (the user, 2026-10-24: tiers sized for outcomes): the swarm over the world - a hive's as the
-	 * player's reports show it (ThreatIntel.worldFP), an own world's as it stands
-	 * (ThreatGroundFronts.pointsNear) - matched at Min, by orbitTierMedMargin at Med,
-	 * orbitTierMaxMargin at Max. One fleet ({@link #taskForceFP} from {@code source}) with no
-	 * swarm over it: there is nothing to outweigh.
-	 */
-	public static float orbitAskFP(MarketAPI world, MarketAPI source, int tier) {
-		float swarm = orbitSwarmFP(world);
-		if (swarm <= 0f) return taskForceFP(source, false);
-		float margin = tier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
-				: tier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
-		return swarm * Math.max(1f, margin);
-	}
-
 	/** The swarm over the world a Support or Defend is sized against: a hive's as the player's reports show it, an own world's live. */
 	public static float orbitSwarmFP(MarketAPI world) {
 		if (world == null) return 0f;
@@ -267,16 +281,6 @@ public class ThreatAid {
 			return ThreatIntel.worldFP(ThreatIntel.observerOf(Global.getSector().getPlayerFaction()), world);
 		}
 		return ThreatGroundFronts.pointsNear(world, Factions.THREAT, true);
-	}
-
-	/** The swarm a Support or Defend at the tier is sized against, for its prompt; null with none over the world. */
-	public static String orbitSized(MarketAPI world, int tier) {
-		float swarm = orbitSwarmFP(world);
-		if (swarm <= 0f) return null;
-		float margin = tier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
-				: tier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
-		return "Against the " + Misc.getWithDGS((int) swarm) + " fleet points of the swarm over " + world.getName()
-				+ (margin > 1f ? ", by x" + ThreatFactionView.trimZero(margin) : "") + ".";
 	}
 
 	/** Whole-fleet points the base has free to send - the pool a task force is drawn from ({@code ownOnly}: a guard over itself). */
@@ -529,24 +533,19 @@ public class ThreatAid {
 		return q;
 	}
 
-	/** The board's Support or Defend over a world at its Force tier: a task force sized to the swarm over it ({@link #orbitAskFP}) from the nearest colony that can field it. */
+	/** The board's Support or Defend over a world at its Fleet tier: the player's pick of hulls ({@link #forcePoints} - one fleet / half / all; the swarm-matching tiers of 2026-10-24 went on 2026-10-31 evening, the user: "we dont size we deploy what we have") from the nearest colony with a force to send. */
 	public static Quote quoteOrbit(MarketAPI world, String kind, int tier) {
 		Quote q = new Quote();
 		if (world == null) {
 			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
-		MarketAPI source = pickTaskForceSource(world.getLocationInHyperspace(), null);
-		q = quoteTaskForce(q, world.getLocationInHyperspace(), world.getName(), null,
-				orbitAskFP(world, source, tier), ThreatFleetOrders.orbitVerb(kind) + " " + world.getName()
-				+ " against its swarm");
-		q.sized = orbitSized(world, tier);
-		return q;
+		return quoteTaskForce(q, world.getLocationInHyperspace(), world.getName(), null, tier);
 	}
 
 	/**
 	 * As {@link #quoteTaskForce(Quote, Vector2f, String, MarketAPI, int)} for a force of {@code askFP}
-	 * combat points (an outcome's size: huntAskFP, orbitAskFP), from the nearest colony whose free
+	 * combat points (an outcome's size: huntAskFP, or an NPC's defence-fleet ask), from the nearest colony whose free
 	 * hulls field it ({@link #pickTaskForceSource(Vector2f, MarketAPI, float)}); refused with the
 	 * figures when none can - the whole job or nothing, as a bombing's fuel is (the user,
 	 * 2026-10-11). At least the smallest task force (aidGuardMinFP).
@@ -611,6 +610,13 @@ public class ThreatAid {
 		q.fp = forceFP(q.source, own, tier);
 		q.points = forcePoints(q.source, own, tier);
 		q.free = freePoints(q.source, own);
+		if (q.points <= 0f) {
+			// under the smallest force (forceMinFP): no order (the user, 2026-10-31 evening)
+			q.reason = ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(q.source),
+					Misc.getWithDGS((int) Math.max(0f, q.free)))
+					.line("A force needs at least %s", Misc.getWithDGS((int) Math.ceil(ThreatIncConfig.forceMinFP())));
+			return q;
+		}
 		q.fleets = forceFleets(q.source, q.points);
 		q.distLY = Misc.getDistanceLY(q.source.getStarSystem().getLocation(), hyperLoc);
 		// the provisions the force draws, and the gate on them: a force its source cannot fuel and

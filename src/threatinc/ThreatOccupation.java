@@ -878,7 +878,7 @@ public class ThreatOccupation {
 		int left = claimable(market).size();
 		ThreatNotice.titled("Industry Consumed").bad()
 				.line("The swarm has consumed %s on %s.", name, ThreatNotice.market(market))
-				.line("%s industries consumed, %s left to claim.", "" + gone.size(), "" + left)
+				.line("%s consumed, %s being consumed.", "" + gone.size(), "" + claims(front).size())
 				.line("%s troops to the swarm's pool.", "" + (int) added)
 				.send();
 		ThreatIncConfig.log("Occupation: the swarm has consumed " + name + " on " + market.getName()

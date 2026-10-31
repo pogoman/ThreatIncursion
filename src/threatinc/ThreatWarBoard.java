@@ -913,6 +913,8 @@ public class ThreatWarBoard {
 		com.fs.starfarer.api.ui.UIPanelAPI table;
 		Cols cols;
 		List<Entry> rows = new ArrayList<Entry>();
+		/** Whether a row was reserved above the table for the Attack's Fleet and Days levers (ThreatFactionView.addLedgerLevers). */
+		boolean levers;
 	}
 
 	/**
@@ -928,6 +930,11 @@ public class ThreatWarBoard {
 		FactionAPI player = Global.getSector().getPlayerFaction();
 		boolean mayOrder = ThreatFleetOrders.canPlayerOrder(player);
 		String blocked = ThreatFleetOrders.orderBlockReason(player);
+		// the Attack: built at the Colony toggle's colony at the ledger's Fleet and Days levers, loaded at the
+		// colony levers (ThreatFactionView.attackSource, ThreatIncursionIntel.ledgerLevers, 2026-10-31 evening)
+		int[] tiers = intel.ledgerLevers();
+		int[] levers = intel.colonyLevers();
+		MarketAPI base = ThreatFactionView.attackSource(intel);
 		int n = ledger.rows.size();
 		for (int i = 0; i < n; i++) {
 			Entry e = ledger.rows.get(i);
@@ -936,14 +943,14 @@ public class ThreatWarBoard {
 					ThreatFactionView.SMALL_BUTTON_W + 10f, "Attack",
 					ThreatFactionView.BUTTON_SIEGE + Factions.PLAYER + ":" + e.systemId);
 			attack.getPosition().belowRight(ledger.table, -up).setXAlignOffset(-6f);
-			MarketAPI base = e.system != null ? IncursionManager.attackBase(player, e.system) : null;
-			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system)
+			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system, tiers[0], tiers[1], levers)
 					: "Nothing there to attack yet.";
 			boolean ok = mayOrder && e.isColony() && why == null;
 			ThreatFactionView.disableWith(main, attack, ok, blocked != null ? blocked
 					: why != null ? why : "Nothing there to attack yet.",
-					"The fleet deployed at " + (base != null ? base.getName() : "the nearest colony")
-					+ " holds the orbit, razes the strata for the fuel aboard past the passage and lands its marines.");
+					"A fleet built at " + (base != null ? base.getName() : "the colony chosen") + " at the Fleet lever, loaded at the"
+					+ " colony levers, stays up to " + (int) ThreatIncConfig.attackTermDays(tiers[1])
+					+ " days, razes the strata with the fuel aboard past the passage and lands its marines.");
 			com.fs.starfarer.api.ui.ButtonAPI map = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
 					BUTTON_MAP + e.systemId);
 			map.getPosition().belowRight(ledger.table, -up)
@@ -959,6 +966,7 @@ public class ThreatWarBoard {
 					"Sends a scouting party of " + (int) ThreatIncConfig.scoutFleetPoints()
 					+ " fleet points from your nearest colony that can raise one. What it sees is this row's Notes once it is home.");
 		}
+		if (ledger.levers) ThreatFactionView.addLedgerLevers(intel, main, ledger.table);
 	}
 
 	// ------------------------------------------------------------------
@@ -988,16 +996,22 @@ public class ThreatWarBoard {
 	protected static final float FRONT_STANCE_W = 56f;
 	protected static final float FRONT_DEFEND_W = 58f;
 
-	/** The landing's next objective (the user, 2026-10-31): the industry its next district claims, "Extermination" once it holds every layer, else the layer itself. */
+	/** The landing's next objective (the user, 2026-10-31): the industry its next district claims, "Consume" (a human landing: "Extermination") once it holds every layer, else the layer itself. */
 	protected static String landingObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry claim) {
 		if (claim != null) return claim.getCurrentName();
-		if (f.strataHeld >= Math.max(1, m.getSize())) return "Extermination";
+		if (f.strataHeld >= Math.max(1, m.getSize())) {
+			// the swarm holding every district consumes the world, never takes it (the user, 2026-10-31:
+			// "threat final objective should just be consume not extermination")
+			return ThreatGroundFronts.isThreatOwned(f) && !ThreatGroundFronts.isHiveTarget(m) ? "Consume" : "Extermination";
+		}
 		return Misc.ucFirst(ThreatGroundFronts.layerName(m));
 	}
 
-	/** The world's next objective: the industry its next district reclaims, else the layer itself. */
-	protected static String worldObjective(MarketAPI m, Industry release) {
-		return release != null ? release.getCurrentName() : Misc.ucFirst(ThreatGroundFronts.layerName(m));
+	/** The world's next objective: the industry its next district reclaims, "Extermination" while the landing holds no layer (Arkoman 5/5, the user, 2026-10-31: "why does it still say district"), else the layer itself. */
+	protected static String worldObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry release) {
+		if (release != null) return release.getCurrentName();
+		if (f.strataHeld <= 0) return "Extermination";
+		return Misc.ucFirst(ThreatGroundFronts.layerName(m));
 	}
 
 	/** Every live front, the player's own first, then by world name. */
@@ -1190,8 +1204,8 @@ public class ThreatWarBoard {
 				+ "stances and supply.");
 		main.addTableHeaderTooltip(strengthCol + 5, "Days until " + side + " side takes the next district "
 				+ "or stratum at the line's current rate; - while the line stands or moves against it.");
-		main.addTableHeaderTooltip(strengthCol + 6, "The industry the next district decides: the swarm's next claim "
-				+ "while it gains ground, the world's next reclaim while it loses.");
+		main.addTableHeaderTooltip(strengthCol + 6, "What the next district decides for " + side + " side: the industry "
+				+ "a landing claims next, or a world takes back next.");
 		main.addTableHeaderTooltip(strengthCol + 7, "Days of heavy armaments left to " + side + " side "
 				+ "at the current burn; the swarm fights on none.");
 		main.addTableHeaderTooltip(strengthCol + 8, "Days until " + side + " side wins the world at the "
@@ -1278,14 +1292,15 @@ public class ThreatWarBoard {
 			// claim (easiest to consume, a rebuild resumed) in the Threat's colour while the line moves
 			// its way, the world's next reclaim (military first, soonest lost) in the world's while it
 			// moves the world's; standing, the swarm's if one waits; "-" off an occupation
-			// the gaining side's (the landing's while the line stands); with no structure decided the
-			// layer itself, and "Extermination" once the landing holds every layer (the user, 2026-10-31)
+			// THIS side's, like every column (the user, Epiphany on the Threat tab 2026-10-31, the swarm at
+			// 0/4 reading the world's "Extermination": "they hold 0 districts and are fighting an
+			// overwhelming force they cant exterminate shit"): our landing's next claim, or our world's
+			// next reclaim; with no structure decided the layer itself, "Extermination" for the side
+			// holding every layer
 			{
-				float lr = ThreatGroundFronts.lineRate(f, m);
-				boolean landingSide = lr >= 0f;
-				String obj = landingSide ? landingObjective(f, m, ThreatOccupation.nextClaim(m, f))
-						: worldObjective(m, ThreatOccupation.nextRelease(f, m));
-				cell(cells, Alignment.MID, landingSide ? landerColour : worldColour, main.shortenString(obj, w[i] - 10f));
+				String obj = weLanded ? landingObjective(f, m, ThreatOccupation.nextClaim(m, f))
+						: worldObjective(f, m, ThreatOccupation.nextRelease(f, m));
+				cell(cells, Alignment.MID, weLanded ? landerColour : worldColour, main.shortenString(obj, w[i] - 10f));
 				i++;
 			}
 			// armaments read as what they buy: days of fighting left. The swarm
@@ -1537,7 +1552,7 @@ public class ThreatWarBoard {
 			tooltip.addPara("Objective of " + World + ": reclaim %s, consumed in %s d.", 4f, text, h,
 					tRelease.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tRelease)));
 		} else {
-			tooltip.addPara("Objective of " + World + ": %s.", 4f, text, h, worldObjective(m, null));
+			tooltip.addPara("Objective of " + World + ": %s.", 4f, text, h, worldObjective(f, m, null));
 		}
 		float victory = ThreatGroundFronts.victoryDays(f, m, toA);
 		if (victory < 0f) {
@@ -2095,6 +2110,9 @@ public class ThreatWarBoard {
 			return null;
 		}
 
+		// the Attack's Fleet and Days levers sit in a reserved row under the heading (the user, 2026-10-31
+		// evening); their buttons float in later (addLedgerButtons -> ThreatFactionView.addLedgerLevers)
+		main.addSpacer(ThreatFactionView.SELECTOR_ROW_H);
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
@@ -2204,15 +2222,11 @@ public class ThreatWarBoard {
 			}
 			cell(cells, Alignment.MID, gray, ""); // Attack + Map float here (addLedgerButtons)
 
+			// no hover tooltip on a ledger row since 2026-10-31 evening (the user: "when i hover over the system a
+			// dialog pops up with all this cheating information get rid of it" - the map, what it makes, the
+			// expeditions out and in, its first target, its days in stage, the objectives): the row's cells are the
+			// scouts' report, and clicking it opens the drill-down
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
-			main.addTooltipToAddedRow(new TooltipCreator() {
-				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-				public float getTooltipWidth(Object tooltipParam) { return 440f; }
-				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-					addRowTooltip(tooltip, e, c.narrow);
-					ThreatObjectives.addTooltip(tooltip, e, 10f);
-				}
-			}, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(e.systemId);
 			rowObjects.add(row);
 			rowEntries.add(e);
@@ -2230,6 +2244,7 @@ public class ThreatWarBoard {
 		ledger.table = table;
 		ledger.cols = c;
 		ledger.rows = rowEntries;
+		ledger.levers = true;
 		return ledger;
 	}
 
@@ -2354,70 +2369,6 @@ public class ThreatWarBoard {
 			}
 			glEnd();
 		}
-	}
-
-	protected static void addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow) {
-		Color h = Misc.getHighlightColor();
-		Color gray = Misc.getGrayColor();
-		Color text = Misc.getTextColor();
-		float w = tooltip.getWidthSoFar();
-		tooltip.addSectorMap(w, Math.round(w / 1.8f), e.system, 0f);
-		tooltip.addSpacer(10f);
-		String title = e.system.getNameWithNoType();
-		if (e.isColony()) {
-			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds");
-		}
-		tooltip.addPara(title, Global.getSector().getFaction(Factions.THREAT).getBrightUIColor(), 6f);
-		tooltip.addPara(e.chip + " - " + e.reason, e.reasonColor, 4f);
-		// no growth states or starving lines since 2026-10-30 16:00: live figures; the Notes lines below carry the report
-		if (!e.supplies.isEmpty()) {
-			tooltip.addPara("Makes:", text, 6f);
-			List<String> ids = new ArrayList<String>(e.supplies);
-			List<Integer> nums = new ArrayList<Integer>();
-			List<IconRenderMode> modes = new ArrayList<IconRenderMode>();
-			for (int i = 0; i < ids.size(); i++) {
-				nums.add(1);
-				modes.add(IconRenderMode.NORMAL);
-			}
-			iconRow(tooltip, ids, nums, modes);
-		}
-		for (Op op : e.outbound) tooltip.addPara(op.detail, op.color, 4f);
-		for (Op op : e.inbound) tooltip.addPara(op.detail, op.color, 4f);
-		for (ThreatMissionIntel b : e.missions) {
-			MarketAPI market = ThreatIncData.resolveColonyMarket(b.getMarketId());
-			String target = ThreatMissionIntel.typeNoun(b.getType()) + " on "
-					+ (market != null ? market.getName() : "a hive world");
-			if (b.isAccepted()) {
-				tooltip.addPara("Accepted " + ThreatMissionIntel.tierName(b.getTier()).toLowerCase()
-						+ " contract - " + target + ": %s, %s days left to complete.",
-						4f, text, h, Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
-			} else {
-				tooltip.addPara(ThreatMissionIntel.tierName(b.getTier()) + " contract offered, priority "
-						+ b.currentRank() + " - " + target + ": %s, %s days left to accept.",
-						4f, text, h, Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
-			}
-		}
-		if (ThreatReach.enabled()) {
-			if (e.grounded) {
-				tooltip.addPara("%s: " + (ThreatFuel.stock() <= 0f ? "the hive has no fuel."
-						: "the hive can keep no swarm away."), 4f, text, ThreatNotice.goodColor(), "Grounded");
-			} else if (e.staging != null && e.facedFaction != null) {
-				tooltip.addPara("First target: %s, %s.", 4f,
-						new Color[] {factionColor(e.facedFaction), h},
-						ThreatWarState.displayName(e.facedFaction), (int) Math.ceil(e.facedLY) + " ly");
-			}
-		} else if (!e.inReach.isEmpty()) {
-			tooltip.addPara("Within strike reach: %s.", 4f, text, h, join(
-					e.inReach.size() > 6 ? e.inReach.subList(0, 6) : e.inReach)
-					+ (e.inReach.size() > 6 ? " and " + (e.inReach.size() - 6) + " more" : ""));
-		}
-		List<String> geo = new ArrayList<String>();
-		// distances place a system on the map as surely as its name; none for one unfound
-		if (e.coreLY >= 0f) geo.add((int) Math.ceil(e.coreLY) + " ly from the nearest major world");
-		if (e.playerLY >= 0f) geo.add((int) Math.ceil(e.playerLY) + " ly from your nearest colony");
-		geo.add((int) ThreatIncData.daysInStage(e.systemId) + " days in its current stage");
-		tooltip.addPara(join(geo) + ".", gray, 4f);
-		tooltip.addPara("Click to select", gray, 6f);
 	}
 
 	// ---- the drill-down: colony cards across the full width ----

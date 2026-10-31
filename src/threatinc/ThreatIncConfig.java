@@ -373,6 +373,15 @@ public class ThreatIncConfig {
 	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
 	/** Days a strike expedition holds orbit over a system before giving its siege up. */
 	public static float siegeOrbitDays()      { return f("threatinc_siegeOrbitDays"); }
+	/** The ledger's Days lever (2026-10-31 evening): the term the player's Attack holds each hive world at its three settings - attackDaysMin, siegeOrbitDays, attackDaysMax (ThreatPurgeFGI.orbitDays). */
+	public static float attackTermDays(int tier) {
+		return tier <= 0 ? f("threatinc_attackDaysMin") : tier == 1 ? siegeOrbitDays() : f("threatinc_attackDaysMax");
+	}
+	/** The smallest force the player's Attack, Defend or Support sails at the Fleet lever, whole-fleet points (the user, 2026-10-31 evening: "min should be 300fp if that doesnt exist then attack not available"); a colony with less free sends none (ThreatAid.forcePoints). */
+	public static float forceMinFP() {
+		float v = f("threatinc_forceMinFP");
+		return v > 0f ? v : 300f;
+	}
 	/** Days of a hive's growth a siege's landing is sized for ahead of its arrival (ThreatStrata.atArrival): its muster and passage. 0: today's figure. */
 	public static float siegeGrowthDays()     { return f("threatinc_siegeGrowthDays"); }
 	/** The council's invade pass takes the nearest hive first, an own system before any other (ThreatPlays.invade); off: the easiest first. */
@@ -735,10 +744,6 @@ public class ThreatIncConfig {
 	public static float expeditionMinMarinesFraction() { return f("threatinc_expeditionMinMarinesFraction"); }
 	/** An NPC siege waits unless its base can pay this fraction of the fuel and supplies its flotilla burns. */
 	public static float expeditionMinProvisionsFraction() { return f("threatinc_expeditionMinProvisionsFraction"); }
-	/** The board's Support or Defend at Med brings this multiple of the swarm over the world (ThreatAid.orbitAskFP); Min matches it. */
-	public static float orbitTierMedMargin() { return f("threatinc_orbitTierMedMargin"); }
-	/** The board's Support or Defend at Max brings this multiple of the swarm over the world. */
-	public static float orbitTierMaxMargin() { return f("threatinc_orbitTierMaxMargin"); }
 	/** Fuel an expedition draws per fleet point per light-year. */
 	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
 	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }

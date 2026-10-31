@@ -14,11 +14,13 @@ import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.combat.MutableStat.StatMod;
 import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
+import com.fs.starfarer.api.impl.campaign.econ.impl.Waystation;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.ids.Submarkets;
 import com.fs.starfarer.api.impl.campaign.submarkets.LocalResourcesSubmarketPlugin;
+import com.fs.starfarer.api.loading.IndustrySpecAPI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -325,8 +327,38 @@ public class ThreatReserves {
 		if (Factions.THREAT.equals(market.getFactionId())) {
 			return ThreatColonyManager.hasOperationalNexus(market);
 		}
-		Industry w = market.getIndustry(Industries.WAYSTATION);
+		Industry w = industryOrUpgrade(market, Industries.WAYSTATION);
 		return w != null && w.isFunctional() && !w.isDisrupted();
+	}
+
+	/**
+	 * The market's industry that IS the vanilla one with this id or a tier above it: a mod's
+	 * upgrade replaces the vanilla industry with its own id (Ashes of the Domain's Terminus
+	 * over the Waystation - forum report 2026-10-31, the colony stopped counting as a base),
+	 * so each industry's spec downgrade chain is walked back to the id, vanilla's own
+	 * Patrol HQ -> Military Base -> High Command chain included; a plugin extending the
+	 * vanilla Waystation class counts too. Null when the market holds none.
+	 */
+	public static Industry industryOrUpgrade(MarketAPI market, String id) {
+		if (market == null || id == null) return null;
+		Industry exact = market.getIndustry(id);
+		if (exact != null) return exact;
+		for (Industry ind : market.getIndustries()) {
+			if (Industries.WAYSTATION.equals(id) && ind instanceof Waystation) return ind;
+			String cur = ind.getId();
+			for (int i = 0; i < 8 && cur != null; i++) {
+				if (id.equals(cur)) return ind;
+				String down = null;
+				try {
+					IndustrySpecAPI spec = Global.getSettings().getIndustrySpec(cur);
+					if (spec != null) down = spec.getDowngrade();
+				} catch (RuntimeException e) {
+					// an id with no spec: end of the chain
+				}
+				cur = down;
+			}
+		}
+		return null;
 	}
 
 	/** As above for either kind of base: an outpost is its own depot - a station in orbit needs no Waystation. */
@@ -1232,7 +1264,7 @@ public class ThreatReserves {
 				// time - short of the supplies, it waits for them
 				if (ThreatIncConfig.mobilisationBuildsWaystation() && !market.isPlayerOwned()
 						&& IncursionManager.hasMilitary(market) && market.hasSpaceport()
-						&& !market.hasIndustry(Industries.WAYSTATION)) {
+						&& industryOrUpgrade(market, Industries.WAYSTATION) == null) {
 					float cost = ThreatBuildCost.supplies(Industries.WAYSTATION);
 					if (cost <= 0f || available(market, Commodities.SUPPLIES) >= cost) {
 						if (cost > 0f) drawAbove(market, Commodities.SUPPLIES, cost);

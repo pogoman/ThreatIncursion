@@ -85,12 +85,20 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		return requestTarget;
 	}
 
+	/** The colony the ledger's Attack builds at (a market id; ThreatFactionView.attackSource), set by the ledger's Colony button (2026-10-31 evening); null: the staging colony. */
+	protected String attackSource;
+
+	public String attackSource() {
+		return attackSource;
+	}
+
 	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
 			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6,
-			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8, LEVER_AID_SEND = 9, LEVER_FRONT_DAYS = 10;
-	protected static final int LEVER_COUNT = 11;
-	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max, the Domain's Fleet (2026-10-31: Transfer deploys a fleet with it set) None, the Send Med, the fronts' Days (2026-10-31) guardDays. */
-	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2, 0, 1, 1 };
+			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8, LEVER_AID_SEND = 9, LEVER_FRONT_DAYS = 10,
+			LEVER_LEDGER_FLEET = 11, LEVER_LEDGER_DAYS = 12;
+	protected static final int LEVER_COUNT = 13;
+	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max, the Domain's Fleet (2026-10-31: Transfer deploys a fleet with it set) None, the Send Med, the fronts' Days (2026-10-31) guardDays, the ledger's Fleet (2026-10-31 evening, the Attack's outcome tier) Max and its Days siegeOrbitDays. */
+	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2, 0, 1, 1, 2, 1 };
 
 	public int lever(int which) {
 		if (levers == null || levers.length < LEVER_COUNT) {
@@ -126,6 +134,16 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	public int[] colonyLevers() {
 		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_COLONY_FUEL),
 				lever(LEVER_COLONY_SUPPLIES), lever(LEVER_COLONY_HULLS), lever(LEVER_DOMAIN_FLEET) };
+	}
+
+	/**
+	 * The Threat ledger's levers as {fleet, days} (2026-10-31 evening, the user: "we need fleet and days toggle like
+	 * we have for the defend button"): the Attack's outcome tier - the fleet deployed sized to match the Defense
+	 * Swarms seen in the system / x orbitTierMedMargin / x orbitTierMaxMargin, the rest staying deployed
+	 * (IncursionManager.attackPlan) - and the term it holds each world (ThreatIncConfig.attackTermDays).
+	 */
+	public int[] ledgerLevers() {
+		return new int[] { lever(LEVER_LEDGER_FLEET), lever(LEVER_LEDGER_DAYS) };
 	}
 
 	public int getSiegeTier() {
@@ -414,6 +432,12 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		}
 		// THE REQUESTS TOGGLES (2026-10-31): the Colony button sets the entry, a good's button flips its call,
 		// Reject clears an offer - none with a Confirm, each a re-render in place
+		if (id.startsWith(ThreatFactionView.BUTTON_ATTACK_SOURCE)) {
+			// the ledger's Colony button (2026-10-31 evening): the next colony the Attack builds at, a re-render in place
+			attackSource = id.substring(ThreatFactionView.BUTTON_ATTACK_SOURCE.length());
+			rerenderInPlace(ui);
+			return;
+		}
 		if (id.startsWith(ThreatFactionView.BUTTON_REQ_TARGET)) {
 			// the calls are the one entry's: moving on withdraws them all (the user, 2026-10-31)
 			ThreatAidRequests.clearCalls();

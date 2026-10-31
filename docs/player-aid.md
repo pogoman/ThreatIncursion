@@ -350,7 +350,8 @@ Where the build departs from the text above, on purpose:
   every task force too: one fleet / half the hulls free / all, `ThreatAid.forceFP`,
   `ThreatFleetOrders.buildPlayerForce`; since 2026-10-24 each tier is an outcome - a Hunt beats
   the weakest swarm seen / matches the swarms seen / x the margin, `ThreatAid.huntAskFP`; a
-  Support or Defend matches the swarm over the world / x 1.25 / x 1.5, `orbitAskFP`; a Bombard
+  Support or Defend is the player's pick of hulls again since 2026-10-31 (one fleet / half / all, as fleets of
+  `fleetMaxFP`, `ThreatAid.forcePoints`, floor `forceMinFP` 300); a Bombard
   puts structures down 30 / 90 days / to the stop; see war-board.md ladders), **Supply run** over the
   ground-fronts table, **Amount** over the colonies table ("Convoy load" until 2026-10-11 evening;
   it now sizes the colony Fleet and Defend buttons too - one fleet / half the hulls free / all -
