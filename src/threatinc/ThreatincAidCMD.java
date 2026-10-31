@@ -328,7 +328,6 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		int supplies = Commodities.SUPPLIES.equals(commodityId) ? qty : 0;
 		text.addPara("Handed over: " + Misc.getWithDGS(qty) + " " + ThreatReserves.label(commodityId));
 		text.highlightInLastPara(ThreatNotice.goodColor(), Misc.getWithDGS(qty));
-		text.addPara(ThreatComms.dockThanks(market.getFaction(), market, qty, commodityId, overMax));
 		ThreatAid.onDelivered(market, market.getFactionId(), marines, armaments, fuel, supplies, 0,
 				false, text, weights);
 		menu(dialog, market);

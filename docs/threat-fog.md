@@ -73,7 +73,7 @@ poll; P = max(A, B) + C + D + F, held with a 30-day decay: pressure = max(raw, p
   but acts only on a fleet within 1500 su of that world.
 
 **Exempt** (not a reaction to humans): the war's trigger and the first seeds, accessibility's
-centre of mass, omens, Nexerelin's invasion guard, the player's own raid dialog.
+centre of mass, Nexerelin's invasion guard, the player's own raid dialog.
 
 ## 2. Design
 

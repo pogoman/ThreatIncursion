@@ -807,14 +807,6 @@ public class ThreatIncConfig {
 	public static float raiderMargin()        { return fd("threatinc_raiderMargin", 3f); }
 	/** Strikes hide their origin; the sector acts only on hives someone has found (ThreatScouts). Off: the old omniscient rule. */
 	public static boolean hiveFogOfWar()      { return b("threatinc_hiveFogOfWar", true); }
-	/** Foreboding messages until anyone finds a hive (ThreatOmens). */
-	public static boolean omensEnabled()      { return b("threatinc_omensEnabled", true); }
-	/** Light-years from an unfound hive colony at which the player's fleet hears it. */
-	public static float omenStaticLY()        { return f("threatinc_omenStaticLY"); }
-	/** Days between omens heard by the player's fleet. */
-	public static float omenStaticDays()      { return f("threatinc_omenStaticDays"); }
-	/** Days between sector-wide omens (spread, swarm scouts, unseen strikes). */
-	public static float omenSectorDays()      { return f("threatinc_omenSectorDays"); }
 	/** Light-years around a strike's origin a struck faction's scouts sweep. */
 	public static float scoutLeadRadiusLY()   { return f("threatinc_scoutLeadRadiusLY"); }
 	/** Light-years around a military world a mobilised faction's routine sweep covers. */
@@ -1086,10 +1078,6 @@ public class ThreatIncConfig {
 	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
 	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }
 	public static float aidAskPriceMax()      { return f("threatinc_aidAskPriceMax"); }
-	/** WAR COMMS (ThreatComms): voiced notices when a need appears, escalates or is met. */
-	public static boolean aidCommsEnabled()   { return b("threatinc_aidCommsEnabled", true); }
-	/** Days between comms notices for one world and purpose. */
-	public static float aidCommsMinDays()     { return f("threatinc_aidCommsMinDays"); }
 	/** Days a postponed siege's provisions need stands on the ledger (ThreatNeeds.notePostponed). */
 	public static float aidExpeditionNoteDays() { return f("threatinc_aidExpeditionNoteDays"); }
 	/** Standing weights for giving, by purpose (ThreatNeeds.weight): hold the line / lift the orbit; push back / arm / provision; the depot / the navy; surplus or a good nobody needs. */

@@ -1050,15 +1050,6 @@
 	# found hive system it has no report of stays on its patrols' routes.
 	# hiveFogOfWar false = the old omniscient rule.
 	"threatinc_hiveFogOfWar": true,
-	# omens (ThreatOmens, docs/omens.md): until anyone finds a hive, the
-	# sector only hears it - static when the player's fleet is within
-	# omenStaticLY of an unfound hive colony (omenStaticDays apart), and
-	# sector-wide rumours of new seeds, swarm scouts and unseen strikes
-	# (omenSectorDays apart). All stop for good once a hive is found.
-	"threatinc_omensEnabled": true,
-	"threatinc_omenStaticLY": 6,
-	"threatinc_omenStaticDays": 20,
-	"threatinc_omenSectorDays": 25,
 	"threatinc_scoutLeadRadiusLY": 6,
 	"threatinc_scoutRangeLY": 10,
 	"threatinc_scoutIntervalDays": 60,
@@ -1342,8 +1333,7 @@
 	# toggles under Requests); factions at aidMinRelation or better offer from their surplus colonies,
 	# and an offer's price is standing at the ONE rate aid earns or costs either way (2026-10-31
 	# parity): the goods' value at the receiving market / aidRepPerCredits (a defence fleet: its fleet
-	# points as ship hulls, aidRepGuardArrived at least), a whole number of points charged when it lands. aidComms: the voiced war
-	# comms when a need appears, escalates or is met, aidCommsMinDays apart for one world and purpose.
+	# points as ship hulls, aidRepGuardArrived at least), a whole number of points charged when it lands.
 	# aidExpeditionNoteDays: how long a postponed siege's provisions need stands.
 	"threatinc_aidRequestsEnabled": true,
 	# aidRequestMinSpare: the least a colony must spare of a good for its faction to answer a request with it (a unit for
@@ -1363,9 +1353,6 @@
 	"threatinc_aidAskPriceMin": 1.0,
 	"threatinc_aidAskPriceMed": 1.25,
 	"threatinc_aidAskPriceMax": 1.5,
-	# off since 2026-10-31 (the user: "get rid of all this automated shit. all that stuff managed by requests area now")
-	"threatinc_aidCommsEnabled": false,
-	"threatinc_aidCommsMinDays": 15,
 	"threatinc_aidExpeditionNoteDays": 30,
 	"threatinc_aidRepWeightCritical": 2.0,
 	"threatinc_aidRepWeightUrgent": 1.5,

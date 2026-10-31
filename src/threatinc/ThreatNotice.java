@@ -266,8 +266,8 @@ public class ThreatNotice extends BaseIntelPlugin {
 			return;
 		}
 		// clicked, it opens the board on its faction's tab (ThreatNoticeClickDialog).
-		// No click while the board is off the intel list (no hive found yet - the
-		// omens, the war's start): vanilla would open an empty Major events list
+		// No click while the board is off the intel list (no hive found yet,
+		// the war's start): vanilla would open an empty Major events list
 		ThreatIncursionIntel board = ThreatIncursionIntel.get();
 		boolean clickable = board != null && !board.isHidden();
 		String tab = crestFactionId != null ? crestFactionId

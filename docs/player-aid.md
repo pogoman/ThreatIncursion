@@ -154,8 +154,8 @@ blockade or strike (x `aidRequestBesetWeight`), and nothing while that outweighs
 standing with it, Favourable's floor 0 to Cooperative's 1 (`ThreatAidRequests.willingness`,
 `besetCount`, `standing`; the tooltip's line a faction, `standLine`). Each sender's price is
 standing at the giving rate x Med 1.25 / Max 1.5, never below Favourable; one call a world per
-30 days, lifted by Cancel; the answers are one `ThreatAidAnswersIntel`. War comms (`ThreatComms`)
-speak when a need appears, escalates or is met.
+30 days, lifted by Cancel; the answers are one `ThreatAidAnswersIntel`. The war comms (`ThreatComms`) that spoke when a need
+appeared, escalated or was met were removed on 2026-10-31 (the user: technical reports only).
 `ThreatAidMissionIntel` is kept only so older saves load; an open contract ends "withdrawn".
 
 ## 5. Allies helping each other
