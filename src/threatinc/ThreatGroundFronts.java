@@ -2596,6 +2596,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		String by = theatre == HIVE ? "The hive's troops on %s" : "The garrison of %s";
 		ThreatNotice n = ThreatNotice.titled("Beachhead Overrun").icon(attacker);
 		if (threatFront) n.good(); else n.bad();
+		// the player's world throws the swarm back: the mission-completed chime (the user, 2026-10-31)
+		if (threatFront && market.getFaction() != null && market.getFaction().isPlayerFaction()) n.completed();
 		n.line(by + " have pushed the beachhead off the world.", ThreatNotice.market(market))
 				.line("The front is destroyed.")
 				.send();

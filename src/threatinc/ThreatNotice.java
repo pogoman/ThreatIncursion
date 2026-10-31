@@ -125,6 +125,19 @@ public class ThreatNotice extends BaseIntelPlugin {
 		return this;
 	}
 
+	/** The sound played with the message; null = vanilla's minor-message static. */
+	protected String sound;
+
+	/**
+	 * Plays vanilla's mission-completed chime (the intel update sound a hub
+	 * mission ends on) instead of the minor-message static - the user,
+	 * 2026-10-31: a Threat beachhead on the player's world overrun.
+	 */
+	public ThreatNotice completed() {
+		sound = getSoundStandardUpdate();
+		return this;
+	}
+
 	/** Logged only, never shown ({@link #fleetOp}). */
 	protected boolean quiet;
 
@@ -378,7 +391,7 @@ public class ThreatNotice extends BaseIntelPlugin {
 
 	@Override
 	public String getCommMessageSound() {
-		return getSoundMinorMessage();
+		return sound != null ? sound : getSoundMinorMessage();
 	}
 
 	@Override
