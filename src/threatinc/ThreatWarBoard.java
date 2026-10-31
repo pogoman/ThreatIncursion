@@ -1144,6 +1144,7 @@ public class ThreatWarBoard {
 		names.add("Stance"); fracs.add(.085f);
 		names.add("Losses"); fracs.add(.075f);
 		names.add("Objective"); fracs.add(.065f);
+		names.add("Target"); fracs.add(.1f);
 		names.add("Arms"); fracs.add(.055f);
 		names.add("Victory"); fracs.add(.07f);
 		names.add("Space"); fracs.add(.09f);
@@ -1177,11 +1178,13 @@ public class ThreatWarBoard {
 				+ "stances and supply.");
 		main.addTableHeaderTooltip(strengthCol + 5, "Days until " + side + " side takes the next district "
 				+ "or stratum at the line's current rate; - while the line stands or moves against it.");
-		main.addTableHeaderTooltip(strengthCol + 6, "Days of heavy armaments left to " + side + " side "
+		main.addTableHeaderTooltip(strengthCol + 6, "The industry the next district decides: the swarm's next claim "
+				+ "while it gains ground, the world's next reclaim while it loses.");
+		main.addTableHeaderTooltip(strengthCol + 7, "Days of heavy armaments left to " + side + " side "
 				+ "at the current burn; the swarm fights on none.");
-		main.addTableHeaderTooltip(strengthCol + 7, "Days until " + side + " side wins the world at the "
+		main.addTableHeaderTooltip(strengthCol + 8, "Days until " + side + " side wins the world at the "
 				+ "line's current rate: the last layer taken, or the landing pushed off.");
-		main.addTableHeaderTooltip(strengthCol + 8, "Whose warships hold the space over the world.");
+		main.addTableHeaderTooltip(strengthCol + 9, "Whose warships hold the space over the world.");
 
 		Fronts result = new Fronts();
 		result.table = table;
@@ -1259,6 +1262,20 @@ public class ThreatWarBoard {
 				cell(cells, Alignment.MID, pos, (int) Math.ceil(change) + " d");
 			}
 			i++;
+			// Target (the user, 2026-10-31): the industry the next district decides - the swarm's next
+			// claim (easiest to consume, a rebuild resumed) in the Threat's colour while the line moves
+			// its way, the world's next reclaim (military first, soonest lost) in the world's while it
+			// moves the world's; standing, the swarm's if one waits; "-" off an occupation
+			{
+				Industry tClaim = ThreatOccupation.nextClaim(m, f);
+				Industry tRelease = ThreatOccupation.nextRelease(f, m);
+				float lr = ThreatGroundFronts.lineRate(f, m);
+				Industry t = lr > 0f ? tClaim : lr < 0f ? tRelease : tClaim != null ? tClaim : tRelease;
+				boolean swarmTarget = t != null && t == tClaim && lr >= 0f;
+				cell(cells, Alignment.MID, t == null ? gray : swarmTarget ? ThreatNotice.threatColor() : worldColour,
+						t == null ? "-" : main.shortenString(t.getCurrentName(), w[i] - 10f));
+				i++;
+			}
 			// armaments read as what they buy: days of fighting left. The swarm
 			// fights on none, so the Threat tab's column is empty; a faction's is
 			// its landing's own, or its colony stockpile's against a Threat landing
@@ -1493,6 +1510,17 @@ public class ThreatWarBoard {
 			tooltip.addPara("Objective: none.", text, 4f);
 		} else {
 			tooltip.addPara("Objective: next " + layer + " to " + side + " in %s d.", 4f, text, h, "" + (int) Math.ceil(change));
+		}
+		// Target: what the next district decides, both ways (the user, 2026-10-31)
+		Industry tClaim = ThreatOccupation.nextClaim(m, f);
+		Industry tRelease = ThreatOccupation.nextRelease(f, m);
+		if (tClaim != null) {
+			tooltip.addPara("Swarm claims next: %s, %s d to consume" + (ThreatOccupation.rebuilding(tClaim) ? " (resumed from the rebuild)" : "") + ".",
+					4f, text, h, tClaim.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tClaim)));
+		}
+		if (tRelease != null) {
+			tooltip.addPara(World + " reclaims next: %s, consumed in %s d.", 4f, text, h,
+					tRelease.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tRelease)));
 		}
 		float victory = ThreatGroundFronts.victoryDays(f, m, toA);
 		if (victory < 0f) {

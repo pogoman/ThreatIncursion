@@ -2578,13 +2578,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		front.entrenchDays = 0f; // the side that lost the district stands at no cover, the side that retook it at full (the user, 2026-10-31)
 		front.defenderEntrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
 		if (front.strataHeld > 0) {
-			// never more claims than districts held, and no fewer released than that (the user, Haven
-			// 2026-10-31, the Military Base reclaimed with five of six districts still held: "why is the
-			// military base getting reclaimed when swarm still has 5/6"): a district lost releases a claim
-			// only when the claims now outnumber the districts (ThreatOccupation.trim, newest not being
-			// consumed first); before, every district lost released the newest claim (release, 2026-10-27)
+			// a district retaken releases ONE claim - the defenders' pick, military first, soonest lost
+			// (ThreatOccupation.release; the user, 2026-10-31 afternoon: "a district taken either side gives
+			// either side a claim to one industry ... humans should prioritise military buildings, whichever
+			// will be lost soonest"), read before the district count drops; then never more claims than
+			// districts held (trim, 2026-10-30)
+			ThreatOccupation.release(front, market);
 			front.strataHeld--;
 			ThreatOccupation.trim(front, market);
+
 			// a final push does not stop for a setback - it is spent either way
 			front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 			reapply(front.marketId);

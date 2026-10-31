@@ -153,8 +153,8 @@ in human space. Ownership never moves.
   districts are contested, `budPool` once every district is held), `bud` (a garrison swarm of
   the pool at `occupationBudFP`, "Infestation Swarm", on `ThreatSwarmDefend` over the world for
   as long as the front stands, home = none so it despawns into hyperspace when the front
-  goes), `occupy` (the victory: stance entrench, "World Occupied" notice once), `trim` (a
-  district retaken releases a claim only when more are claimed than districts held, "Industry Reclaimed"), `holdDeciv` (`$core_noDeciv`
+  goes), `occupy` (the victory: stance entrench, "World Occupied" notice once), `release` (a
+  district retaken releases the defenders' pick - military first, soonest lost - "Industry Reclaimed"), `holdDeciv` (`$core_noDeciv`
   + `DECIV_HELD_KEY` renewed 90 d a tick, the `raiseUnrest` guard).
 - `ThreatInfestation` (new): the visible structure card `threatinc_infestation`
   (industries.csv: structure, unraidable, no_saturation_bombardment, Swarm Nexus image, order
@@ -169,7 +169,7 @@ in human space. Ownership never moves.
   the line resets its progress instead of taking a district past the last; the seized
   industries are no longer pinned disrupted under the occupation (`districtSeizeDays` only
   with it off); `colonyGroundVictory` occupies and returns before the teardown;
-  `loseStratum` trims the claims to the districts held; `infestGrowthPerDay` reads the occupation's figure.
+  `loseStratum` releases one claim; `infestGrowthPerDay` reads the occupation's figure.
 - `ThreatWarBoard`: a front holding every district reads "occupying" in place of its stance.
 - Knobs (settings.json, LunaSettings.csv, no migration): `occupationEnabled` true,
   `occupationClaimDays` 30, `occupationStrataPerUnit` 1.0, `occupationBudFP` 60.
@@ -361,10 +361,8 @@ in the market's memory (`CONSUMED_KEY`, `$threatinc_consumed`) and sends Industr
 "industry" tag with a supply, never Population, ports, stations, ours), by id; then the key structures
 a holding front wears (`colonyKeyStructures`: Ground Defenses, Heavy Batteries, Patrol HQ, Military
 Base, High Command, the Lion's Guard) minus the orbital station, by id, under `occupationConsumeMilitary`.
-A district retaken releases a claim only when more are claimed than districts left held (`trim`, the
-newest not being consumed first; the user, Haven 2026-10-31: the Military Base, the last claim of four with
-five of six districts still held, was reclaimed - before, every district lost released the newest claim,
-`release`, now gone), and its clock with it (what the swarm had eaten of it is saved).
+A district retaken releases ONE claim - the defenders' pick, `nextRelease` - and its clock with it (what
+the swarm had eaten of it is saved); see "A claim moves with a district" below.
 
 **The bar** (the user: "show the progress like when its building"): the `Occupied*` plugins - the seven
 producers and the two new ones, `OccupiedMilitaryBase` (Patrol HQ, Military Base, High Command) and
@@ -392,6 +390,29 @@ gutted (`GUTTED_KEY`, `$threatinc_gutted`, expires after `occupationGuttedDays` 
 it meanwhile (`IncursionManager.isStrikeableWorld`) and vanilla's deciv is held off for as long - the
 Swarm Lifts Off notice goes out and the front is withdrawn (`ThreatGroundFronts.withdraw`; the fronts
 tick returns on a front gone). The strike planner picks the next target on its own.
+
+**A claim moves with a district** (the user, 2026-10-31 afternoon, Haven, after a trim-only reading of the
+same afternoon was undone: "it kind of makes sense they would try take back the military base first rather
+than 5 other random districts ... a district taken either side gives either side a claim to one industry, so
+either takes it back or starts consuming (or resuming consuming if it was rebuilding)"): a district the swarm
+takes claims one industry (`onDistrictTaken` -> `claimOne` -> `claim`), a district the defenders retake releases
+one (`release` from `loseStratum`, before the count drops), a consumed industry's slot takes the next standing
+one (`consumeIndustry` -> `claimOne`), and the tick never catches up (its catch-up had re-claimed what a retake
+had just freed); `trim` still caps claims at the districts held. THE SWARM'S PICK (`next`): the easiest to
+consume first - the fewest days left to eat (`consumeDaysLeftOf` = `consumeTime` x (1 - `eatenShare`)), the
+`claimable` order on a tie - "as this gives them more swarm faster"; an industry rebuilding from a retake is
+taken only on a district taken (`next(…, onTake)`) and RESUMES: the rebuild mark lifted, vanilla's build ended
+(`cancelUpgrade`, past the plugins' refusal since nothing holds the card at that moment), its clock set to
+the eaten share, notice "Consumption resumes at N% eaten". THE DEFENDERS' PICK (`nextRelease`): a military
+claim before a producer, within each the fewest days from being consumed, the newest on a tie - "humans should
+prioritise military buildings, whichever will be lost soonest". No progress rides on the pick: the line's push
+is the front's, and the pick is resolved the moment the district changes hands ("if building is lost while
+they are pushing then it goes to next and progress is not lost"). THE TARGET COLUMN (fronts table, after
+Objective): the industry the next district decides - the swarm's next claim in the Threat's colour while the
+line moves its way, the world's next reclaim in the world's while it moves the world's, the swarm's when it
+stands and one waits, "-" off an occupation; the row tooltip gives both ("Swarm claims next: X, N d to
+consume (resumed from the rebuild)", "W reclaims next: Y, consumed in M d"). Source typechecked 2026-10-31,
+UNTESTED.
 
 **The restore** (`ThreatCoreBuild.restoreStep`, in the pass after the yard step, before HOME FIRST):
 at a core site with consumed industries and no swarm on it, the quickest vanilla build time first (an

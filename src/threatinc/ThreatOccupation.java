@@ -305,20 +305,85 @@ public class ThreatOccupation {
 	}
 
 	/**
-	 * The next industry the clock claims; null when every one is claimed. Never one the world is still
-	 * rebuilding from the swarm's eaten share (the user, Haven 2026-10-31: the garrison retook a district,
-	 * "Industry Reclaimed ... Rebuilding: 39% eaten, 47 days" - and the same tick's catchUp, 0 claims
-	 * against 3 districts held, claimed the Military Base straight back: green, "Threat Swarm" production
-	 * and a Rebuilding bar on one card). The retake stands until the rebuild is done.
+	 * The next industry the swarm claims: the EASIEST TO CONSUME first - the fewest days left to eat
+	 * ({@link #consumeDaysLeftOf}; the user, 2026-10-31 afternoon: "they should prioritise easiest to
+	 * consume first (as this gives them more swarm faster)"; before, the producers by id, then the
+	 * military), the claim order of {@link #claimable} on a tie. One rebuilding from a retaken district
+	 * is taken only {@code onTake}: a district taken resumes it from its eaten share ({@link #claim}),
+	 * while the slot a consumed industry frees takes a standing one, so a retake stands until the swarm
+	 * takes a district back (the user, Haven 2026-10-31 morning: the same tick's catch-up had claimed
+	 * the Military Base straight back). Null with nothing to claim.
 	 */
-	public static Industry next(MarketAPI market, GroundFront front) {
+	public static Industry next(MarketAPI market, GroundFront front, boolean onTake) {
 		if (market == null || front == null) return null;
 		List<String> claims = claims(front);
+		Industry pick = null;
+		float pickLeft = 0f;
 		for (Industry ind : claimable(market)) {
-			if (claims.contains(ind.getId()) || rebuilding(ind)) continue;
-			return ind;
+			if (claims.contains(ind.getId())) continue;
+			if (!onTake && rebuilding(ind)) continue;
+			float left = consumeDaysLeftOf(ind);
+			if (pick == null || left < pickLeft - 0.01f) {
+				pick = ind;
+				pickLeft = left;
+			}
 		}
-		return null;
+		return pick;
+	}
+
+	/** {@link #next} for a freed slot: never one rebuilding. */
+	public static Industry next(MarketAPI market, GroundFront front) {
+		return next(market, front, false);
+	}
+
+	/** The swarm's next claim as a district taken would make it ({@link #next} on take) - the fronts table's Target; null off an occupation. */
+	public static Industry nextClaim(MarketAPI market, GroundFront front) {
+		if (!occupies(front, market)) return null;
+		return next(market, front, true);
+	}
+
+	/** Days the swarm would still need to eat the industry: its consume time less what it has eaten, consuming or rebuilding ({@link #eatenShare}). */
+	public static float consumeDaysLeftOf(Industry ind) {
+		return consumeTime(ind) * (1f - eatenShare(ind));
+	}
+
+	/** The share of the industry the swarm has eaten, 0-1: its clock's while consumed, what is still to rebuild while rebuilding, else 0. */
+	public static float eatenShare(Industry ind) {
+		if (ind == null || ind.getMarket() == null) return 0f;
+		GroundFront front = ThreatGroundFronts.getFront(ind.getMarket().getId());
+		Float days = front != null && front.consumeDays != null ? front.consumeDays.get(ind.getId()) : null;
+		if (days != null && days > 0f) return Math.max(0f, Math.min(1f, days / consumeTime(ind)));
+		if (rebuilding(ind) && ind instanceof BaseIndustry) {
+			float time = Math.max(1f, ind.getBuildTime());
+			return Math.max(0f, Math.min(1f, 1f - ((BaseIndustry) ind).getBuildProgress() / time));
+		}
+		return 0f;
+	}
+
+	/**
+	 * THE DEFENDERS' PICK - the claim the world takes back when its defenders retake a district (the
+	 * user, 2026-10-31 afternoon: "humans should prioritise military buildings, whichever will be lost
+	 * soonest"): a military claim before a producer, within each the fewest days from being consumed
+	 * ({@link #consumeDaysLeftOf}), the newest claim on a tie. Null with no claim standing.
+	 */
+	public static Industry nextRelease(GroundFront front, MarketAPI market) {
+		if (front == null || market == null || !occupies(front, market)) return null;
+		List<String> claims = claims(front);
+		Industry pick = null;
+		boolean pickMil = false;
+		float pickLeft = 0f;
+		for (int i = claims.size() - 1; i >= 0; i--) {
+			Industry ind = market.getIndustry(claims.get(i));
+			if (ind == null) continue;
+			boolean mil = isMilitary(ind.getId());
+			float left = consumeDaysLeftOf(ind);
+			if (pick == null || (mil && !pickMil) || (mil == pickMil && left < pickLeft - 0.01f)) {
+				pick = ind;
+				pickMil = mil;
+				pickLeft = left;
+			}
+		}
+		return pick;
 	}
 
 	/**
@@ -339,7 +404,7 @@ public class ThreatOccupation {
 
 	/**
 	 * One tick of the front ({@link ThreatGroundFronts}'s tick, after the attrition):
-	 * a district held is an industry claimed, no more and no fewer (#catchUp, #trim), the eaten output grows
+	 * a district held is an industry claimed, no more and no fewer (a claim a district, #trim), the eaten output grows
 	 * the pool at a hive's rate and the swarm shifts it between the ground and the orbit (#shift); vanilla's
 	 * deciv is held off.
 	 */
@@ -370,12 +435,11 @@ public class ThreatOccupation {
 				changed = true;
 			}
 		}
-		// a district held is an industry claimed, at once (the user, Haven 2026-10-27: two
-		// districts taken and nothing marked): claims behind the districts held catch up
-		// here and in takeStratum - and never more claims than districts (the user, Arkoman
-		// 2026-10-30, one district held and three industries green from the old 30-day clock:
-		// "the district was taken back only mining should be consuming"): the excess is released
-		if (catchUp(front, market)) changed = true;
+		// A CLAIM MOVES WITH A DISTRICT (the user, 2026-10-31 afternoon: "a district taken either side
+		// gives either side a claim to one industry"): a district taken claims one (onDistrictTaken), a
+		// district retaken releases one (release, from loseStratum), a consumed industry's slot takes the
+		// next (consumeIndustry) - never a tick's catch-up, which re-claimed what a retake had just freed
+		// (Haven, 2026-10-31 morning); and never more claims than districts held
 		if (trim(front, market)) changed = true;
 		// CONSUMPTION (the user, 2026-10-28): the oldest claims, as many as districts held, are eaten over
 		// their build time and removed; with nothing left to claim the swarm lifts off (section 7)
@@ -397,25 +461,43 @@ public class ThreatOccupation {
 		shift(front, market, elapsedDays);
 	}
 
-	/** Claims one industry per district held that is not yet claimed; whether anything was claimed. */
-	protected static boolean catchUp(GroundFront front, MarketAPI market) {
-		boolean any = false;
-		List<String> claims = claims(front);
-		while (claims.size() < front.strataHeld) {
-			Industry nxt = next(market, front);
-			if (nxt == null) break;
-			claims.add(nxt.getId());
-			announceClaim(front, market, nxt);
-			any = true;
+	/**
+	 * One claim: a district taken ({@code onTake}: a rebuilding industry resumes) or a consumed
+	 * industry's slot freed (a standing one only), never above the districts held; whether anything
+	 * was claimed.
+	 */
+	protected static boolean claimOne(GroundFront front, MarketAPI market, boolean onTake) {
+		if (claims(front).size() >= front.strataHeld) return false;
+		Industry nxt = next(market, front, onTake);
+		if (nxt == null) return false;
+		claim(front, market, nxt);
+		return true;
+	}
+
+	/**
+	 * The swarm claims the industry: on its list, "Industry Claimed". One rebuilding from a retaken
+	 * district RESUMES from its eaten share (the user, 2026-10-31 afternoon: "or resuming consuming if it
+	 * was rebuilding"): the rebuild mark is lifted and vanilla's build ended first (cancelUpgrade -
+	 * building off, progress 0 - past the plugins' refusal, since nothing holds the card at that moment),
+	 * then its clock is set to what was eaten.
+	 */
+	protected static void claim(GroundFront front, MarketAPI market, Industry ind) {
+		float eaten = 0f;
+		if (rebuilding(ind)) {
+			eaten = eatenShare(ind);
+			rebuildingIds(market, false).remove(ind.getId());
+			if (ind instanceof BaseIndustry) ((BaseIndustry) ind).cancelUpgrade();
 		}
-		return any;
+		claims(front).add(ind.getId());
+		if (eaten > 0f) consumeDays(front).put(ind.getId(), eaten * consumeTime(ind));
+		announceClaim(front, market, ind, eaten);
 	}
 
 	/**
 	 * Never more claims than districts held ({@link ThreatGroundFronts#loseStratum} and the tick; the user,
 	 * Arkoman 2026-10-30, one district held and Mining, Orbital Works and Ground Defenses all green from
 	 * the old 30-day claim clock: "the district was taken back only mining should be consuming"): the
-	 * newest claim not being consumed goes first, each rebuilt from its eaten share; a front holding no
+	 * defenders' pick goes first ({@link #nextRelease}), each rebuilt from its eaten share; a front holding no
 	 * district holds no industry (Arkoman 2026-10-28 evening, "regained 5/5 but now mining is still
 	 * green"). True when anything was released.
 	 */
@@ -425,26 +507,34 @@ public class ThreatOccupation {
 		int guard = 64;
 		while (claims(front).size() > Math.max(0, front.strataHeld) && guard-- > 0) {
 			List<String> claims = claims(front);
-			List<String> active = active(front, market);
-			String id = null;
-			for (int i = claims.size() - 1; i >= 0; i--) {
-				if (!active.contains(claims.get(i))) {
-					id = claims.get(i);
-					break;
-				}
-			}
-			if (id == null) id = claims.get(claims.size() - 1);
+			Industry pick = nextRelease(front, market);
+			String id = pick != null ? pick.getId() : claims.get(claims.size() - 1);
 			releaseClaim(front, market, id);
 			any = true;
 		}
 		return any;
 	}
 
-	/** A district taken claims an industry on the spot ({@link ThreatGroundFronts#takeStratum}); the reapply follows there. */
+	/** A district taken claims one industry on the spot ({@link ThreatGroundFronts#takeStratum}; a rebuilding one resumes); the reapply follows there. */
 	protected static void onDistrictTaken(GroundFront front, MarketAPI market) {
 		if (!occupies(front, market)) return;
-		catchUp(front, market);
+		claimOne(front, market, true);
 	}
+
+	/**
+	 * A district retaken releases one claim - the defenders' pick ({@link #nextRelease}; from
+	 * {@link ThreatGroundFronts#loseStratum}), rebuilt from its eaten share. Restored 2026-10-31
+	 * afternoon (the user, after the same afternoon's trim-only reading: "it kind of makes sense they
+	 * would try take back the military base first rather than 5 other random districts").
+	 */
+	protected static void release(GroundFront front, MarketAPI market) {
+		if (!occupies(front, market)) return;
+		List<String> claims = claims(front);
+		if (claims.isEmpty()) return;
+		Industry pick = nextRelease(front, market);
+		releaseClaim(front, market, pick != null ? pick.getId() : claims.get(claims.size() - 1));
+	}
+
 
 	/** The last district is the swarm's: the world is occupied, not taken ({@link ThreatGroundFronts#colonyGroundVictory}). */
 	protected static void occupy(GroundFront front, MarketAPI market) {
@@ -490,13 +580,15 @@ public class ThreatOccupation {
 		// the front's reapply follows in loseStratum
 	}
 
-	protected static void announceClaim(GroundFront front, MarketAPI market, Industry ind) {
-		ThreatNotice.titled("Industry Claimed").bad()
+	protected static void announceClaim(GroundFront front, MarketAPI market, Industry ind, float eaten) {
+		ThreatNotice n = ThreatNotice.titled("Industry Claimed").bad()
 				.line("The swarm has claimed %s on %s.", ind.getCurrentName(), ThreatNotice.market(market))
-				.line("%s of %s industries claimed.", "" + claims(front).size(), "" + claimable(market).size())
-				.send();
+				.line("%s of %s industries claimed.", "" + claims(front).size(), "" + claimable(market).size());
+		if (eaten > 0f) n.line("Consumption resumes at %s eaten.", Math.round(eaten * 100f) + "%");
+		n.send();
 		ThreatIncConfig.log("Occupation: the swarm claims " + ind.getCurrentName() + " on "
-				+ market.getName() + " (" + claims(front).size() + " claimed)");
+				+ market.getName() + " (" + claims(front).size() + " claimed"
+				+ (eaten > 0f ? ", resumed at " + Math.round(eaten * 100f) + "% eaten" : "") + ")");
 	}
 
 	// ------------------------------------------------------------------
@@ -792,6 +884,9 @@ public class ThreatOccupation {
 		ThreatIncConfig.log("Occupation: the swarm has consumed " + name + " on " + market.getName()
 				+ " (" + gone.size() + " consumed, " + left + " left to claim; +" + (int) added + " of " + (int) lump
 				+ " troops to the pool, pool " + (int) front.budPool + ")");
+		// the district's slot stays the swarm's: the next standing industry is claimed into it (never one
+		// rebuilding from a retake - that waits for a district taken; the user, 2026-10-31 afternoon)
+		claimOne(front, market, false);
 	}
 	/**
 	 * THE LIFT-OFF (the user, 2026-10-28: "if a world has no industries left they lift off
