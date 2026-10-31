@@ -2102,3 +2102,13 @@ of six. Residual: a multi-prong launch on a fuel-poor seed (c) settles the pendi
 days) because the planner pays prongs from the raw stock. The user's call: leave it (the strike first), or have the offensive
 BOOK its prongs' fuel at "Offensive launched" (the same ledger the shifts use - `ThreatFuel.freeRaw`), so no shift orders
 against fuel a sailing prong will take. Recommended: the booking at launch, one method.
+
+## 93. hw332-hw333 - rounds 98-99, GENERAL SEED TEST from day 0 on the merged jar 15:54:25 (2026-10-31 15:55-)
+
+The user, 15:52: "pull and build and run general seed testing". Origin up to date (54e3a91e: the booking build merged with
+the other machine's 23 commits - standing curve both ways, hull credits 1,000 / FP, the Request column, no ladders on the
+Requests table, no Ground War icon, ThreatDecivIntel), jar rebuilt 15:54:25 (1,333,778 bytes). Driver `run-seeds-46.ps1`:
+hw332 set B, hw333 set A, day 0 `-Days 3800 -Snapshots 300 -MaxMinutes 75`, watcher `watch-seeds-46.sh` (shiftdrops armed),
+tasks ThreatIncSeeds46 / WatchSeeds46. Read against hw330 / hw331 (s92: hives 291 / 344 / 360, 265 / 211 / 314, drops
+0 / 0 / 9 / 0 / 11 / 338, 0 exc). What to see: 0 exceptions on the merged UI / standing code, drops at or under s92, balance
+inside its band.
