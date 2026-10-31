@@ -2015,3 +2015,16 @@ balance inside s89's band.
 above the bookings (facts). javac clean against the scratch dir while hw327 holds the jar; jar built after hw327 closes.
 Retest: hw328 set B / hw329 set A from day 0 (`run-seeds-44.ps1`), read against hw326 / hw327: drops near 0, orders
 about the spawns, the strike planner's fuel line lower by the bookings, balance held. No new commits on origin at 10:30.
+
+**hw327 END (11:02, set A on the merged jar; hw321 in brackets):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift orders / spawns / drops | stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw327a | 3,824 | 263 | 158 (111) | 238 (186) | 126 (73) | 52 (90) | 60 (100) | 32 (56) | 3,958 / 3,670 / 56 | 0 | 0 |
+| hw327b | 3,820 | 239 | 100 (89) | 214 (183) | 65 (61) | 125 (73) | 73 (111) | 52 (89) | 7,943 / 7,134 / 102 | 0 | 0 |
+| hw327c @ 75 min | 3,399 | 293 | 105 (107) | 187 (187) | 58 (73) | 82 (71) | 88 (109) | 59 (58) | 9,237 / 7,066 / 1,535 | 0 | 0 |
+
+**ROUNDS 94-95 VERDICT (11:05):** the merged jar holds the balance from day 0 on all six seeds, 0 exceptions, 0 stuck
+shifts; strikes and consumption up, retaken down against the last day-0 rounds. The one wrinkle is the shift's order-and-drop
+churn on the shared free fuel (hw326c 358, hw327c 1,535 drops of 9,237 orders) - the booking fix above answers it, retest hw328 /
+hw329. The strategy-read script misread hw327 b / c at 10:07 (1st strike 17 / 10, hives 0): read the direct greps.
