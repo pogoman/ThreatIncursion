@@ -697,7 +697,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidMissionIntel.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :490
 - `ThreatAidMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :535
 
-## ThreatAidRequests (1582 lines)
+## ThreatAidRequests (1512 lines)
 - `ThreatAidRequests.open()` :106
 - `ThreatAidRequests.atSea()` :107
 - `ThreatAidRequests.isFleets()` :108
@@ -757,59 +757,57 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidRequests.nextCheckIn(Call c, FactionAPI helper)` :691 - Days until the faction looks at the call again;
 - `ThreatAidRequests.check(Call c, ThreatBases.Base target, Random random)` :704 - Each candidate faction whose day has come looks at the call:
 - `ThreatAidRequests.quote(FactionAPI helper, Call c, ThreatBases.Base target)` :772 - One faction's quote on a call:
-- `ThreatAidRequests.quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target)` :845 - A faction's quote on a call for a DEFENCE FLEET (the user, 2026-10-31:
-- `ThreatAidRequests.fill(Offer o, Quote q)` :883
-- `ThreatAidRequests.priceMarket(ThreatBases.Base target)` :892 - The market whose prices value the goods:
-- `ThreatAidRequests.accept(Offer o, Random random)` :916 - The player accepts the offer:
-- `ThreatAidRequests.reject(Offer o)` :998 - The player rejects the offer:
-- `ThreatAidRequests.cancel(Offer o)` :1008 - The player cancels an accepted offer at sea:
-- `ThreatAidRequests.eta(MarketAPI from, MarketAPI to)` :1031 - As below, between two colonies.
-- `ThreatAidRequests.eta(ThreatBases.Base from, ThreatBases.Base to)` :1036 - Days a convoy from one base to another is estimated at:
-- `ThreatAidRequests.etaLeft(Offer o)` :1043 - Days until an accepted offer is due, 0 once overdue.
-- `ThreatAidRequests.goodLabel(String good)` :1049 - "defence fleet" for the fleets call, else the good's label (never "fleet points" - the user, 2026-10-31).
-- `ThreatAidRequests.amountText(Offer o)` :1054 - "320 marines" / "a defence fleet of 900 FP" - the offer's amount.
-- `ThreatAidRequests.offerText(Offer o)` :1061 - "Hegemony:
+- `ThreatAidRequests.quoteFleet(Quote q, FactionAPI helper, ThreatBases.Base target)` :836 - A faction's quote on a call for a DEFENCE FLEET (the user, 2026-10-31:
+- `ThreatAidRequests.fill(Offer o, Quote q)` :874
+- `ThreatAidRequests.priceMarket(ThreatBases.Base target)` :883 - The market whose prices value the goods:
+- `ThreatAidRequests.accept(Offer o, Random random)` :907 - The player accepts the offer:
+- `ThreatAidRequests.reject(Offer o)` :989 - The player rejects the offer:
+- `ThreatAidRequests.cancel(Offer o)` :999 - The player cancels an accepted offer at sea:
+- `ThreatAidRequests.eta(MarketAPI from, MarketAPI to)` :1022 - As below, between two colonies.
+- `ThreatAidRequests.eta(ThreatBases.Base from, ThreatBases.Base to)` :1027 - Days a convoy from one base to another is estimated at:
+- `ThreatAidRequests.etaLeft(Offer o)` :1034 - Days until an accepted offer is due, 0 once overdue.
+- `ThreatAidRequests.goodLabel(String good)` :1040 - "defence fleet" for the fleets call, else the good's label (never "fleet points" - the user, 2026-10-31).
+- `ThreatAidRequests.amountText(Offer o)` :1045 - "320 marines" / "a defence fleet of 900 FP" - the offer's amount.
+- `ThreatAidRequests.offerText(Offer o)` :1052 - "Hegemony:
 ### receipt, loss, the price
-- `ThreatAidRequests.onConvoyLanded(ThreatConvoys.Convoy c, ThreatBases.Base base)` :1071 - An answering faction's convoy landed at the player's base (a colony, an outpost, or a front's hive world):
-- `ThreatAidRequests.onGuardArrived(ThreatFleetOrders.Order o)` :1082 - An answering faction's guard reached the player's colony (an older save's task force):
-- `ThreatAidRequests.goodOf(ThreatConvoys.Convoy c)` :1091 - The good a convoy carries:
-- `ThreatAidRequests.offerAtSea(String requestId, String factionId, String good)` :1101 - The offer at sea a convoy or order answers:
-- `ThreatAidRequests.deliver(Offer o, ThreatBases.Base base)` :1113 - The offer landed:
-- `ThreatAidRequests.charge(FactionAPI helper, int price)` :1136 - Standing charged for an offer received:
-- `ThreatAidRequests.settleLost(Offer o)` :1148 - An accepted offer whose convoy or fleet is no longer at sea and never landed:
-- `ThreatAidRequests.convoyFor(Offer o)` :1162
-- `ThreatAidRequests.orderFor(Offer o)` :1169
-- `ThreatAidRequests.priceFor(ThreatBases.Base target, String good, float amount)` :1182 - The whole-number standing an amount of a good costs the player when a faction sends it to the target:
-- `ThreatAidRequests.migrateOld()` :1192 - An older save's requests (2026-10-23 to 2026-10-30) become calls and offers:
+- `ThreatAidRequests.onConvoyLanded(ThreatConvoys.Convoy c, ThreatBases.Base base)` :1062 - An answering faction's convoy landed at the player's base (a colony, an outpost, or a front's hive world):
+- `ThreatAidRequests.onGuardArrived(ThreatFleetOrders.Order o)` :1073 - An answering faction's guard reached the player's colony (an older save's task force):
+- `ThreatAidRequests.goodOf(ThreatConvoys.Convoy c)` :1082 - The good a convoy carries:
+- `ThreatAidRequests.offerAtSea(String requestId, String factionId, String good)` :1092 - The offer at sea a convoy or order answers:
+- `ThreatAidRequests.deliver(Offer o, ThreatBases.Base base)` :1104 - The offer landed:
+- `ThreatAidRequests.charge(FactionAPI helper, int price)` :1127 - Standing charged for an offer received:
+- `ThreatAidRequests.settleLost(Offer o)` :1139 - An accepted offer whose convoy or fleet is no longer at sea and never landed:
+- `ThreatAidRequests.convoyFor(Offer o)` :1153
+- `ThreatAidRequests.orderFor(Offer o)` :1160
+- `ThreatAidRequests.priceFor(ThreatBases.Base target, String good, float amount)` :1173 - The whole-number standing an amount of a good costs the player when a faction sends it to the target:
+- `ThreatAidRequests.migrateOld()` :1183 - An older save's requests (2026-10-23 to 2026-10-30) become calls and offers:
 ### candidates, prices, standing
-- `ThreatAidRequests.budget(FactionAPI helper)` :1236 - Standing points the player can spend with the faction before dropping below Favourable.
-- `ThreatAidRequests.candidates()` :1242 - War factions at Favourable or better with the player, not hostile, best standing first.
-- `ThreatAidRequests.compare(FactionAPI a, FactionAPI b)` :1254
-- `ThreatAidRequests.besetCount(FactionAPI helper)` :1262 - {beset, all}:
-- `ThreatAidRequests.besetness(FactionAPI helper)` :1273 - The share of the faction's worlds the Threat besets, 0..1 (#besetCount).
-- `ThreatAidRequests.standing(FactionAPI helper)` :1279 - The player's standing with the faction from Favourable's floor (0) to Cooperative's (1).
-- `ThreatAidRequests.willingness(FactionAPI helper)` :1292 - Whether a faction answers at all (the user, 2026-10-29:
-- `ThreatAidRequests.standLine(FactionAPI helper)` :1299 - "Hegemony:
-- `ThreatAidRequests.want(Call c, ThreatBases.Base target)` :1316 - What the target still WANTS of the call's good - the figure an offer is sized to (2026-10-31 night:
-- `ThreatAidRequests.atSeaUnder(Call c)` :1359 - What the accepted offers under the call carry - at sea, not yet counted by any ledger (a front's runs).
-- `ThreatAidRequests.minSpare(String good)` :1366 - The least a colony must spare of a good to answer a request with it:
-- `ThreatAidRequests.donors(FactionAPI helper, Vector2f at, String good)` :1378 - The helper's colonies in reach of the target holding a SURPLUS of the good (the user, 2026-10-31:
-- `ThreatAidRequests.compare(MarketAPI a, MarketAPI b)` :1390
-- `ThreatAidRequests.holdsSurplus(MarketAPI donor, String good)` :1398 - Whether the colony's reserve of the good reads as a surplus - the white state of the reserve key (no deficit, no cover, not exhausted);
-- `ThreatAidRequests.offerSpare(MarketAPI donor, String good)` :1414 - What a colony can OFFER of a good:
-- `ThreatAidRequests.migrate(Request r)` :1426 - An older save's request read as parts:
-- `ThreatAidRequests.reason(ThreatNotice.Reason why, FactionAPI helper, String what)` :1457
-- `ThreatAidRequests.shortageStanding(MarketAPI market, String commodityId)` :1466 - Short of peacetime demand with the depot unable to cover it:
-- `ThreatAidRequests.requestItems(MarketAPI market, String commodityId)` :1478 - What a depot need asks for:
-- `ThreatAidRequests.underArmy(MarketAPI market)` :1485 - Whether a Threat army stands on the colony:
-- `ThreatAidRequests.needItems(MarketAPI market, String commodityId)` :1490 - The deficit in items:
-- `ThreatAidRequests.worstShortage(MarketAPI market)` :1497 - The commodity the colony is shortest of, in items - the largest deficit.
+- `ThreatAidRequests.budget(FactionAPI helper)` :1227 - Standing points the player can spend with the faction before dropping below Favourable.
+- `ThreatAidRequests.candidates()` :1233 - War factions at Favourable or better with the player, not hostile, best standing first.
+- `ThreatAidRequests.compare(FactionAPI a, FactionAPI b)` :1245
+- `ThreatAidRequests.besetCount(FactionAPI helper)` :1253 - {beset, all}:
+- `ThreatAidRequests.besetness(FactionAPI helper)` :1264 - The share of the faction's worlds the Threat besets, 0..1 (#besetCount).
+- `ThreatAidRequests.standing(FactionAPI helper)` :1270 - The player's standing with the faction from Favourable's floor (0) to Cooperative's (1).
+- `ThreatAidRequests.willingness(FactionAPI helper)` :1283 - Whether a faction answers at all (the user, 2026-10-29:
+- `ThreatAidRequests.standLine(FactionAPI helper)` :1290 - "Hegemony:
+- `ThreatAidRequests.minSpare(String good)` :1299 - The least a colony must spare of a good to answer a request with it:
+- `ThreatAidRequests.donors(FactionAPI helper, Vector2f at, String good)` :1311 - The helper's colonies in reach of the target holding a SURPLUS of the good (the user, 2026-10-31:
+- `ThreatAidRequests.compare(MarketAPI a, MarketAPI b)` :1323
+- `ThreatAidRequests.holdsSurplus(MarketAPI donor, String good)` :1331 - Whether the colony's reserve of the good reads as a surplus - the white state of the reserve key (no deficit, no cover, not exhausted);
+- `ThreatAidRequests.offerSpare(MarketAPI donor, String good)` :1350 - What a colony can OFFER of a good:
+- `ThreatAidRequests.migrate(Request r)` :1356 - An older save's request read as parts:
+- `ThreatAidRequests.reason(ThreatNotice.Reason why, FactionAPI helper, String what)` :1387
+- `ThreatAidRequests.shortageStanding(MarketAPI market, String commodityId)` :1396 - Short of peacetime demand with the depot unable to cover it:
+- `ThreatAidRequests.requestItems(MarketAPI market, String commodityId)` :1408 - What a depot need asks for:
+- `ThreatAidRequests.underArmy(MarketAPI market)` :1415 - Whether a Threat army stands on the colony:
+- `ThreatAidRequests.needItems(MarketAPI market, String commodityId)` :1420 - The deficit in items:
+- `ThreatAidRequests.worstShortage(MarketAPI market)` :1427 - The commodity the colony is shortest of, in items - the largest deficit.
 ### defence needs
-- `ThreatAidRequests.strikesAgainst(MarketAPI market)` :1516 - Live Threat strikes with this colony among their targets.
-- `ThreatAidRequests.strikeAtTarget(GenericRaidFGI fgi, MarketAPI market)` :1531 - Whether the strike is in the colony's system:
-- `ThreatAidRequests.strikeStrength(GenericRaidFGI fgi)` :1545 - Fleet points of the strike:
-- `ThreatAidRequests.defenderStrength(MarketAPI market)` :1561 - The faction's strength in the colony's system plus its station.
-- `ThreatAidRequests.needsDefence(MarketAPI market)` :1573 - A strike is coming and the defenders are outmatched (defendRequestRatio).
+- `ThreatAidRequests.strikesAgainst(MarketAPI market)` :1446 - Live Threat strikes with this colony among their targets.
+- `ThreatAidRequests.strikeAtTarget(GenericRaidFGI fgi, MarketAPI market)` :1461 - Whether the strike is in the colony's system:
+- `ThreatAidRequests.strikeStrength(GenericRaidFGI fgi)` :1475 - Fleet points of the strike:
+- `ThreatAidRequests.defenderStrength(MarketAPI market)` :1491 - The faction's strength in the colony's system plus its station.
+- `ThreatAidRequests.needsDefence(MarketAPI market)` :1503 - A strike is coming and the defenders are outmatched (defendRequestRatio).
 
 ## ThreatAlarm (104 lines)
 - `ThreatAlarm.enabled()` :39

@@ -245,9 +245,13 @@ the player can spend with it; "Aid Offered" notice with the ETA and the price). 
 evening (the user: "factions should only make offers from surplus colonies ... the speed in which a
 faction responds to offer should be determined by how preoccupied they are with the war") a colony
 offers only with its reserve of the good in the white state - no deficit, no cover, not exhausted
-(`holdsSurplus`) - and offers what it holds above its own keep, `offerSpare` (monthsBasis x
-donorKeepFraction, the garrison floor, a forward base's feeding credit for supplies; not the staging
-bank `ThreatConvoys.spare` keeps, which had Ilm with 4,721 marines offering 216 from Ailmar); an
+(`holdsSurplus`) - and offers what it can spare, `offerSpare` = `ThreatConvoys.spare`: above its own
+keep (monthsBasis x donorKeepFraction, the garrison floor, a forward base's feeding credit for
+supplies) and above its staging bank and target - the sieges it stages for and its commitment to a
+landing. For a few hours on 2026-10-31 the bank was not held back (Ilm with 4,721 marines had
+offered 216 from Ailmar), and Nachiketa offered its whole 15,438-marine landing commitment on
+Arkoman's call; the user: a faction never strips its own ability to siege, and an offer is never
+sized to the player's need - only an ask OF the player is sized (`askFigure`). An
 offer the faction can no longer make is withdrawn ("Offer Withdrawn"); a beset faction looks less
 often - its check days x (1 + besetness x `aidRequestBesetDelay`). The table
 (`addRequests` / `addOfferRow`): World, Commodity, Age (days the call has stood), Answer ("Hegemony:
