@@ -884,6 +884,34 @@ public class ThreatFactionView {
 				fleetTips, 5 * LEVER_PITCH, LEVER_LABELS, LEVER_BUTTON_W);
 	}
 
+	/**
+	 * THE LEDGER'S LEVERS (the user, 2026-10-31 evening: "under threat board known infested systems we have the
+	 * attack button for each. we need fleet and days toggle like we have for the defend button"), in the row
+	 * reserved under the ledger's heading (ThreatWarBoard.addLedger): Fleet is the Attack's outcome tier - the
+	 * fleet deployed sized to match the Defense Swarms seen in the system / x orbitTierMedMargin /
+	 * x orbitTierMaxMargin, the rest staying deployed (IncursionManager.attackPlan) - and Days the term it holds
+	 * each world (ThreatIncConfig.attackTermDays).
+	 */
+	protected static void addLedgerLevers(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
+		String[] fleetTips = {
+				"Attack: match the Defense Swarms seen in the system; the rest stays deployed.",
+				"Attack: x" + String.format("%.2f", ThreatIncConfig.orbitTierMedMargin()) + " the swarms seen; the rest stays deployed.",
+				"Attack: x" + String.format("%.2f", ThreatIncConfig.orbitTierMaxMargin()) + " the swarms seen; the rest stays deployed." };
+		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
+				BUTTON_LEVER + ThreatIncursionIntel.LEVER_LEDGER_FLEET + ":",
+				intel.lever(ThreatIncursionIntel.LEVER_LEDGER_FLEET), fleetTips, 0f, TIER_LABELS, LEVER_BUTTON_W);
+		String[] dayLabels = new String[3];
+		String[] dayTips = new String[3];
+		for (int t = 0; t < 3; t++) {
+			int d = (int) ThreatIncConfig.attackTermDays(t);
+			dayLabels[t] = d + " d";
+			dayTips[t] = "Attack: holds each world " + d + " days before giving its siege up.";
+		}
+		addTierSelector(intel, main, anchor, "Days", LEVER_LABEL_W,
+				BUTTON_LEVER + ThreatIncursionIntel.LEVER_LEDGER_DAYS + ":",
+				intel.lever(ThreatIncursionIntel.LEVER_LEDGER_DAYS), dayTips, LEVER_PITCH, dayLabels, LEVER_BUTTON_W);
+	}
+
 	/** One lever: its label and None / Med / Max at the {@code slot}th pitch along the reserved row. */
 	protected static void addLever(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor,
 			String label, int which, String good, int slot) {
@@ -2552,11 +2580,13 @@ public class ThreatFactionView {
 		} else if (BUTTON_SIEGE.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			MarketAPI base = IncursionManager.attackBase(faction, system);
-			String why = IncursionManager.attackBlockReason(base, faction, system);
+			// at the ledger's Fleet and Days levers (2026-10-31 evening)
+			int[] ledger = intel != null ? intel.ledgerLevers() : new int[] {2, 1};
+			String why = IncursionManager.attackBlockReason(base, faction, system, ledger[0], ledger[1]);
 			if (why != null) {
 				prompt.addPara(why, 0f);
 			} else {
-				addAttackPrompt(prompt, IncursionManager.attackPlan(base, faction, system));
+				addAttackPrompt(prompt, IncursionManager.attackPlan(base, faction, system, ledger[0], ledger[1]));
 			}
 		} else if (BUTTON_BOMBARD.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
@@ -2901,6 +2931,15 @@ public class ThreatFactionView {
 	}
 
 	/** The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8): one line per fact, figures as "N to what it buys". */
+	/** The swarm the Attack at the ledger's Fleet lever is sized against, for its prompt; null when no sizing was asked. */
+	protected static String attackSized(IncursionManager.Attack a) {
+		if (a == null || a.margin <= 0f) return null;
+		if (a.swarm <= 0f) return "Nothing seen there to size against: everything deployed sails.";
+		return "Against the " + Misc.getWithDGS((int) a.swarm) + " fleet points of Defense Swarms seen in the system"
+				+ (a.margin > 1f ? ", by x" + trimZero(a.margin) : "")
+				+ (a.share >= 0.999f ? " - everything deployed." : ".");
+	}
+
 	protected static void addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a) {
 		Color h = Misc.getHighlightColor();
 		if (a == null || a.base == null || a.system == null) {
@@ -2909,8 +2948,17 @@ public class ThreatFactionView {
 		}
 		prompt.addPara("Attack the " + a.system.getNameWithLowercaseType() + " with the fleet deployed at "
 				+ a.base.getName() + "?", 0f);
-		prompt.addPara("Fleet: %s fleet points" + (a.sizes.size() > 1 ? " in %s fleets." : "."), 10f, h,
-				Misc.getWithDGS((int) a.points), "" + a.sizes.size());
+		if (a.share < 0.999f) {
+			prompt.addPara("Fleet: %s of the %s fleet points deployed" + (a.sizes.size() > 1 ? " in %s fleets" : "")
+					+ "; the rest stays.", 10f, h, Misc.getWithDGS((int) a.points), Misc.getWithDGS((int) a.deployed),
+					"" + a.sizes.size());
+		} else {
+			prompt.addPara("Fleet: %s fleet points" + (a.sizes.size() > 1 ? " in %s fleets." : "."), 10f, h,
+					Misc.getWithDGS((int) a.points), "" + a.sizes.size());
+		}
+		String sized = attackSized(a);
+		if (sized != null) prompt.addPara(sized, 3f);
+		prompt.addPara("Holds each world up to %s days.", 3f, h, "" + (int) a.term);
 		if (a.razeFuel > 0.5f && a.target != null) {
 			float now = ThreatStrata.of(a.target);
 			float after = Math.max(0f, now - a.strata);
@@ -3049,23 +3097,30 @@ public class ThreatFactionView {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			if (system == null) return null;
 			MarketAPI base = IncursionManager.attackBase(faction, system);
-			// the button's gate again (the board may have been open a while)
-			ThreatNotice.Reason why = IncursionManager.attackBlockFacts(base, faction, system);
+			// the button's gate again (the board may have been open a while), at the ledger's levers
+			int[] ledger = intel != null ? intel.ledgerLevers() : new int[] {2, 1};
+			ThreatNotice.Reason why = IncursionManager.attackBlockFacts(base, faction, system, ledger[0], ledger[1]);
 			if (why != null) {
 				ThreatNotice.titled("Attack Refused").bad().icon(faction).lines(why).send();
 				return null;
 			}
-			IncursionManager.Attack a = IncursionManager.attackPlan(base, faction, system);
+			IncursionManager.Attack a = IncursionManager.attackPlan(base, faction, system, ledger[0], ledger[1]);
 			ThreatPurgeFGI purge = IncursionManager.launchAttack(a, faction, random);
 			if (purge == null) {
 				ThreatNotice.titled("Attack Refused").bad().icon(faction)
 						.line("No expedition could be raised at %s", ThreatNotice.market(base)).send();
 				return null;
 			}
-			ThreatNotice n = ThreatNotice.titled("Attack Sails").icon(faction)
-					.line("The fleet deployed at %s: %s fleet points", ThreatNotice.market(base),
-							Misc.getWithDGS((int) a.points))
-					.line("Bound for the %s", system.getNameWithLowercaseType());
+			ThreatNotice n = ThreatNotice.titled("Attack Sails").icon(faction);
+			if (a.share < 0.999f) {
+				n.line("From the fleet deployed at %s: %s of %s fleet points", ThreatNotice.market(base),
+						Misc.getWithDGS((int) a.points), Misc.getWithDGS((int) a.deployed));
+			} else {
+				n.line("The fleet deployed at %s: %s fleet points", ThreatNotice.market(base),
+						Misc.getWithDGS((int) a.points));
+			}
+			n.line("Bound for the %s", system.getNameWithLowercaseType())
+					.line("Holds each world %s days", "" + (int) a.term);
 			if (a.razeFuel > 0.5f) n.line("%s fuel to raze %s strata", Misc.getWithDGS(Math.round(a.razeFuel)), ThreatStrata.fmt(a.strata));
 			if (a.marines > 0f) n.line("%s marines to land", Misc.getWithDGS((int) a.marines));
 			n.line("%s supplies aboard", Misc.getWithDGS((int) a.supplies));

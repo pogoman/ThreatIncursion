@@ -459,6 +459,9 @@
 	"threatinc_shieldDefenseBonus": 0,
 	# days an expedition holds orbit over each world before it gives the siege up
 	"threatinc_siegeOrbitDays": 120,
+	# the ledger's Days lever (2026-10-31): the player's Attack holds each world this long at its first / third setting (siegeOrbitDays at the second)
+	"threatinc_attackDaysMin": 60,
+	"threatinc_attackDaysMax": 240,
 	# a siege's landing is sized for the strata the hive grows to over this many days (its muster and passage), not today's
 	"threatinc_siegeGrowthDays": 90,
 	# the council attacks the nearest hive first (an own system before any other), not the easiest

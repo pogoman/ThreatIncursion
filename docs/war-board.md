@@ -224,7 +224,26 @@ aboard (`IncursionManager.attackBase`, `attackPlan`, `launchSiegeExpedition` dep
 off the fleet into the expedition - no reserve draw - and `ThreatPurgeFGI.takeStaged` restocks
 nothing), greyed with the figures while nothing is deployed, the fuel aboard is under the passage
 or the supplies under the expedition's deposit and hold (`attackBlockFacts`). The Attack's Fleet /
-Fuel / Marines ladders went. The NPC tabs' "Hive systems in reach" table and its Hunt went ("we
+Fuel / Marines ladders went - and came back as levers on 2026-10-31 evening (the user: "under threat board known
+infested systems we have the attack button for each. we need fleet and days toggle like we have for the defend
+button"): a row reserved under the ledger's heading holds **Fleet** and **Days** (`ThreatFactionView.addLedgerLevers`,
+`ThreatIncursionIntel.LEVER_LEDGER_FLEET` / `LEVER_LEDGER_DAYS`, `ledgerLevers`; Max and the middle term by default).
+Fleet is the Attack's outcome tier like the Defend's: the force is sized against the Defense Swarms seen in the system
+as the player's reports show them (`ThreatIntel.systemFP`) - matched at Min, x `orbitTierMedMargin` at Med,
+x `orbitTierMaxMargin` at Max - and that share of the deployed fleet sails with that share of what it carries, never
+under the smallest fleet a Deploy makes, everything deployed when nothing is seen there or the swarm outweighs it
+(`IncursionManager.attackPlan(base, faction, system, fleetTier, daysTier)`: `Attack.swarm` / `margin` / `share` /
+`deployed`). At the launch the share is carved off the deployed fleet as its own task force staged over the same base
+(`ThreatFleetOrders.detachStaged`: the largest warships that fit, that share of the civilian hulls, and the moved
+share of its crew, marines, arms, fuel aboard, hold, draws and ledger entries - `ThreatAidCapacity.Commitment` split,
+the piece's riding the piece), and the rest stays deployed; where nothing can be carved (one ship) the fleet sails
+whole, and `launchAttack` re-reads sizes and goods from what actually sails. Days is the term the attack holds each
+world before giving its siege up - `threatinc_attackDaysMin` (60) / `siegeOrbitDays` (120) / `threatinc_attackDaysMax`
+(240), `ThreatIncConfig.attackTermDays` - carried as `launchSiegeExpedition`'s `termDays` into the payload window and
+`ThreatPurgeFGI.orbitTermDays`, which `orbitDays()` reads wherever the daily siege read `siegeOrbitDays` (0 on an
+NPC's or an older save's expedition: siegeOrbitDays as before). The Attack button's tooltip, the prompt ("Fleet: 1,200
+of the 2,400 fleet points deployed; the rest stays", the swarm it is sized against, "Holds each world up to N days")
+and the Attack Sails notice carry both. UNTESTED. The NPC tabs' "Hive systems in reach" table and its Hunt went ("we
 dont need to see that table at all").
 
 **The calls and the offers (2026-10-31, the user: "these are just on/off toggles. when toggle
@@ -346,7 +365,7 @@ fronts table"; Marines and Arms sat there until then), over the colonies **Fuel*
 **Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
 all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`); since 2026-10-30 evening a lever is ONE button reading its tier, pressed it sets the next round the ladder. The Fleet lever is Support / Defend's
 outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
-ladders), for the player's own fronts and the Defend of an ally's sieged world alike; beside it since 2026-10-31 the **Days** lever (`LEVER_FRONT_DAYS`, 30 d / 90 d / 180 d from `threatinc_guardDaysMin` / `guardDays` / `guardDaysMax`, `ThreatIncConfig.guardTermDays`) is the term an ally's Defend holds the orbit AND the stay its hold is priced on (`ThreatReach.setStay` around `ThreatAid.quoteDefend` and `ThreatFleetOrders.dispatchGuard`), so a 30-day Defend quotes a third of the 90-day hold - the Defend tooltip and prompt show the term and the fuel and supplies; the colonies'
+ladders), for the player's own fronts and the Defend of an ally's sieged world alike; beside it since 2026-10-31 the **Days** lever (`LEVER_FRONT_DAYS`, 30 d / 90 d / 180 d from `threatinc_guardDaysMin` / `guardDays` / `guardDaysMax`, `ThreatIncConfig.guardTermDays`) is the term an ally's Defend holds the orbit AND the stay its hold is priced on (`ThreatReach.setStay` around `ThreatAid.quoteDefend` and `ThreatFleetOrders.dispatchGuard`), so a 30-day Defend quotes a third of the 90-day hold - the Defend tooltip and prompt show the term and the fuel and supplies; the Threat ledger has its own **Fleet** and **Days** pair since 2026-10-31 evening (`LEVER_LEDGER_FLEET` / `LEVER_LEDGER_DAYS`, `addLedgerLevers`: the Attack's outcome tier against the swarms seen and the term it holds each world, "Deploy, Transfer, Attack" above); the colonies'
 five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms
 (`ThreatIncursionIntel.frontLevers`), and a shortfall's request asks each faction at the same tier
 (Max all one colony spares, Med half). Transfer moves hulls between the player's colonies off the

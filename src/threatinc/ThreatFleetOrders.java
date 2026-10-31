@@ -1876,6 +1876,143 @@ public class ThreatFleetOrders {
 		return o;
 	}
 
+	/**
+	 * THE ATTACK'S FLEET LEVER (the user, 2026-10-31 evening: "fleet and days toggle like we have for the defend
+	 * button"): carves the part of a deployed fleet that sails off it as a new task force staged at the same base -
+	 * {@code share} of its combat points in the largest warships that fit (then the smallest left until nine tenths
+	 * of it is reached), that share of its civilian hulls, and the share of the whole that moved of its crew,
+	 * marines, arms, fuel aboard, hold and draws (the keys {@link #absorb} merges, split the other way) and of every
+	 * ledger entry it holds (ThreatAidCapacity.Commitment: the entry's points split, the piece's riding the piece).
+	 * The piece is a guard on station over the base like the fleet it left (ThreatFleetOrders.stagedAt counts it),
+	 * for IncursionManager.launchAttack to take (ThreatPurgeFGI.takeStaged). Null when nothing can be carved - one
+	 * ship, no warship, or a share that moves none or all of them - and the caller sails the fleet whole.
+	 */
+	public static Order detachStaged(Order o, MarketAPI base, FactionAPI faction, float share, java.util.Random random) {
+		CampaignFleetAPI from = o != null ? o.fleet : null;
+		if (from == null || !from.isAlive() || base == null || faction == null || share <= 0f || share >= 0.999f) return null;
+		List<com.fs.starfarer.api.fleet.FleetMemberAPI> members = from.getFleetData().getMembersListCopy();
+		if (members.size() < 2) return null;
+		float combat = 0f, civil = 0f;
+		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : members) {
+			if (m.isCivilian()) civil += m.getFleetPointCost();
+			else combat += m.getFleetPointCost();
+		}
+		if (combat <= 0f) return null;
+		java.util.Collections.sort(members, new java.util.Comparator<com.fs.starfarer.api.fleet.FleetMemberAPI>() {
+			public int compare(com.fs.starfarer.api.fleet.FleetMemberAPI a, com.fs.starfarer.api.fleet.FleetMemberAPI b) {
+				return Float.compare(b.getFleetPointCost(), a.getFleetPointCost());
+			}
+		});
+		float wantCombat = combat * share, wantCivil = civil * share, movedCombat = 0f, movedCivil = 0f;
+		List<com.fs.starfarer.api.fleet.FleetMemberAPI> take = new ArrayList<com.fs.starfarer.api.fleet.FleetMemberAPI>();
+		// the largest warships that fit under the target, then the smallest left until it is nearly reached
+		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : members) {
+			if (m.isCivilian()) continue;
+			float fp = m.getFleetPointCost();
+			if (movedCombat + fp <= wantCombat + 0.5f) {
+				take.add(m);
+				movedCombat += fp;
+			}
+		}
+		for (int i = members.size() - 1; i >= 0 && movedCombat < wantCombat * 0.9f; i--) {
+			com.fs.starfarer.api.fleet.FleetMemberAPI m = members.get(i);
+			if (m.isCivilian() || take.contains(m)) continue;
+			take.add(m);
+			movedCombat += m.getFleetPointCost();
+		}
+		if (movedCombat <= 0f) return null;
+		// its share of the civilian hulls, the smallest first
+		for (int i = members.size() - 1; i >= 0; i--) {
+			com.fs.starfarer.api.fleet.FleetMemberAPI m = members.get(i);
+			if (!m.isCivilian()) continue;
+			float fp = m.getFleetPointCost();
+			if (movedCivil + fp <= wantCivil + 0.5f) {
+				take.add(m);
+				movedCivil += fp;
+			}
+		}
+		if (take.isEmpty() || take.size() >= members.size()) return null;
+		float fp0 = Math.max(1f, from.getFleetPoints());
+		CampaignFleetAPI piece = Global.getFactory().createEmptyFleet(faction.getId(), FleetTypes.TASK_FORCE, true);
+		if (piece == null) return null;
+		com.fs.starfarer.api.campaign.rules.MemoryAPI ma = from.getMemoryWithoutUpdate(), mb = piece.getMemoryWithoutUpdate();
+		mb.set(MemFlags.MEMORY_KEY_FLEET_TYPE, FleetTypes.TASK_FORCE);
+		mb.set(MemFlags.MEMORY_KEY_SOURCE_MARKET, base.getId());
+		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : take) {
+			from.getFleetData().removeFleetMember(m);
+			m.setFlagship(false);
+			piece.getFleetData().addFleetMember(m);
+		}
+		from.getFleetData().ensureHasFlagship();
+		piece.getFleetData().ensureHasFlagship();
+		// the share of the whole that moved: what the fleet carries goes with it
+		float r = Math.max(0f, Math.min(1f, piece.getFleetPoints() / fp0));
+		com.fs.starfarer.api.campaign.CargoAPI a = from.getCargo(), b = piece.getCargo();
+		int crew = (int) (a.getCrew() * r);
+		if (crew > 0) {
+			a.removeCrew(crew);
+			b.addCrew(crew);
+		}
+		int marines = (int) (a.getMarines() * r);
+		if (marines > 0) {
+			a.removeMarines(marines);
+			b.addMarines(marines);
+		}
+		for (String good : new String[] { Commodities.HAND_WEAPONS, Commodities.SUPPLIES, Commodities.FUEL }) {
+			float q = a.getCommodityQuantity(good) * r;
+			if (q > 0f) {
+				a.removeCommodity(good, q);
+				b.addCommodity(good, q);
+			}
+		}
+		for (String k : new String[] { ThreatReturns.MEM_FUEL, ThreatReturns.MEM_SUPPLIES, ThreatReturns.MEM_FP0,
+				ThreatReturns.MEM_HOLD, ThreatReturns.MEM_HOLD_FULL, ThreatReturns.MEM_FUEL_ABOARD,
+				ThreatReturns.MEM_FP_ORDER }) {
+			if (!ma.contains(k)) continue;
+			float v = ma.getFloat(k);
+			ma.set(k, v * (1f - r));
+			mb.set(k, v * r);
+		}
+		if (ma.contains(ThreatReturns.MEM_HOME)) mb.set(ThreatReturns.MEM_HOME, ma.getString(ThreatReturns.MEM_HOME));
+		// a task force's flags (buildTaskForce), beside the fleet it left
+		mb.set(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+		mb.set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
+		mb.set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+		mb.set(ORDER_FLAG, true);
+		piece.setName(from.getName());
+		piece.setNoFactionInName(from.isNoFactionInName());
+		piece.setTransponderOn(from.isTransponderOn());
+		if (from.getContainingLocation() != null) from.getContainingLocation().addEntity(piece);
+		piece.setLocation(from.getLocation().x, from.getLocation().y);
+		ThreatFleetComposer.beltGuard(piece);
+		for (CampaignFleetAPI fl : new CampaignFleetAPI[] { from, piece }) {
+			fl.getFleetData().sort();
+			fl.getFleetData().setSyncNeeded();
+			fl.getFleetData().syncIfNeeded();
+			fl.forceSync();
+		}
+		// the ledger: the piece's share of every entry the fleet holds
+		for (ThreatAidCapacity.Commitment c : ThreatAidCapacity.heldAllBy(from)) {
+			ThreatAidCapacity.Commitment part = new ThreatAidCapacity.Commitment();
+			part.marketId = c.marketId;
+			part.fp = c.fp * r;
+			part.fleet = piece;
+			part.label = c.label;
+			part.hostMarketId = c.hostMarketId;
+			part.foldedFP = c.foldedFP * r;
+			c.fp -= part.fp;
+			c.foldedFP -= part.foldedFP;
+			ThreatAidCapacity.all().add(part);
+		}
+		// on station over the base like the fleet it left
+		Order piece0 = guardOrder(piece, faction, ThreatBases.of(base), base, o.days, false);
+		piece0.arrived = true;
+		piece0.issuedTimestamp = o.issuedTimestamp;
+		ThreatIncConfig.log("Detached " + (int) piece.getFleetPoints() + " of " + (int) fp0 + " FP (" + take.size() + " of "
+				+ members.size() + " ships) from " + from.getName() + " over " + base.getName() + " to sail");
+		return piece0;
+	}
+
 	/** The jump-point of a hive system nearest its colonies, or any jump-point, or null. */
 	public static SectorEntityToken interceptPoint(StarSystemAPI system) {
 		if (system == null) return null;

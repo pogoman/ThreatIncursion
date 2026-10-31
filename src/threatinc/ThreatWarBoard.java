@@ -913,6 +913,8 @@ public class ThreatWarBoard {
 		com.fs.starfarer.api.ui.UIPanelAPI table;
 		Cols cols;
 		List<Entry> rows = new ArrayList<Entry>();
+		/** Whether a row was reserved above the table for the Attack's Fleet and Days levers (ThreatFactionView.addLedgerLevers). */
+		boolean levers;
 	}
 
 	/**
@@ -928,6 +930,8 @@ public class ThreatWarBoard {
 		FactionAPI player = Global.getSector().getPlayerFaction();
 		boolean mayOrder = ThreatFleetOrders.canPlayerOrder(player);
 		String blocked = ThreatFleetOrders.orderBlockReason(player);
+		// the Attack at the ledger's Fleet and Days levers (ThreatIncursionIntel.ledgerLevers, 2026-10-31 evening)
+		int[] tiers = intel.ledgerLevers();
 		int n = ledger.rows.size();
 		for (int i = 0; i < n; i++) {
 			Entry e = ledger.rows.get(i);
@@ -937,13 +941,14 @@ public class ThreatWarBoard {
 					ThreatFactionView.BUTTON_SIEGE + Factions.PLAYER + ":" + e.systemId);
 			attack.getPosition().belowRight(ledger.table, -up).setXAlignOffset(-6f);
 			MarketAPI base = e.system != null ? IncursionManager.attackBase(player, e.system) : null;
-			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system)
+			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system, tiers[0], tiers[1])
 					: "Nothing there to attack yet.";
 			boolean ok = mayOrder && e.isColony() && why == null;
 			ThreatFactionView.disableWith(main, attack, ok, blocked != null ? blocked
 					: why != null ? why : "Nothing there to attack yet.",
 					"The fleet deployed at " + (base != null ? base.getName() : "the nearest colony")
-					+ " holds the orbit, razes the strata for the fuel aboard past the passage and lands its marines.");
+					+ ", at the Fleet lever's share, holds the orbit up to " + (int) ThreatIncConfig.attackTermDays(tiers[1])
+					+ " days a world, razes the strata for the fuel aboard past the passage and lands its marines.");
 			com.fs.starfarer.api.ui.ButtonAPI map = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
 					BUTTON_MAP + e.systemId);
 			map.getPosition().belowRight(ledger.table, -up)
@@ -959,6 +964,7 @@ public class ThreatWarBoard {
 					"Sends a scouting party of " + (int) ThreatIncConfig.scoutFleetPoints()
 					+ " fleet points from your nearest colony that can raise one. What it sees is this row's Notes once it is home.");
 		}
+		if (ledger.levers) ThreatFactionView.addLedgerLevers(intel, main, ledger.table);
 	}
 
 	// ------------------------------------------------------------------
@@ -2102,6 +2108,9 @@ public class ThreatWarBoard {
 			return null;
 		}
 
+		// the Attack's Fleet and Days levers sit in a reserved row under the heading (the user, 2026-10-31
+		// evening); their buttons float in later (addLedgerButtons -> ThreatFactionView.addLedgerLevers)
+		main.addSpacer(ThreatFactionView.SELECTOR_ROW_H);
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
@@ -2237,6 +2246,7 @@ public class ThreatWarBoard {
 		ledger.table = table;
 		ledger.cols = c;
 		ledger.rows = rowEntries;
+		ledger.levers = true;
 		return ledger;
 	}
 
