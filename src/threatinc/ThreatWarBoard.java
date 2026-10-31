@@ -988,10 +988,14 @@ public class ThreatWarBoard {
 	protected static final float FRONT_STANCE_W = 56f;
 	protected static final float FRONT_DEFEND_W = 58f;
 
-	/** The landing's next objective (the user, 2026-10-31): the industry its next district claims, "Extermination" once it holds every layer, else the layer itself. */
+	/** The landing's next objective (the user, 2026-10-31): the industry its next district claims, "Consume" (a human landing: "Extermination") once it holds every layer, else the layer itself. */
 	protected static String landingObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry claim) {
 		if (claim != null) return claim.getCurrentName();
-		if (f.strataHeld >= Math.max(1, m.getSize())) return "Extermination";
+		if (f.strataHeld >= Math.max(1, m.getSize())) {
+			// the swarm holding every district consumes the world, never takes it (the user, 2026-10-31:
+			// "threat final objective should just be consume not extermination")
+			return ThreatGroundFronts.isThreatOwned(f) && !ThreatGroundFronts.isHiveTarget(m) ? "Consume" : "Extermination";
+		}
 		return Misc.ucFirst(ThreatGroundFronts.layerName(m));
 	}
 

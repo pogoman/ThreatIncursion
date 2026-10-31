@@ -411,7 +411,7 @@ they are pushing then it goes to next and progress is not lost"). THE OBJECTIVE 
 2026-10-24, is ETA now): what the next district decides for THE TAB'S side, like every column (a gaining-side
 reading lasted an hour: the swarm at 0/4 on Epiphany read the world's "Extermination") - our landing's next
 claim, or our world's next reclaim, in our colour; with no structure decided the layer itself ("District" / "Stratum"), and "Extermination" for whichever side
-holds every layer - the landing with all taken, the world with none lost (the user, 2026-10-31); the row tooltip gives both ("Swarm claims next: X, N d to
+holds every layer - the landing with all taken ("Consume" for the swarm, which never takes the world), the world with none lost (the user, 2026-10-31); the row tooltip gives both ("Swarm claims next: X, N d to
 consume (resumed from the rebuild)", "W reclaims next: Y, consumed in M d"). Source typechecked 2026-10-31,
 UNTESTED.
 
