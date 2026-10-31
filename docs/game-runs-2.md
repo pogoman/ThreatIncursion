@@ -2035,3 +2035,8 @@ checkout (its committed jar): cp1a OceanPena / cp1b AmaruDugas from day 0 to d18
 (`compat-fields.sh`). Step 2 on the 0.9 jar 11:07:56: both load in ~75 s, cp2a d1618 -> w2,968 and cp2b d1669 -> w3,114
 with 0 exceptions, strikes 31 / 41, hives 156 / 175, shift orders 1,774 / 2,616 with 17 / 59 drops (the booking jar), 0 stuck.
 PASS. facts: "Will a 0.8.2 (release) save load on the 0.9 build?".
+
+**ROUNDS 96-97 LAUNCHED 11:49 (hw328 set B / hw329 set A, day 0, the booking jar 11:07:56 = 635430b0, HEAD 5d6490ec):**
+driver `run-seeds-44.ps1`, watcher `watch-seeds-44.sh` with `shiftdrops` ARMED (300+ drop lines fail the round). Read against
+hw326 / hw327 at the same days: drops near 0 (hw326c 358 at w1,415; hw327c 1,535 at the end), orders about the spawns, the
+Offensive's fuel figure lower by the bookings, hives / strikes / consumed inside the band, 0 exc.
