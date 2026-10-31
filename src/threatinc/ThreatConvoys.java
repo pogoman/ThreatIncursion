@@ -196,12 +196,16 @@ public class ThreatConvoys {
 	 * What a hand order may take of one reserve good at a colony: its stock above its floor
 	 * (ThreatReserves.available) - and, on a world with a Threat army of its own, no more than
 	 * its front spares ({@link #frontWorldSpare}: Arkoman, 2026-10-28, sent Haven all 945 of the
-	 * arms its own stalled front was burning). 0 for ship hulls, which are no reserve good.
+	 * arms its own stalled front was burning). 0 for ship hulls, which are no reserve good. THE PLAYER IS NEVER GATED (the user, 2026-10-31:
+	 * "the player should be able to do whatever the fuck they want. if i want to transfer 300 marines
+	 * from a world that is being overrun then i can do it. stop putting arbitrary restrictions in"):
+	 * a player colony spares everything above its floor (playerReserveFloorFraction, 0), front or no
+	 * front; the front cap is the NPC donors', whose orders nobody watches.
 	 */
 	public static float handSpare(MarketAPI donor, String commodityId) {
 		if (donor == null || commodityId == null || Commodities.SHIPS.equals(commodityId)) return 0f;
 		float spare = ThreatReserves.available(donor, commodityId);
-		if (ThreatGroundFronts.hasFront(donor)) spare = Math.min(spare, frontWorldSpare(donor, commodityId));
+		if (!donor.isPlayerOwned() && ThreatGroundFronts.hasFront(donor)) spare = Math.min(spare, frontWorldSpare(donor, commodityId));
 		return Math.max(0f, spare);
 	}
 

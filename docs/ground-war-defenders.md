@@ -169,6 +169,9 @@ since 2026-10-24 a colony under an army itself spares its heavy armaments above 
 defenders' want (`frontWorldSpare` over `defenderArmsWant`; the user, Sindria: Volturn, the
 Diktat's one armaments maker, sat invaded on 1,800 while Sindria ran dry) - its marines, fuel
 and supplies still stay home.
+The cap is the NPC donors' only: a player colony spares everything above its floor to a hand order,
+front or no front (`handSpare`, and `ThreatReserves.frontKeep` is 0 on a player world - the user,
+2026-10-31: "if i want to transfer 300 marines from a world that is being overrun then i can do it").
 
 What asks for them: `defenderArmsNeed` = `frontResupplyDays` (60) of the burn the defenders
 will have once `reliefNeed`'s marines stand with them, less the stock. NPC relief convoys

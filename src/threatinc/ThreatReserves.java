@@ -405,10 +405,12 @@ public class ThreatReserves {
 	 * expedition while under siege assuming they have enough marines to retake
 	 * the world ... Rest can still continue to be staged"; until then every
 	 * marine on a front world was held). Sorties ask through {@link #available},
-	 * logistics convoys through ThreatConvoys.frontWorldSpare.
+	 * logistics convoys through ThreatConvoys.frontWorldSpare. Never the player's colonies (the user, 2026-10-31):
+	 * the player's orders commit whatever the player says, a world being overrun included, as the
+	 * floor already lets them (playerReserveFloorFraction 0).
 	 */
 	public static float frontKeep(MarketAPI market, String commodityId) {
-		if (market == null || !Commodities.MARINES.equals(commodityId) || !ThreatGroundFronts.hasFront(market)) return 0f;
+		if (market == null || market.isPlayerOwned() || !Commodities.MARINES.equals(commodityId) || !ThreatGroundFronts.hasFront(market)) return 0f;
 		return Math.min(stock(market.getId(), commodityId), ThreatGroundFronts.deployWant(market));
 	}
 
