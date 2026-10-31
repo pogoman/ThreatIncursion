@@ -834,16 +834,17 @@ public class ThreatFactionView {
 	 * reserved under a table's heading. The fronts table holds one since 2026-10-29 evening (the
 	 * user: "remove resource selectors from ground fronts table ... defend button for faction under
 	 * human faction ground front entry should use the fleet sizing buttons"): the Fleet lever,
-	 * Support / Defend's outcome tier - match the swarm over the world / x orbitTierMedMargin /
-	 * x orbitTierMaxMargin - for the player's own fronts and an ally's sieged world alike. Its
+	 * Support / Defend's pick of hulls - one fleet / half the hulls free / all, as fleets
+	 * (ThreatAid.forcePoints; the swarm-matching tiers went on 2026-10-31 evening) - for the
+	 * player's own fronts and an ally's sieged world alike. Its
 	 * Marines and Arms went: Supply reads the colonies table's (ThreatIncursionIntel.frontLevers).
 	 */
 	protected static void addFrontLevers(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
 		String[] fleetTips = {
-				"Support / Defend: match the swarm over the world.",
-				"Support / Defend: x" + String.format("%.2f", ThreatIncConfig.orbitTierMedMargin()) + " the swarm.",
-				"Support / Defend: x" + String.format("%.2f", ThreatIncConfig.orbitTierMaxMargin()) + " the swarm." };
-		// Min, not None: the first setting is a force that matches the swarm (the user, 2026-10-31)
+				"Support / Defend: one fleet of the hulls free.",
+				"Support / Defend: half the hulls free, as fleets.",
+				"Support / Defend: every hull free, as fleets." };
+		// Min, not None: the first setting is one fleet (the user, 2026-10-31)
 		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
 				BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_FLEET + ":",
 				intel.lever(ThreatIncursionIntel.LEVER_FRONT_FLEET), fleetTips, 0f, TIER_LABELS, LEVER_BUTTON_W);
@@ -916,9 +917,9 @@ public class ThreatFactionView {
 		}
 		float x0 = LEVER_LABEL_W + TARGET_BUTTON_W + 14f;
 		String[] fleetTips = {
-				"Attack: the fleet the siege needs - its orbit, its landing and its guns.",
-				"Attack: half the colony's free hulls, the siege's need at least.",
-				"Attack: all the colony's free hulls, up to one fleet." };
+				"Attack: one fleet of the hulls free at the colony.",
+				"Attack: half the hulls free at the colony, as fleets.",
+				"Attack: every hull free at the colony, as fleets." };
 		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
 				BUTTON_LEVER + ThreatIncursionIntel.LEVER_LEDGER_FLEET + ":",
 				intel.lever(ThreatIncursionIntel.LEVER_LEDGER_FLEET), fleetTips, x0, TIER_LABELS, LEVER_BUTTON_W);
@@ -2801,7 +2802,7 @@ public class ThreatFactionView {
 						+ hive.getName() + " for %s days?", 0f, h, near.fleet.getName(), days);
 				prompt.addPara(ThreatFleetOrders.orbitEffect(hive, near.fleet.getFleetPoints(), kind, near.fleet), 10f);
 			} else {
-				// sized for the outcome (ThreatAid.orbitAskFP: the swarm over the world by the tier's margin)
+				// the Fleet lever's pick of hulls (ThreatAid.forcePoints: one fleet / half / all), as the Defend's
 				ThreatAid.Quote q = ThreatAid.quoteOrbit(hive, kind, orbitTier);
 				if (!q.ok()) {
 					prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
@@ -2991,15 +2992,13 @@ public class ThreatFactionView {
 	/** The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8): one line per fact, figures as "N to what it buys". */
 	/** The swarm the Attack at the ledger's Fleet lever is sized against, for its prompt; null when no sizing was asked. */
 	protected static String attackSized(IncursionManager.Attack a) {
-		if (a == null || a.base == null) return null;
-		String need = Misc.getWithDGS((int) Math.ceil(a.need));
-		String short_ = a.points < a.need - 0.5f ? " - short of it" : "";
-		if (a.tier >= 2) {
-			return "All of " + a.base.getName() + "'s free hulls" + (a.points < a.free - 0.5f ? ", up to one fleet" : "")
-					+ "; the siege needs " + need + short_ + ".";
+		if (a == null || a.fleetPoints == null || a.fleetPoints.size() < 2) return null;
+		StringBuilder b = new StringBuilder();
+		for (int i = 0; i < a.fleetPoints.size(); i++) {
+			if (i > 0) b.append(i == a.fleetPoints.size() - 1 ? " and " : ", ");
+			b.append(Misc.getWithDGS(Math.round(a.fleetPoints.get(i))));
 		}
-		if (a.tier == 1) return "Half of " + a.base.getName() + "'s free hulls; the siege needs " + need + short_ + ".";
-		return "The fleet the siege needs: its orbit, its landing and its guns" + short_ + ".";
+		return "In " + a.fleetPoints.size() + " fleets: " + b + ".";
 	}
 
 	protected static void addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a) {

@@ -1508,9 +1508,12 @@ public class ThreatFleetOrders {
 	}
 
 	/**
-	 * As above for a force of {@code total} combat points - an outcome's size (ThreatAid.huntAskFP,
-	 * orbitAskFP; the user, 2026-10-24: tiers sized for outcomes) - built as fleets of one fleet's
-	 * size until it is met ({@code several}), or as exactly one fleet.
+	 * As above for a force of {@code total} combat points - a Hunt's outcome (ThreatAid.huntAskFP),
+	 * an NPC's defence-fleet ask, or the Fleet lever's pick (ThreatAid.forceFP) - built as the fleets
+	 * ThreatAid.forceFleetSizes lists ({@code several}: fleets of fleetMaxFP, a half-fleet, the rest;
+	 * the user, 2026-10-31 evening: 7,000 hulls at Max is "2 2.4k FP fleets, one 1.2k FP fleet, one
+	 * 1k FP fleet"), or as exactly one fleet. Each is built WHOLE however many builds vanilla's ship
+	 * cap takes ({@link #buildWhole}).
 	 */
 	protected static List<CampaignFleetAPI> buildPlayerForce(MarketAPI base, FactionAPI faction, boolean self,
 			float total, boolean several, Vector2f destinationHyper, String label) {
@@ -1532,9 +1535,13 @@ public class ThreatFleetOrders {
 		// vanished and respawned out of the planet; until then each folded fleet was expired and its
 		// points built again, and a Med hunt of 1,451 built five fleets and folded nine guards)
 		float[] ownLeft = new float[] { self ? Float.MAX_VALUE : Math.max(0f, ThreatAidCapacity.ownFreeFP(base)) };
-		while (got < total - 1f && built.size() < PLAYER_FORCE_MAX_FLEETS) {
+		// the fleets the force sails as: fleetMaxFP each, a half-fleet, the rest (ThreatAid.forceFleetSizes)
+		List<Float> chunks = several ? ThreatAid.forceFleetSizes(ThreatAidCapacity.taskForcePoints(total))
+				: java.util.Collections.singletonList(ThreatAidCapacity.taskForcePoints(total));
+		for (Float chunk : chunks) {
+			if (got >= total - 1f || built.size() >= PLAYER_FORCE_MAX_FLEETS) break;
 			float left = total - got;
-			float ask = Math.min(left, ThreatSoftening.fleetCapFor(base, faction.getId(), left));
+			float ask = Math.min(left, chunk / ThreatAidCapacity.TASK_FORCE_HULL_MULT);
 			// a remainder under the smallest task force is not a fleet
 			if (!built.isEmpty() && ask < ThreatIncConfig.aidGuardMinFP()) break;
 			if (!self && ThreatAidCapacity.taskForcePoints(ask) > ownLeft[0] + 0.5f) {
@@ -1553,11 +1560,10 @@ public class ThreatFleetOrders {
 					}
 					built.add(fleet);
 					got += ThreatSoftening.combatFP(fleet);
-					if (!several) break;
 					continue;
 				}
 			}
-			CampaignFleetAPI fleet = buildTaskForce(base, faction, ask, destinationHyper);
+			CampaignFleetAPI fleet = buildWhole(base, faction, self, ask, destinationHyper, label, ownLeft);
 			if (fleet == null) {
 				// held at the launch (the hulls built want a hold the base cannot pay, past the trim):
 				// the first fleet refused is the order refused, and the player hears why
@@ -1569,22 +1575,48 @@ public class ThreatFleetOrders {
 				}
 				break;
 			}
-			float combat = ThreatSoftening.combatFP(fleet);
-			if (combat < 1f) {
+			built.add(fleet);
+			got += ThreatSoftening.combatFP(fleet);
+		}
+		return built.isEmpty() ? null : built;
+	}
+
+	/**
+	 * One fleet of {@code combat} combat points built WHOLE at the base: as many builds as vanilla's
+	 * ship cap takes (ThreatSoftening.fleetCapFor; maxShipsInAIFleet ships a build), each absorbed
+	 * into the first and committed to the ledger against it ({@code self}: a colony's own staging,
+	 * else a sortie; {@code ownLeft}[0] takes the colony's own points spent). As ThreatDeploy.build,
+	 * provisioned. Null when nothing was built.
+	 */
+	protected static CampaignFleetAPI buildWhole(MarketAPI base, FactionAPI faction, boolean self, float combat,
+			Vector2f destinationHyper, String label, float[] ownLeft) {
+		CampaignFleetAPI lead = null;
+		float got = 0f;
+		int pieces = 0;
+		while (got < combat - 1f && pieces < 40) {
+			float left = combat - got;
+			float ask = Math.min(left, ThreatSoftening.fleetCapFor(base, faction.getId(), left));
+			if (pieces > 0 && ask < ThreatIncConfig.aidGuardMinFP()) break;
+			CampaignFleetAPI fleet = buildTaskForce(base, faction, ask, destinationHyper);
+			if (fleet == null) break;
+			float fp = ThreatSoftening.combatFP(fleet);
+			if (fp < 1f) {
 				Misc.fadeAndExpire(fleet);
 				break;
 			}
 			ThreatSoftening.learnFleetCap(faction.getId(), fleet, ask);
 			float points = builtPoints(fleet, ask);
-			// the colony's own hulls, no fold: a task force on station sails as itself (above)
-			if (self) ThreatAidCapacity.commit(base, points, fleet, label);
-			else ThreatAidCapacity.commit(base, points, fleet, null, label, false);
-			if (!self) ownLeft[0] = Math.max(0f, ownLeft[0] - points);
-			built.add(fleet);
-			got += combat;
-			if (!several) break;
+			pieces++;
+			got += fp;
+			CampaignFleetAPI to = lead != null ? lead : fleet;
+			// the colony's own hulls, no fold: a task force on station sails as itself (buildPlayerForce)
+			if (self) ThreatAidCapacity.commit(base, points, to, label);
+			else ThreatAidCapacity.commit(base, points, to, null, label, false);
+			if (!self && ownLeft != null) ownLeft[0] = Math.max(0f, ownLeft[0] - points);
+			if (lead == null) lead = fleet;
+			else absorb(lead, fleet);
 		}
-		return built.isEmpty() ? null : built;
+		return lead;
 	}
 
 	/**
@@ -2153,7 +2185,7 @@ public class ThreatFleetOrders {
 		}
 		MarketAPI base;
 		if (faction.isPlayerFaction()) {
-			// sized for the outcome (ThreatAid.orbitAskFP), from the colony that can field it (the gate: orbitRefusal)
+			// the Fleet lever's pick of hulls (ThreatAid.forcePoints), from the colony that has it (the gate: orbitRefusal)
 			ThreatAid.Quote q = ThreatAid.quoteOrbit(hive, kind, tier);
 			if (!q.ok()) return null;
 			base = q.source;
@@ -2190,9 +2222,9 @@ public class ThreatFleetOrders {
 			}
 			return lead;
 		}
-		// the outcome's size (ThreatAid.orbitAskFP: the swarm over the world, by the tier's margin)
-		List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, false,
-				Math.max(ThreatAid.orbitAskFP(hive, base, tier), ThreatIncConfig.aidGuardMinFP()), true,
+		// the Fleet lever's pick of hulls (ThreatAid.forcePoints: one fleet / half / all), as the Defend's; the
+		// swarm-matching tiers of 2026-10-24 went on 2026-10-31 evening (the user: "we dont size we deploy what we have")
+		List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, false, tier,
 				hive.getLocationInHyperspace(), orbitName(kind).toLowerCase() + " over " + hive.getName());
 		if (fleets == null) return null;
 		Order o = null;

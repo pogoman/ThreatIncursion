@@ -462,6 +462,8 @@
 	# the ledger's Days lever (2026-10-31): the player's Attack holds each world this long at its first / third setting (siegeOrbitDays at the second)
 	"threatinc_attackDaysMin": 60,
 	"threatinc_attackDaysMax": 240,
+	# the smallest force the player's Attack, Defend or Support sails at the Fleet lever (whole-fleet points); a colony with less free sends none
+	"threatinc_forceMinFP": 300,
 	# a siege's landing is sized for the strata the hive grows to over this many days (its muster and passage), not today's
 	"threatinc_siegeGrowthDays": 90,
 	# the council attacks the nearest hive first (an own system before any other), not the easiest
@@ -927,12 +929,9 @@
 	# supplies its flotilla burns; short of the rest, the flotilla shrinks
 	"threatinc_expeditionMinProvisionsFraction": 0.5,
 	# the board's Force tiers are outcomes (2026-10-24): Bombard puts a hive's structures
-	# down this many days at Min and Med (Max: as far as bombing goes); Support and Defend
-	# bring the swarm over the world x1 at Min, x these at Med and Max. Siege lands marines
+	# down this many days at Min and Med (Max: as far as bombing goes). Siege lands marines
 	# to hold / push back (frontPushBackRate) / overrun (frontOverrunRate); Hunt beats the
 	# weakest swarm seen / matches the swarms seen / x npcSiegeOrbitMargin
-	"threatinc_orbitTierMedMargin": 1.25,
-	"threatinc_orbitTierMaxMargin": 1.5,
 	# provisions drawn per fleet point: fuel per light-year, supplies flat
 	"threatinc_expeditionFuelPerPointLY": 10,
 	"threatinc_expeditionSuppliesPerPoint": 30,

@@ -233,12 +233,17 @@ the player's colonies like the Requests' Colony button (`BUTTON_ATTACK_SOURCE`, 
 `ThreatFactionView.attackSource`); it defaults to the STAGING colony (`stagingColony`: the first colony that is a
 staging base for a siege, `ThreatConvoys.stagingHive`, else the first with a military industry and a Waystation,
 `IncursionManager.isBase`, else the first) - as does the Requests table's Colony toggle since the same evening
-(`requestTarget`). Fleet (`LEVER_LEDGER_FLEET`, Max by default) sizes a NEW fleet built at the colony from its own free hulls:
-Min the siege's need (`siegeSizesFor` - the planner's own sizing: its orbit, its landing and its guns), Med half the
-colony's free hulls (the need at least), Max all of them - never under `ThreatDeploy.minPoints`, never over the free
-hulls or one fleet (`fleetMaxFP`); `IncursionManager.attackPlan(base, faction, system, fleetTier, daysTier, levers)`,
-`Attack.free` / `need` / `tier` / `points`. (For an hour that evening the tiers matched the Defense Swarms seen, as the
-Defend's do - Svarga quoted 60 FP against 21 seen; an attack razes and lands, so it is sized like a siege.) It is loaded at the
+(`requestTarget`). Fleet (`LEVER_LEDGER_FLEET`, Max by default) is the player's pick of hulls, NOTHING SIZED - the Defend's rule
+(the user, 2026-10-31 evening, after a swarm-matching tier quoted 60 FP for Svarga and a siege-need tier followed it:
+"there is no sizing ... you deploy everything at the selected colony should be increments of 2.4k and 1.2k fleets if
+above or if less than 1.2k then whatever there is. min should be 300fp if that doesnt exist then attack not available
+... we dont size we deploy what we have its up to the player"; then "isnt this how defend button works? ... they
+should both operate in exactly the same way"): NEW fleets built at the colony from its own free hulls - Min one fleet
+(`fleetMaxFP` 2,400, or all that is free), Med half the free hulls, Max all of them (`ThreatAid.forcePoints`), sailing
+as fleets of 2,400, then a 1,200, then the rest (`ThreatAid.forceFleetSizes`: 7,000 free at Max is 2,400 + 2,400 +
+1,200 + 1,000); under `threatinc_forceMinFP` (300) free the button is off ("Haven has N fleet points free / An attack
+needs at least 300"). `IncursionManager.attackPlan(base, faction, system, fleetTier, daysTier, levers)`, `Attack.free`
+/ `fleetPoints` / `tier` / `points`; the prompt lists the fleets ("In 4 fleets: 2,400, 2,400, 1,200 and 1,000"). It is loaded at the
 colonies table's levers exactly as a Deploy is (`ThreatDeploy.plan`'s rule: each good the lever's share of what the
 colony spares, `ThreatConvoys.handSpare`), the fuel and the supplies drawing on the colony's stock above its floor
 (`ThreatReserves.available`) up to the passage and the expedition's figure whatever the lever says; that figure is
@@ -361,9 +366,10 @@ marines; **Bombard** puts every hive's least-worn structure down `bombardTierMin
 `razePass` stops at `saturationDone`), so the flotilla, fuel and stay are priced to the days
 ordered; **Hunt** beats the weakest Defense Swarm seen by `npcSiegeOrbitMargin` / matches every
 swarm point seen in the system / that by the margin (`ThreatAid.huntAskFP`); **Support / Defend**
-over a world matches the swarm over it (a hive's as the player's report shows it) / x
-`orbitTierMedMargin` 1.25 / x `orbitTierMaxMargin` 1.5 (`ThreatAid.orbitAskFP`; one fleet with no
-swarm there). A force asks the nearest colony whose free hulls field it all
+over a world is the Fleet lever's pick of hulls again since 2026-10-31 evening - one fleet / half the hulls free / all,
+sailing as fleets of `fleetMaxFP`, a half-fleet and the rest (`ThreatAid.forcePoints`, `forceFleetSizes`; the
+swarm-matching tiers x 1.25 / x 1.5 of 2026-10-24, `orbitAskFP`, are gone - the user: "we dont size we deploy what we
+have its up to the player"; the floor is `threatinc_forceMinFP` 300). A force asks the nearest colony whose free hulls field it all
 (`ThreatAid.pickTaskForceSource(loc, self, ask)`; a guard over the player's own colony asks its own
 hulls first since 2026-10-29, the nearest other colony past them) and is refused with the figures when none can
 ("Haven has 900 fleet points free / To hunt the swarms seen takes 2,400"); the prompt carries one
@@ -381,7 +387,7 @@ fronts table"; Marines and Arms sat there until then), over the colonies **Fuel*
 **Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
 all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`); since 2026-10-30 evening a lever is ONE button reading its tier, pressed it sets the next round the ladder. The Fleet lever is Support / Defend's
 outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
-ladders), for the player's own fronts and the Defend of an ally's sieged world alike; beside it since 2026-10-31 the **Days** lever (`LEVER_FRONT_DAYS`, 30 d / 90 d / 180 d from `threatinc_guardDaysMin` / `guardDays` / `guardDaysMax`, `ThreatIncConfig.guardTermDays`) is the term an ally's Defend holds the orbit AND the stay its hold is priced on (`ThreatReach.setStay` around `ThreatAid.quoteDefend` and `ThreatFleetOrders.dispatchGuard`), so a 30-day Defend quotes a third of the 90-day hold - the Defend tooltip and prompt show the term and the fuel and supplies; the Threat ledger has its own **Colony**, **Fleet** and **Days** row since 2026-10-31 evening (`attackSource`, `LEVER_LEDGER_FLEET` / `LEVER_LEDGER_DAYS`, `addLedgerLevers`: the colony the Attack is built at, its outcome tier against the swarms seen and the term it holds each world, "Deploy, Transfer, Attack" above); the colonies'
+ladders), for the player's own fronts and the Defend of an ally's sieged world alike; beside it since 2026-10-31 the **Days** lever (`LEVER_FRONT_DAYS`, 30 d / 90 d / 180 d from `threatinc_guardDaysMin` / `guardDays` / `guardDaysMax`, `ThreatIncConfig.guardTermDays`) is the term an ally's Defend holds the orbit AND the stay its hold is priced on (`ThreatReach.setStay` around `ThreatAid.quoteDefend` and `ThreatFleetOrders.dispatchGuard`), so a 30-day Defend quotes a third of the 90-day hold - the Defend tooltip and prompt show the term and the fuel and supplies; the Threat ledger has its own **Colony**, **Fleet** and **Days** row since 2026-10-31 evening (`attackSource`, `LEVER_LEDGER_FLEET` / `LEVER_LEDGER_DAYS`, `addLedgerLevers`: the colony the Attack is built at, its pick of hulls (one fleet / half / all, as fleets) and the term it holds each world, "Deploy, Transfer, Attack" above); the colonies'
 five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms
 (`ThreatIncursionIntel.frontLevers`), and a shortfall's request asks each faction at the same tier
 (Max all one colony spares, Med half). Transfer moves hulls between the player's colonies off the
