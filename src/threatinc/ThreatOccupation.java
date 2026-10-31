@@ -304,12 +304,19 @@ public class ThreatOccupation {
 		return list;
 	}
 
-	/** The next industry the clock claims; null when every one is claimed. */
+	/**
+	 * The next industry the clock claims; null when every one is claimed. Never one the world is still
+	 * rebuilding from the swarm's eaten share (the user, Haven 2026-10-31: the garrison retook a district,
+	 * "Industry Reclaimed ... Rebuilding: 39% eaten, 47 days" - and the same tick's catchUp, 0 claims
+	 * against 3 districts held, claimed the Military Base straight back: green, "Threat Swarm" production
+	 * and a Rebuilding bar on one card). The retake stands until the rebuild is done.
+	 */
 	public static Industry next(MarketAPI market, GroundFront front) {
 		if (market == null || front == null) return null;
 		List<String> claims = claims(front);
 		for (Industry ind : claimable(market)) {
-			if (!claims.contains(ind.getId())) return ind;
+			if (claims.contains(ind.getId()) || rebuilding(ind)) continue;
+			return ind;
 		}
 		return null;
 	}
