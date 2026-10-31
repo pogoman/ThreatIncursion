@@ -2494,12 +2494,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	front.pushProgress = 0f;
 	front.strataHeld++;
 	ThreatOccupation.onDistrictTaken(front, market); // and an industry claimed with it (the occupation, 2026-10-27)
-	// a district changing hands: both sides stand at no cover and earn it again (2026-10-24). The
-	// 2026-10-31 rule - the taker at full cover, the loser at none - lasted a day: Haven read
-	// 6,652 against 709 the moment the swarm took its third district (the user: "doesnt make
-	// sense for it to instantly go up")
-	front.entrenchDays = 0f;
-	front.defenderEntrenchDays = 0f;
+	// a district changing hands touches neither side's cover (the user, 2026-10-31 evening: "nothing
+	// should change when a district is taken ... defenders will already be pushed back and have no
+	// cover, and pushes will need to dig in if they want to reset ... we dont need any arbitrary
+	// reset at any point"). Before: both to 0 (2026-10-24), the taker to full for one afternoon
+	// (2026-10-31: Haven read 6,652 against 709 the moment the swarm took its third district)
 	int total = market.getSize();
 		ThreatAlarm.add(ownerOf(front), ThreatIncConfig.alarmPerStratum(),
 				"stratum taken at " + market.getName());
@@ -2575,8 +2574,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatMarineXP.frontEarn(front, defense, pressure);
 		if (theatre == COLONY) ThreatMarineXP.colonyEarn(market, pressure, defense);
 		front.pushProgress = 0f;
-		front.entrenchDays = 0f; // both sides at no cover on a district changing hands (2026-10-24; the 2026-10-31 full-cover-for-the-taker rule was reverted the same day)
-		front.defenderEntrenchDays = 0f;
+		// neither side's cover is touched by the district changing hands (the user, 2026-10-31 evening; see takeStratum)
 		if (front.strataHeld > 0) {
 			// a district retaken releases ONE claim - the defenders' pick, military first, soonest lost
 			// (ThreatOccupation.release; the user, 2026-10-31 afternoon: "a district taken either side gives
