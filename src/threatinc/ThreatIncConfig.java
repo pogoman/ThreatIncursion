@@ -424,6 +424,8 @@ public class ThreatIncConfig {
 	public static boolean occupationConsumeMilitary() { return b("threatinc_occupationConsumeMilitary", true); }
 	/** Days a gutted world is no strike's target and vanilla's deciv is held off after the swarm lifts off. */
 	public static float occupationGuttedDays() { return f("threatinc_occupationGuttedDays"); }
+	/** Days a notice stays in the Intel tab after it is posted (ThreatNotice.send); 0 keeps none (the user, 2026-10-31). */
+	public static float noticeIntelDays() { return f("threatinc_noticeIntelDays"); }
 	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
 	// ---- hive sieges ----

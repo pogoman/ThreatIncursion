@@ -322,6 +322,22 @@ public class ThreatOccupation {
 	}
 
 	/**
+	 * Whether a claimable industry stands unclaimed on the world, rebuilding or not - what keeps the
+	 * swarm on it ({@link #liftOff}): {@link #next} waits a rebuild out, so reading its null as "nothing
+	 * left to claim" lifted Haven's 3,559 strata off the world the tick the garrison retook a district and
+	 * the Military Base, the last one standing, went to rebuilding (the user, 2026-10-31: "suddenly threat
+	 * are gone ... there were 3k of them!").
+	 */
+	public static boolean anyToClaim(MarketAPI market, GroundFront front) {
+		if (market == null || front == null) return false;
+		List<String> claims = claims(front);
+		for (Industry ind : claimable(market)) {
+			if (!claims.contains(ind.getId())) return true;
+		}
+		return false;
+	}
+
+	/**
 	 * One tick of the front ({@link ThreatGroundFronts}'s tick, after the attrition):
 	 * a district held is an industry claimed, no more and no fewer (#catchUp, #trim), the eaten output grows
 	 * the pool at a hive's rate and the swarm shifts it between the ground and the orbit (#shift); vanilla's
@@ -799,7 +815,8 @@ public class ThreatOccupation {
 	}
 	/**
 	 * THE LIFT-OFF (the user, 2026-10-28: "if a world has no industries left they lift off
-	 * and find another"): ground held and nothing on the world left to claim or consume -
+	 * and find another"): ground held and nothing on the world left to claim or consume - an
+	 * industry rebuilding from a retaken district still counts as left ({@link #anyToClaim}) -
 	 * the troops and the pool re-embark as one swarm bound for the nearest hive's bank
 	 * (ThreatColonyManager.bindStrayToNearest: what reaches it is credited, what is shot
 	 * down on the way is lost), the swarms above stand down, the world is marked gutted for
@@ -808,7 +825,7 @@ public class ThreatOccupation {
 	 */
 	protected static boolean liftOff(GroundFront front, MarketAPI market) {
 		if (!ThreatIncConfig.occupationConsume() || !occupies(front, market) || front.strataHeld <= 0) return false;
-		if (!claims(front).isEmpty() || next(market, front) != null) return false;
+		if (!claims(front).isEmpty() || anyToClaim(market, front)) return false;
 		int eaten = consumed(market, false).size();
 		float strata = Math.max(0f, front.budPool) + Math.max(0f, front.budRising) + Math.max(0f, front.marines);
 		float fp = ThreatStrata.fpOf(strata);

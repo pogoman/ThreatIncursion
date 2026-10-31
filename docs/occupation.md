@@ -378,7 +378,10 @@ are not in the batches. The Ground War condition's tooltip adds "Consuming X: N 
 claim and "Consumed by the swarm: N industries".
 
 **The lift-off** (`liftOff`, after the clocks): ground held, no claim left and nothing left to claim
-(`next` null - every producer and military structure eaten, or none ever there) - the troops, the pool
+(`anyToClaim` false - every producer and military structure eaten or claimed, or none ever there; one
+rebuilding from a retaken district still counts as left, where `next` only waits the rebuild out - the
+user, Haven 2026-10-31, 3,559 strata lifted off a world with 5 of 6 districts held the tick the Military
+Base went to rebuilding) - the troops, the pool
 and the strata rising re-embark as one Infestation Swarm (`ThreatFleetComposer.createSized`, garrison
 job) bound for the nearest live hive's bank (`ThreatColonyManager.bindStrayToNearest`, then
 GO_TO_LOCATION_AND_DESPAWN at the hive as `ThreatSwarmDefend.sendHome` does; what is shot down on the

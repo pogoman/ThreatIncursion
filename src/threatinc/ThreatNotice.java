@@ -2,7 +2,9 @@ package threatinc;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,8 +14,10 @@ import com.fs.starfarer.api.campaign.comm.CommMessageAPI.MessageClickAction;
 import com.fs.starfarer.api.campaign.comm.IntelInfoPlugin.ListInfoMode;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
+import com.fs.starfarer.api.impl.campaign.ids.Tags;
 import com.fs.starfarer.api.impl.campaign.intel.BaseIntelPlugin;
 import com.fs.starfarer.api.ui.LabelAPI;
+import com.fs.starfarer.api.ui.SectorMapAPI;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
@@ -288,6 +292,14 @@ public class ThreatNotice extends BaseIntelPlugin {
 		Global.getSector().getCampaignUI().addMessage(this,
 				clickable ? MessageClickAction.INTERACTION_DIALOG : MessageClickAction.NOTHING,
 				clickable ? ThreatNoticeClickDialog.token(tab) : null);
+		// and kept in the Intel tab for noticeIntelDays, under Major events and the factions it
+		// concerns, so a notice missed can be found again (the user, 2026-10-31: "if i miss one
+		// theres no way to find it again"); silent - the message above is the notification
+		float keep = ThreatIncConfig.noticeIntelDays();
+		if (keep > 0f) {
+			endAfterDelay(keep);
+			Global.getSector().getIntelManager().addIntel(this, true);
+		}
 		ThreatIncConfig.log("Notice: " + plain());
 	}
 
@@ -394,8 +406,28 @@ public class ThreatNotice extends BaseIntelPlugin {
 		return sound != null ? sound : getSoundMinorMessage();
 	}
 
+	/** The Intel tab's filters it is listed under: Major events, and every faction it names or bears the crest of (the Threat's when none). */
+	@Override
+	public Set<String> getIntelTags(SectorMapAPI map) {
+		Set<String> tags = new LinkedHashSet<String>();
+		Set<String> base = super.getIntelTags(map);
+		if (base != null) tags.addAll(base);
+		tags.add(Tags.INTEL_MAJOR_EVENT);
+		tags.add(crestFactionId != null ? crestFactionId : Factions.THREAT);
+		if (mentionedFactionId != null) tags.add(mentionedFactionId);
+		for (Line l : lines) if (l.factionId != null) tags.add(l.factionId);
+		return tags;
+	}
+
+	/** Selected in the Intel tab: its lines, and vanilla's Delete button. */
 	@Override
 	public boolean hasSmallDescription() {
-		return false;
+		return true;
+	}
+
+	@Override
+	public void createSmallDescription(TooltipMakerAPI info, float width, float height) {
+		addBulletPoints(info, ListInfoMode.IN_DESC);
+		addDeleteButton(info, width);
 	}
 }

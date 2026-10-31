@@ -522,6 +522,10 @@
 	"threatinc_occupationConsumeMilitary": true,
 	"threatinc_occupationGuttedDays": 180,
 
+	# Days a notification stays in the Intel tab (Major events, and the factions it names) after it is posted,
+	# so one missed can be read again; 0 keeps none.
+	"threatinc_noticeIntelDays": 60,
+
 	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive
 	# world's one figure is its strata - its size by a doubling table (strataSizeBase
 	# at size 1, x strataSizeRatio a size: 400, 800, 1,600 ... 51,200 at 8), its
