@@ -2040,3 +2040,16 @@ PASS. facts: "Will a 0.8.2 (release) save load on the 0.9 build?".
 driver `run-seeds-44.ps1`, watcher `watch-seeds-44.sh` with `shiftdrops` ARMED (300+ drop lines fail the round). Read against
 hw326 / hw327 at the same days: drops near 0 (hw326c 358 at w1,415; hw327c 1,535 at the end), orders about the spawns, the
 Offensive's fuel figure lower by the bookings, hives / strikes / consumed inside the band, 0 exc.
+
+**12:09 hw328 STOPPED at w1,467 / 1,377 / 1,437 (drops 0 / 2 / 75, launches 7 / 5 / 3, 0 exc)** for the forward-base
+compatibility test (the user, 12:05: "forward bases are supposed to be removed from the save in 0.9 as they are no longer
+used by the human factions and i dont want to break the AI. this needs to be tested"); hw329 never started; the retest
+relaunches after. Read before the stop: c's 75 drops all fell in one window at its opening launch - `ThreatOffensive`
+prices and pays prongs from `ThreatFuel.stock()` (lines 325 / 555 / 585), not above the bookings, so a launch draws the
+stock under them and every pending shift settles once. Left as is (the strike is the priority act; a shift settles, nothing
+is lost); the user to say if the planner should honour the bookings instead.
+
+**FORWARD BASES ON UPGRADE (steps 3-4, 12:11-):** step 3 on the v0.8.2 checkout continued cp1's d1618 / d1669 saves
+with bases ON (the harness store) to d3817 / d3713: 32 / 38 bases founded, 10 / 21 lost or given up in play, 0 exc;
+snapshots `cp3ad3817` (~23 standing bases) / `cp3bd3545` (~19). Step 4 on main (jar 11:07:56): both loaded on 0.9 with
+`threatinc_frontlinesEnabled=false` per game (`-Knobs`, what Luna migration 17 does to a player's store), 500 days.
