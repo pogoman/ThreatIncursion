@@ -407,8 +407,8 @@ the eaten share, notice "Consumption resumes at N% eaten". THE DEFENDERS' PICK (
 claim before a producer, within each the fewest days from being consumed, the newest on a tie - "humans should
 prioritise military buildings, whichever will be lost soonest". No progress rides on the pick: the line's push
 is the front's, and the pick is resolved the moment the district changes hands ("if building is lost while
-they are pushing then it goes to next and progress is not lost"). THE TARGET COLUMN (fronts table, after
-Objective): the industry the next district decides - the swarm's next claim in the Threat's colour while the
+they are pushing then it goes to next and progress is not lost"). THE OBJECTIVE COLUMN (fronts table, after ETA - named Target for an hour; the days column, Objective since
+2026-10-24, is ETA now): the industry the next district decides - the swarm's next claim in the Threat's colour while the
 line moves its way, the world's next reclaim in the world's while it moves the world's, the swarm's when it
 stands and one waits, "-" off an occupation; the row tooltip gives both ("Swarm claims next: X, N d to
 consume (resumed from the rebuild)", "W reclaims next: Y, consumed in M d"). Source typechecked 2026-10-31,

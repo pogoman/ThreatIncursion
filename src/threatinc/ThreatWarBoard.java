@@ -1143,8 +1143,8 @@ public class ThreatWarBoard {
 		names.add("Held"); fracs.add(.055f);
 		names.add("Stance"); fracs.add(.085f);
 		names.add("Losses"); fracs.add(.075f);
-		names.add("Objective"); fracs.add(.065f);
-		names.add("Target"); fracs.add(.1f);
+		names.add("ETA"); fracs.add(.055f);
+		names.add("Objective"); fracs.add(.11f);
 		names.add("Arms"); fracs.add(.055f);
 		names.add("Victory"); fracs.add(.07f);
 		names.add("Space"); fracs.add(.09f);
@@ -1252,7 +1252,7 @@ public class ThreatWarBoard {
 			float oursLost = threatView ? ThreatGroundFronts.swarmLossPer30Days(f, m)
 					: ThreatGroundFronts.marineLossPer30Days(f, m);
 			cell(cells, Alignment.MID, oursDry ? neg : text, ThreatGroundFronts.perDay(oursLost) + " / day"); i++;
-			// Objective (the user, 2026-10-24): days until this side takes the next layer;
+			// ETA (Objective until 2026-10-31): days until this side takes the next layer;
 			// a dash while the line stands or moves against it
 			float change = ThreatGroundFronts.daysToLineChange(f, m);
 			boolean ourWay = (ThreatGroundFronts.lineRate(f, m) > 0f) == weLanded;
@@ -1262,7 +1262,7 @@ public class ThreatWarBoard {
 				cell(cells, Alignment.MID, pos, (int) Math.ceil(change) + " d");
 			}
 			i++;
-			// Target (the user, 2026-10-31): the industry the next district decides - the swarm's next
+			// Objective (Target at birth, renamed the same day): the industry the next district decides - the swarm's next
 			// claim (easiest to consume, a rebuild resumed) in the Threat's colour while the line moves
 			// its way, the world's next reclaim (military first, soonest lost) in the world's while it
 			// moves the world's; standing, the swarm's if one waits; "-" off an occupation
@@ -1507,19 +1507,19 @@ public class ThreatWarBoard {
 		boolean toA = rate > 0f;
 		String side = toA ? Army.toLowerCase() : World;
 		if (change < 0f) {
-			tooltip.addPara("Objective: none.", text, 4f);
+			tooltip.addPara("ETA: none.", text, 4f);
 		} else {
-			tooltip.addPara("Objective: next " + layer + " to " + side + " in %s d.", 4f, text, h, "" + (int) Math.ceil(change));
+			tooltip.addPara("ETA: next " + layer + " to " + side + " in %s d.", 4f, text, h, "" + (int) Math.ceil(change));
 		}
 		// Target: what the next district decides, both ways (the user, 2026-10-31)
 		Industry tClaim = ThreatOccupation.nextClaim(m, f);
 		Industry tRelease = ThreatOccupation.nextRelease(f, m);
 		if (tClaim != null) {
-			tooltip.addPara("Swarm claims next: %s, %s d to consume" + (ThreatOccupation.rebuilding(tClaim) ? " (resumed from the rebuild)" : "") + ".",
+			tooltip.addPara("Objective of the swarm: %s, %s d to consume" + (ThreatOccupation.rebuilding(tClaim) ? " (resumed from the rebuild)" : "") + ".",
 					4f, text, h, tClaim.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tClaim)));
 		}
 		if (tRelease != null) {
-			tooltip.addPara(World + " reclaims next: %s, consumed in %s d.", 4f, text, h,
+			tooltip.addPara("Objective of " + World + ": reclaim %s, consumed in %s d.", 4f, text, h,
 					tRelease.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tRelease)));
 		}
 		float victory = ThreatGroundFronts.victoryDays(f, m, toA);

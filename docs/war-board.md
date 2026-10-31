@@ -87,8 +87,8 @@ is the layout it implements.
    Attrition ("N / day" - troops a day at the current stance and supply, `attritionPer30Days` over
    `perDay`; every player-facing loss figure in the mod is a rate a day), Counter
    (days to the next counter-attack, green when the front would repel it now,
-   `counterAttackRepelled`), Arms (days of armaments, "dry" red), Objective (days until this side takes the next layer, "-" while the
-   line stands or moves against it), Target (the industry the next district decides - the swarm's next claim in the
+   `counterAttackRepelled`), Arms (days of armaments, "dry" red), ETA (days until this side takes the next layer, "-" while the
+   line stands or moves against it; named Objective until 2026-10-31), Objective (the industry the next district decides - the swarm's next claim in the
    Threat's colour while the line moves its way, the world's next reclaim in the world's while it moves the world's,
    "-" off an occupation; `ThreatOccupation.nextClaim` / `nextRelease`, 2026-10-31), Victory ("~N d" until this side wins the world - `victoryDays`), Space (who holds the space over the world in their colour, grey "Empty" when
    nothing armed is there - `ThreatGroundFronts.spaceHolder`, the faction with the most armed
