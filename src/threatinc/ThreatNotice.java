@@ -406,13 +406,14 @@ public class ThreatNotice extends BaseIntelPlugin {
 		return sound != null ? sound : getSoundMinorMessage();
 	}
 
-	/** The Intel tab's filters it is listed under: Major events, and every faction it names or bears the crest of (the Threat's when none). */
+	/** The Intel tab's filters it is listed under: Major events, Abyssal War, and every faction it names or bears the crest of (the Threat's when none). */
 	@Override
 	public Set<String> getIntelTags(SectorMapAPI map) {
 		Set<String> tags = new LinkedHashSet<String>();
 		Set<String> base = super.getIntelTags(map);
 		if (base != null) tags.addAll(base);
 		tags.add(Tags.INTEL_MAJOR_EVENT);
+		tags.add(ThreatIncursionIntel.TAG_THREAT); // the Abyssal War filter every mod intel sits under
 		tags.add(crestFactionId != null ? crestFactionId : Factions.THREAT);
 		if (mentionedFactionId != null) tags.add(mentionedFactionId);
 		for (Line l : lines) if (l.factionId != null) tags.add(l.factionId);
