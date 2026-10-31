@@ -2074,7 +2074,8 @@ public class ThreatFactionView {
 			f.color = h;
 			f.name = r.fleet.getName();
 			f.task = "returning to " + (home != null ? home.name() : "-");
-			f.status = "en route";
+			// why it turned home, where something stood it down (ThreatReturns.Return.why)
+			f.status = r.why != null && !r.why.isEmpty() ? r.why : "en route";
 			f.strength = fleetStrength(r.fleet);
 			float eta = ThreatReturns.etaDays(r);
 			f.eta = eta > 0f ? "~" + (int) Math.ceil(eta) + " d" : "-";

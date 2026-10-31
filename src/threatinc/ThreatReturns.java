@@ -319,6 +319,12 @@ public class ThreatReturns {
 		 */
 		public String fromSystemId;
 		public long departedTimestamp;
+		/**
+		 * Why it turned home, in the board's words ("supplies low", "recalled"), or null for a leg
+		 * nothing stood down (the user, 2026-10-31, of a Returning row reading "en route": "it also
+		 * needs to say why they are turning back").
+		 */
+		public String why;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -390,6 +396,11 @@ public class ThreatReturns {
 	 * back to a plain despawn when the home is gone.
 	 */
 	public static boolean sendHome(CampaignFleetAPI fleet, String factionId, String homeMarketId) {
+		return sendHome(fleet, factionId, homeMarketId, null);
+	}
+
+	/** As above, with why it turns home for the board's Returning row ({@link Return#why}). */
+	public static boolean sendHome(CampaignFleetAPI fleet, String factionId, String homeMarketId, String why) {
 		if (fleet == null || !fleet.isAlive()) return false;
 		ThreatBases.Base home = ThreatBases.of(homeMarketId);
 		SectorEntityToken to = home != null ? home.entity() : null;
@@ -419,6 +430,7 @@ public class ThreatReturns {
 		}
 		r.factionId = factionId;
 		r.homeMarketId = homeMarketId;
+		r.why = why;
 		// where it is standing as it turns for home - the hive it just left. The
 		// fleet has not moved yet (only its assignment changed), so its current
 		// system is the origin. Null in hyperspace: nothing to turn back to.

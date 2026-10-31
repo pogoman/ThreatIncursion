@@ -352,7 +352,9 @@ public class ThreatFleetOrders {
 				// a hunting force's follower still wears the force's blinkers; home unable to react otherwise
 				if (KIND_HUNT.equals(o.kind)) o.fleet.getMemoryWithoutUpdate().unset(MemFlags.FLEET_IGNORES_OTHER_FLEETS);
 				// time served: home on the tracked leg, refund on arrival
-				ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
+				ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId, stationGone ? "station gone"
+						: reliefQuiet ? "system quiet" : frontGone ? "front gone" : supportLost ? "support lost"
+						: reliefDone ? "relief done" : "time served");
 				ThreatIncConfig.log("Order " + (stationGone ? "void - station gone: "
 						: reliefQuiet ? "home - system quiet: " : frontGone || supportLost || reliefDone ? "stood down: " : "complete: ")
 						+ o.factionId + " " + o.task());
@@ -2054,7 +2056,9 @@ public class ThreatFleetOrders {
 	public static void standDown(Order o, String why) {
 		if (o == null) return;
 		all().remove(o);
-		if (o.fleet != null && o.fleet.isAlive()) ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
+		// the board's Returning row reads the reason without the log's figures ("supplies low", "outmatched by X")
+		String word = why != null && why.indexOf(',') > 0 ? why.substring(0, why.indexOf(',')) : why;
+		if (o.fleet != null && o.fleet.isAlive()) ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId, word);
 		ThreatIncConfig.log("Order stood down (" + why + "): " + o.factionId + " " + o.task());
 		if (o.raid) {
 			ThreatAttackPlanner.news(o.factionId, "a raid on " + o.targetName + " stood down");
@@ -2512,7 +2516,7 @@ public class ThreatFleetOrders {
 	/** The raid goes home on the tracked leg (refund on arrival), its days at the world in the log. */
 	protected static void endRaid(Order o, String why) {
 		all().remove(o);
-		ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
+		ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId, "raid over");
 		float days = o.arrivedTimestamp != 0L
 				? Global.getSector().getClock().getElapsedDaysSince(o.arrivedTimestamp) : 0f;
 		ThreatIncConfig.log("Raid over: " + o.factionId + " " + o.fleet.getName() + " over " + o.targetName
@@ -3209,7 +3213,7 @@ public class ThreatFleetOrders {
 		if (Global.getSector().getPlayerFaction().getId().equals(o.factionId)) {
 			ThreatAidCapacity.logHulls("before recall of " + fleet.getName() + " to " + o.baseMarketId);
 		}
-		ThreatReturns.sendHome(fleet, o.factionId, o.baseMarketId);
+		ThreatReturns.sendHome(fleet, o.factionId, o.baseMarketId, "recalled");
 		ThreatIncConfig.log("Order recalled: " + o.factionId + " " + o.task());
 	}
 

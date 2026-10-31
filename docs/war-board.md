@@ -201,7 +201,11 @@ The hold is never under what the ships eat for the voyage and the stay (`Plan.ho
 spares, and the plan is refused with the figures when the colony cannot pay it (2026-10-31: a
 Deploy from Arkoman, whose front spared no supplies, sailed for Ogre "Aboard: nothing" and the
 upkeep pass stood it down in hyperspace "supplies low, 0 aboard" - the user: "it just gave up and
-went back for no reason").
+went back for no reason"). A Returning row's Status says why it turned home (`ThreatReturns.Return.why`,
+set by `sendHome`'s four-argument form: a stand-down's reason before its figures - "supplies low",
+"out of supplies", "badly hurt", "outmatched by X" - "time served", "station gone", "front gone",
+"support lost", "relief done", "system quiet", "raid over", "recalled"; "en route" where nothing
+stood it down; the user, 2026-10-31: "it also needs to say why they are turning back").
 Fleets deployed there already are left alone: the Staging group's Recall folds them home
 (`ThreatFleetOrders.fold`). The **Redeploy** that resized and reloaded the deployed fleet (`reabsorb`,
 2026-10-29 to 2026-10-30) is gone - the user, 2026-10-30 22:00: "it should never redeploy/reprovision,
