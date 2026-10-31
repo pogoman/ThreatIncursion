@@ -2056,5 +2056,5 @@ snapshots `cp3ad3817` (~23 standing bases) / `cp3bd3545` (~19). Step 4 on main (
 
 **FORWARD BASES ON UPGRADE: PASS (13:10).** cp4a (OceanPena d3817, ~23 bases) / cp4b (AmaruDugas d3545, 19) on 0.9 with
 the knob off: dismantled 22 (+1 fallen to a strike before) / 19 on the first tick, 0 exc, nothing founded after; the AI
-went on - launches 3 / 9, strikes 3 / 16, core builds 9 / 17, convoys 1,115 / 763 lines, fronts 13 / 22 by w4,193 / 3,847.
+went on - launches 3 / 9, strikes 3 / 16, core builds 9 / 17, convoys 1,115 / 763 lines, fronts 23 / 31, retaken 13 / 4 over the full 500 days (w4,333 / 4,057), launches 7 / 12, strikes 7 / 23, core builds 10 / 58.
 Static on the deep saves: 40 classes, 0 missing, 0 undeclared mod fields. facts: "Are an 0.8.2 save's forward bases removed".
