@@ -51,6 +51,8 @@ public class ThreatDeploy {
 		public float ownFree;
 		/** The load at the levers: marines, heavy armaments, fuel, supplies (ThreatReserves.COMMODITIES order). */
 		public float[] load = new float[4];
+		/** Supplies the fleet's ships eat for the voyage and the stay (ThreatReach.sortieHold): the least the hold is loaded to. */
+		public float holdNeed;
 		/** The Fleet lever asked for more than its share of one fleet (ThreatIncConfig.fleetMaxFP): targetPts is the cap, the rest stays as hulls. */
 		public boolean capped;
 		/** Why not, one fact per line; null when the order would go. */
@@ -146,6 +148,23 @@ public class ThreatDeploy {
 			float spare = ThreatConvoys.handSpare(p.source, ThreatReserves.COMMODITIES[i]);
 			p.load[i] = (float) Math.floor(ThreatConvoys.share(p.levers[i]) * spare);
 		}
+		// THE HOLD (the user, 2026-10-31: "i ordered task force to deploy to ogre and it just gave up and went
+		// back for no reason" - built at Arkoman, whose front spares none of its supplies to a lever, it sailed
+		// "Aboard: nothing" and stood down "supplies low, 0 aboard" in hyperspace): the Supplies lever never
+		// loads less than the ships eat for the voyage and the stay (ThreatReach.sortieHold, as every sortie
+		// carries, docs/fleet-provisions.md), drawn from the source's stock above its floor
+		p.holdNeed = (float) Math.ceil(ThreatReach.sortieHold(p.source.getFactionId(),
+				p.targetPts / ThreatAidCapacity.TASK_FORCE_HULL_MULT, ThreatFleetOrders.sortieLY(p.source, target.hyperLoc())));
+		if (p.load[3] < p.holdNeed) {
+			float have = ThreatReserves.available(p.source, Commodities.SUPPLIES);
+			if (have < p.holdNeed - 0.5f) {
+				p.reason = ThreatNotice.Reason.of("%s has %s supplies", ThreatNotice.market(p.source),
+						Misc.getWithDGS((int) have))
+						.line("The fleet's ships eat %s on the way and there", Misc.getWithDGS((int) p.holdNeed));
+				return p;
+			}
+			p.load[3] = p.holdNeed;
+		}
 		return p;
 	}
 
@@ -219,7 +238,7 @@ public class ThreatDeploy {
 			ThreatFleetOrders.rehome(order);
 		}
 		float[] back = new float[4];
-		float[] now = load(lead, source, p.levers, back);
+		float[] now = load(lead, source, p.levers, p.holdNeed, back);
 		float live = ThreatAidCapacity.liveFP(lead);
 		ThreatNotice n = ThreatNotice.titled("Fleet Deployed").icon(faction)
 				.line(self ? "Over %s: %s fleet points" : "For %s: %s fleet points", ThreatNotice.base(p.target),
@@ -279,9 +298,10 @@ public class ThreatDeploy {
 	 * lever less what is aboard is drawn (ThreatReserves.drawAbove) or put back
 	 * (ThreatReserves.deposit) - marines within the berths, heavy armaments within the holds
 	 * - a new fleet carries nothing, so nothing goes back unless the berths or holds are short. Returns what is aboard after;
-	 * {@code backOut} takes what went back.
+	 * {@code backOut} takes what went back. The hold is never under {@code holdNeed} ({@link Plan#holdNeed}),
+	 * drawn above the source's floor whatever its front spares.
 	 */
-	protected static float[] load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float[] backOut) {
+	protected static float[] load(CampaignFleetAPI fleet, MarketAPI source, int[] levers, float holdNeed, float[] backOut) {
 		float[] now = new float[4];
 		if (fleet == null || source == null || levers == null) return now;
 		// the levers again, against the fleet as built
@@ -293,6 +313,7 @@ public class ThreatDeploy {
 			float spare = ThreatConvoys.handSpare(source, ThreatReserves.COMMODITIES[i]);
 			want[i] = (float) Math.floor(ThreatConvoys.share(i < levers.length ? levers[i] : 0) * (spare + aboard[i]));
 		}
+		want[3] = Math.max(want[3], holdNeed);
 		// marines within the berths, arms within the holds (supplies and fuel ride as figures)
 		want[0] = Math.max(0f, Math.min(want[0], aboard[0] + cargo.getFreeCrewSpace()));
 		want[1] = Math.max(0f, Math.min(want[1], aboard[1] + cargo.getSpaceLeft()));
