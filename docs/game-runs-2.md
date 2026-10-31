@@ -2112,3 +2112,8 @@ hw332 set B, hw333 set A, day 0 `-Days 3800 -Snapshots 300 -MaxMinutes 75`, watc
 tasks ThreatIncSeeds46 / WatchSeeds46. Read against hw330 / hw331 (s92: hives 291 / 344 / 360, 265 / 211 / 314, drops
 0 / 0 / 9 / 0 / 11 / 338, 0 exc). What to see: 0 exceptions on the merged UI / standing code, drops at or under s92, balance
 inside its band.
+
+**16:05 hw332 STOPPED at ~w900 (the user: "pull and rebuild and restart changed some mechanics real quick"); 16:16 pulled
+18460754** (a district changing hands touches neither side's cover, 49e549c3; the fleet-orders ETA, 87a7648b), jar rebuilt
+16:16:38 (1,333,921 bytes). **Restarted 16:17 as hw334 (set B) / hw335 (set A)**, driver `run-seeds-47.ps1`, watcher
+`watch-seeds-47.sh`, tasks ThreatIncSeeds47 / WatchSeeds47. Same read as above.
