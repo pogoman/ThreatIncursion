@@ -2028,3 +2028,10 @@ about the spawns, the strike planner's fuel line lower by the bookings, balance 
 shifts; strikes and consumption up, retaken down against the last day-0 rounds. The one wrinkle is the shift's order-and-drop
 churn on the shared free fuel (hw326c 358, hw327c 1,535 drops of 9,237 orders) - the booking fix above answers it, retest hw328 /
 hw329. The strategy-read script misread hw327 b / c at 10:07 (1st strike 17 / 10, hives 0): read the direct greps.
+
+**SAVE COMPATIBILITY v0.8.2 -> 0.9 (11:09-11:45, the user: "try an old save on 0.8 release version"):** step 1 on the v0.8.2
+checkout (its committed jar): cp1a OceanPena / cp1b AmaruDugas from day 0 to d1869 / d1857, 0 exc, snapshots d1618 / d1669
+(29 / 35 hives, the 0.8.2 war not yet open). Static: 11 classes / 65 fields, 0 missing, 0 undeclared mod fields
+(`compat-fields.sh`). Step 2 on the 0.9 jar 11:07:56: both load in ~75 s, cp2a d1618 -> w2,968 and cp2b d1669 -> w3,114
+with 0 exceptions, strikes 31 / 41, hives 156 / 175, shift orders 1,774 / 2,616 with 17 / 59 drops (the booking jar), 0 stuck.
+PASS. facts: "Will a 0.8.2 (release) save load on the 0.9 build?".
