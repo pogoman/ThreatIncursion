@@ -1192,8 +1192,8 @@ public class ThreatWarBoard {
 				+ "stances and supply.");
 		main.addTableHeaderTooltip(strengthCol + 5, "Days until " + side + " side takes the next district "
 				+ "or stratum at the line's current rate; - while the line stands or moves against it.");
-		main.addTableHeaderTooltip(strengthCol + 6, "The industry the next district decides: the swarm's next claim "
-				+ "while it gains ground, the world's next reclaim while it loses.");
+		main.addTableHeaderTooltip(strengthCol + 6, "What the next district decides for " + side + " side: the industry "
+				+ "a landing claims next, or a world takes back next.");
 		main.addTableHeaderTooltip(strengthCol + 7, "Days of heavy armaments left to " + side + " side "
 				+ "at the current burn; the swarm fights on none.");
 		main.addTableHeaderTooltip(strengthCol + 8, "Days until " + side + " side wins the world at the "
@@ -1280,14 +1280,15 @@ public class ThreatWarBoard {
 			// claim (easiest to consume, a rebuild resumed) in the Threat's colour while the line moves
 			// its way, the world's next reclaim (military first, soonest lost) in the world's while it
 			// moves the world's; standing, the swarm's if one waits; "-" off an occupation
-			// the gaining side's (the landing's while the line stands); with no structure decided the
-			// layer itself, and "Extermination" once the landing holds every layer (the user, 2026-10-31)
+			// THIS side's, like every column (the user, Epiphany on the Threat tab 2026-10-31, the swarm at
+			// 0/4 reading the world's "Extermination": "they hold 0 districts and are fighting an
+			// overwhelming force they cant exterminate shit"): our landing's next claim, or our world's
+			// next reclaim; with no structure decided the layer itself, "Extermination" for the side
+			// holding every layer
 			{
-				float lr = ThreatGroundFronts.lineRate(f, m);
-				boolean landingSide = lr >= 0f;
-				String obj = landingSide ? landingObjective(f, m, ThreatOccupation.nextClaim(m, f))
+				String obj = weLanded ? landingObjective(f, m, ThreatOccupation.nextClaim(m, f))
 						: worldObjective(f, m, ThreatOccupation.nextRelease(f, m));
-				cell(cells, Alignment.MID, landingSide ? landerColour : worldColour, main.shortenString(obj, w[i] - 10f));
+				cell(cells, Alignment.MID, weLanded ? landerColour : worldColour, main.shortenString(obj, w[i] - 10f));
 				i++;
 			}
 			// armaments read as what they buy: days of fighting left. The swarm
