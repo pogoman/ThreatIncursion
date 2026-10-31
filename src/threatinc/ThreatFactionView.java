@@ -14,6 +14,7 @@ import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
+import com.fs.starfarer.api.campaign.RepLevel;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD;
@@ -1187,7 +1188,9 @@ public class ThreatFactionView {
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 		main.addSectionHeading("Requests for aid", bright, dark, Alignment.MID, opad);
-		// the Send lever's row (Min / Med / Max of the ask), floated in by addRequestButtons
+		// the Send lever's row (Min / Med / Max of the ask) and the standing label, floated in by addRequestButtons
+		// anchored ABOVE the table (aboveLeft / aboveRight of it lands in this spacer; above the spacer itself sat
+		// on the heading - the user, 2026-10-31: "send button is floating")
 		out.anchor = main.addSpacer(SELECTOR_ROW_H);
 		float tw = width - 24f;
 		String[] names = {"World", "Commodity", "Age", "Answer", "Standing", "ETA", "Actions"};
@@ -1268,7 +1271,7 @@ public class ThreatFactionView {
 			ThreatWarBoard.cell(cells, Alignment.LMID, answerColor,
 					main.shortenString(answer, (float) Math.floor(tw * frac[3]) - 10f));
 			ThreatWarBoard.cell(cells, Alignment.MID, reward > 0f ? ThreatNotice.goodColor() : gray,
-					reward > 0f ? "+" + Misc.getRoundedValueMaxOneAfterDecimal(reward) : "-");
+					reward > 0f ? ThreatAid.standingText(reward) : "-");
 			ThreatWarBoard.cell(cells, Alignment.MID, etaColor, eta);
 			ThreatWarBoard.cell(cells, Alignment.MID, gray, ""); // Send sits here
 			main.addRow(cells.toArray());
@@ -1407,9 +1410,19 @@ public class ThreatFactionView {
 			if (requests.anchor != null) {
 				String[] tips = { "Send the least each world asks for.", "Send the middle figure each world asks for.",
 						"Send all each world asks for." };
-				addTierSelector(intel, main, requests.anchor, "Send", LEVER_LABEL_W,
+				addTierSelector(intel, main, requests.table, "Send", LEVER_LABEL_W,
 						BUTTON_LEVER + ThreatIncursionIntel.LEVER_AID_SEND + ":", intel.lever(ThreatIncursionIntel.LEVER_AID_SEND),
 						tips, 0f, SEND_LABELS, LEVER_BUTTON_W);
+				// and, right-aligned on the same row, where the player stands with the faction (the user, 2026-10-31:
+				// "show faction rep standing number right side of table ... float right")
+				FactionAPI f = Global.getSector().getFaction(requests.factionId);
+				if (f != null) {
+					float rel = f.getRelToPlayer().getRel();
+					LabelAPI standing = main.addPara("Standing: %s", 0f, Misc.getGrayColor(), f.getRelColor(Factions.PLAYER),
+							RepLevel.getLevelFor(rel).getDisplayName() + " " + RepLevel.getRepInt(rel));
+					standing.setAlignment(Alignment.RMID);
+					standing.getPosition().aboveRight(requests.table, 4f).setXAlignOffset(-6f);
+				}
 			}
 			return;
 		}

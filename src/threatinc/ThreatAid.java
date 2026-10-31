@@ -980,6 +980,9 @@ public class ThreatAid {
 				factionId);
 	}
 
+	/** A standing change for a label or notice: a whole number, "+7" - never a decimal (the user, 2026-10-31: "no decimals for standing changes!"). */
+	public static String standingText(float points) { return (points < 0f ? "-" : "+") + Math.round(Math.abs(points)); }
+
 	/**
 	 * STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31: "should be parity on rep for sending and
 	 * requesting" - 12,900 hulls sent read +10, the per-delivery cap, while 700 received cost 15 at
@@ -1045,7 +1048,7 @@ public class ThreatAid {
 					.line("%s at %s", ThreatFactionView.cargoText(marines, armaments, fuel, supplies, ships),
 							ThreatNotice.market(base))
 					.line("Standing with %s %s", faction != null ? ThreatNotice.faction(faction) : recipientFactionId,
-							ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
+							ThreatNotice.hl(standingText(points)))
 					.send();
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
@@ -1066,7 +1069,7 @@ public class ThreatAid {
 		ThreatIncConfig.log("Guard on station over " + o.targetName + " for " + o.recipientFactionId + ": rep +" + points);
 		ThreatNotice.titled("Task Force On Station").icon(Global.getSector().getPlayerFaction())
 				.line("Over %s", target(o))
-				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
+				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl(standingText(points)))
 				.send();
 	}
 
@@ -1078,7 +1081,7 @@ public class ThreatAid {
 		ThreatIncConfig.log("Guard term served over " + o.targetName + " for " + o.recipientFactionId + ": rep +" + points);
 		ThreatNotice.titled("Task Force Returning").icon(Global.getSector().getPlayerFaction())
 				.line("Term served over %s", target(o))
-				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl("+" + Misc.getRoundedValueMaxOneAfterDecimal(points)))
+				.line("Standing with %s %s", ThreatNotice.faction(faction), ThreatNotice.hl(standingText(points)))
 				.send();
 	}
 
