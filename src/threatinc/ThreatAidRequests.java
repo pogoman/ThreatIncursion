@@ -802,6 +802,15 @@ public class ThreatAidRequests {
 					+ " holds above its keep is under " + Misc.getWithDGS((int) minSpare(c.good));
 			return q;
 		}
+		// sized to what the target still wants, never the donor's whole spare (the user, 2026-10-31 night, Nachiketa
+		// offering 15,438 marines - its siege bank - on Arkoman's call: "all of their marines pretty much ... what the fuck?")
+		float want = (float) Math.floor(want(c, target));
+		if (want < minSpare(c.good)) {
+			q.why = target.name() + " wants " + (want <= 0f ? "none" : "only " + Misc.getWithDGS(ThreatHulls.shown(c.good, want)))
+					+ " of " + ThreatReserves.label(c.good);
+			return q;
+		}
+		amount = Math.min(amount, want);
 		float budget = (float) Math.floor(budget(helper));
 		int price = priceFor(target, c.good, amount);
 		if (price > budget) {
@@ -1293,6 +1302,64 @@ public class ThreatAidRequests {
 				+ Math.round(standing(helper) * 100f) + " of 100 - "
 				+ (willingness(helper) <= 0f ? "answers nothing"
 						: "answers, " + (int) Math.floor(budget(helper)) + " standing to spend");
+	}
+
+	/**
+	 * What the target still WANTS of the call's good - the figure an offer is sized to (2026-10-31 night: an
+	 * offer was the donor's whole spare, and Nachiketa put its 15,438-marine siege bank on Arkoman's call).
+	 * A colony's is the ledger's Max for the good (ThreatNeeds.of, net of what will land), or with no need
+	 * standing what fills its reference stock (ThreatReserves.cap) above its stock and what is at sea -
+	 * ship hulls only by a need; a front's what it wants brought (ThreatConvoys.frontWants) less the offers
+	 * at sea under the call; an outpost's the wants of the player's fronts in its system for marines and
+	 * armaments, and no figure for its fuel and supplies (the donor's spare stands).
+	 */
+	protected static float want(Call c, ThreatBases.Base target) {
+		if (c == null || c.good == null || target == null) return 0f;
+		String kind = kindOf(target);
+		boolean marines = Commodities.MARINES.equals(c.good);
+		boolean arms = Commodities.HAND_WEAPONS.equals(c.good);
+		if (KIND_FRONT.equals(kind)) {
+			ThreatGroundFronts.GroundFront f = frontAt(target);
+			if (f == null) return 0f;
+			float[] w = ThreatConvoys.frontWants(f, target.market);
+			return Math.max(0f, (marines ? w[0] : arms ? w[1] : 0f) - atSeaUnder(c));
+		}
+		if (KIND_OUTPOST.equals(kind)) {
+			if (!marines && !arms) return Float.MAX_VALUE;
+			StarSystemAPI sys = target.starSystem();
+			float want = 0f;
+			if (sys != null) {
+				for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+					if (m.getStarSystem() != sys || !ThreatGroundFronts.isHiveTarget(m)) continue;
+					ThreatGroundFronts.GroundFront f = ThreatGroundFronts.getFront(m.getId());
+					if (f == null || !f.isPlayerOwned()) continue;
+					float[] w = ThreatConvoys.frontWants(f, m);
+					want += marines ? w[0] : w[1];
+				}
+			}
+			return Math.max(0f, want - atSeaUnder(c));
+		}
+		MarketAPI m = target.market;
+		if (m == null) return Float.MAX_VALUE;
+		float best = 0f;
+		boolean any = false;
+		for (ThreatNeeds.Need n : ThreatNeeds.of(m)) {
+			if (!c.good.equals(n.good)) continue;
+			any = true;
+			best = Math.max(best, n.max);
+		}
+		if (any || Commodities.SHIPS.equals(c.good)) return best;
+		int idx = ThreatAid.index(c.good);
+		float[] atSea = ThreatConvoys.inbound(m.getId(), true);
+		float stock = ThreatReserves.stock(m.getId(), c.good);
+		return Math.max(0f, ThreatReserves.cap(m, c.good) - stock - (idx >= 0 && idx < atSea.length ? atSea[idx] : 0f));
+	}
+
+	/** What the accepted offers under the call carry - at sea, not yet counted by any ledger (a front's runs). */
+	protected static float atSeaUnder(Call c) {
+		float sum = 0f;
+		for (Offer o : offersFor(c)) if (o.accepted()) sum += Math.max(0f, o.amount);
+		return sum;
 	}
 
 	/** The least a colony must spare of a good to answer a request with it: aidRequestMinSpare, one unit for ship hulls. */

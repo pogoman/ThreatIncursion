@@ -247,7 +247,13 @@ faction responds to offer should be determined by how preoccupied they are with 
 offers only with its reserve of the good in the white state - no deficit, no cover, not exhausted
 (`holdsSurplus`) - and offers what it holds above its own keep, `offerSpare` (monthsBasis x
 donorKeepFraction, the garrison floor, a forward base's feeding credit for supplies; not the staging
-bank `ThreatConvoys.spare` keeps, which had Ilm with 4,721 marines offering 216 from Ailmar); an
+bank `ThreatConvoys.spare` keeps, which had Ilm with 4,721 marines offering 216 from Ailmar), and
+since 2026-10-31 night no more than the target still WANTS (`want`: a colony's ledger Max for the
+good, `ThreatNeeds.of`, or with no need standing what fills its reference stock above stock and
+what is at sea - hulls only by a need; a front's `ThreatConvoys.frontWants` less the offers at sea
+under the call; an outpost's the player's fronts' wants in its system for marines and armaments, no
+figure for its fuel and supplies) - Nachiketa had put its whole 15,438-marine siege bank on
+Arkoman's call; a target wanting under `aidRequestMinSpare` draws no offer ("wants only N"); an
 offer the faction can no longer make is withdrawn ("Offer Withdrawn"); a beset faction looks less
 often - its check days x (1 + besetness x `aidRequestBesetDelay`). The table
 (`addRequests` / `addOfferRow`): World, Commodity, Age (days the call has stood), Answer ("Hegemony:
