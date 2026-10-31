@@ -268,7 +268,10 @@ public class ThreatColonyManager {
 		if (planet == null || market == null) return null;
 		String name = market.getName();
 		int worldSize = market.getSize();
-		DecivTracker.decivilize(market, false);
+		// the card names the Threat (ThreatDecivIntel), in place of vanilla's "X - Decivilized"
+		ThreatDecivIntel card = new ThreatDecivIntel(market, Factions.THREAT, "ground assault");
+		DecivTracker.decivilize(market, false, false);
+		if (market.isPlanetConditionMarketOnly()) Global.getSector().getIntelManager().addIntel(card);
 		MarketAPI ruin = planet.getMarket();
 		if (ruin == null || !ThreatMapFog.conditionOnly(ruin)) {
 			ThreatIncConfig.log("Conquest of " + name + ": no condition market to seed a hive on");
@@ -3857,17 +3860,17 @@ public class ThreatColonyManager {
 	 * ERADICATION: the teardown of a Threat colony, by the ways it dies - a
 	 * ground victory, or its strata starved or bombed to nothing
 	 * (ThreatStrata.collapse, 2026-10-24) - never a timer. Vitality bookkeeping
-	 * cleared, then the vanilla decivilization teardown; pollColonies reacts
-	 * on the next poll.
+	 * cleared, then the vanilla decivilization teardown under the mod's own card
+	 * naming the destroyer (ThreatDecivIntel: byFactionId null = starved, how
+	 * "ground assault" / "bombardment"); pollColonies reacts on the next poll.
 	 */
-	public static void eradicate(MarketAPI market) {
+	public static void eradicate(MarketAPI market, String byFactionId, String how) {
 		if (market == null) return;
 		ThreatIncConfig.log("Colony eradicated: " + market.getName());
 		ThreatIncData.clearVitality(market.getId());
 		// a purged world: somebody may fortify it before the swarm returns
 		ThreatOutposts.recordPurged(market);
-		// fullDestroy bypasses NO_DECIV_KEY (verified against 0.98a source)
-		DecivTracker.decivilize(market, true);
+		ThreatDecivIntel.destroy(market, byFactionId, how);
 	}
 
 	// ------------------------------------------------------------------

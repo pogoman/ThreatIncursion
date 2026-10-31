@@ -278,7 +278,7 @@ public final class ThreatStrata {
 		}
 		n.line("The strata are cold.");
 		ThreatColonyManager.announce(n);
-		ThreatColonyManager.eradicate(market);
+		ThreatColonyManager.eradicate(market, razerFactionId, razerFactionId == null ? null : "bombardment");
 	}
 
 	/** "1,150" - the figure for a tooltip. */

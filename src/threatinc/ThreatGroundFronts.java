@@ -2639,7 +2639,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// only handles on the world once decivilize has run
 		SectorEntityToken world = market.getPrimaryEntity();
 		Vector2f hyperLoc = market.getLocationInHyperspace();
-		ThreatColonyManager.eradicate(market);
+		ThreatColonyManager.eradicate(market, winner, "ground assault");
 		// nothing is raised on the freed world (user's call 2026-09-27, player and
 		// NPC alike): the front's survivors come home - an NPC's bank into its
 		// nearest base's reserve, the player's board the player's fleet
@@ -2716,7 +2716,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (!market.isInEconomy() || ThreatMapFog.conditionOnly(market)) return;
 		}
 		market.getMemoryWithoutUpdate().set(KILLED_BY_FLAG, Factions.THREAT, 60f);
-		com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker.decivilize(market, true);
+		ThreatDecivIntel.destroy(market, Factions.THREAT, "ground assault");
 	}
 
 	/**
@@ -2743,7 +2743,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 					.send();
 		}
 		ThreatIncConfig.log("Colony razed from orbit: " + market.getName() + " by " + razer);
-		DecivTracker.decivilize(market, true);
+		ThreatDecivIntel.destroy(market, razer, "bombardment");
 	}
 
 	/**
