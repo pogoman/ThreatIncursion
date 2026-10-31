@@ -7,6 +7,7 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
+import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -257,7 +258,15 @@ public class ThreatComms {
 			notice(pushBack ? HOLDS : PUSHES, faction, m, null).send();
 			return true;
 		}
-		if (ThreatNeeds.ORBIT.equals(purpose) || ThreatNeeds.MEET.equals(purpose)) {
+		if (ThreatNeeds.MEET.equals(purpose)) {
+			// a strike at sea turned away or arrived: the orbit was never held, so there is nothing to clear - six
+			// "Sky Is Clear" fired at once as one strike swung from the player's system to six NPC worlds (the user,
+			// 2026-10-31); a swarm that did arrive raises its own "lift the orbit" need and speaks there
+			ThreatIncConfig.log("Comms (quiet): the strike on " + m.getName() + " turned away");
+			return false;
+		}
+		if (ThreatNeeds.ORBIT.equals(purpose)) {
+			if (army && Factions.THREAT.equals(ThreatGroundFronts.spaceHolder(m))) return false; // bound enough, still held: not clear
 			notice(SKY, faction, m, null).send();
 			return true;
 		}
