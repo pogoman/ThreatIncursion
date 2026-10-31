@@ -81,6 +81,8 @@ public class ThreatBudding {
 	public static final String ABSORB_ON_ARRIVAL = "$threatinc_absorbOnArrival";
 	/** Market memory: a shift order budding a strike's share - the staging colony's market id. */
 	public static final String KEY_FOR_STRIKE = "$threatinc_budForStrike";
+	/** Market memory: the fuel a shift order books for its passage (bookFuel) - the stock's other callers see it spent. */
+	public static final String KEY_FUEL = "$threatinc_budFuel";
 	/** Fleet memory: a shift's fleet flying a strike's share - the staging colony's market id; staged whole on arrival. */
 	public static final String FOR_STRIKE = "$threatinc_forStrike";
 
@@ -178,11 +180,50 @@ public class ThreatBudding {
 		if (target != null) mem.set(KEY_TARGET, target.getId());
 		else mem.unset(KEY_TARGET);
 		if (fresh) mem.set(KEY_SINCE, ThreatPosture.today());
+		float booked = SHIFT.equals(kind) && target != null ? bookFuel(market, target, want) : 0f;
 		if (fresh || want > pool + wantFP + 0.5f) {
 			ThreatIncConfig.log("Budding: " + market.getName() + " buds " + (int) want + " FP (" + ThreatStrata.fmt(ThreatStrata.strataOf(want))
 					+ " strata) to " + kind + (target != null ? " to " + target.getName() : "") + ", " + (int) Math.ceil(ThreatStrata.strataOf(want - pool) / Math.max(1f, flowPerDay(market)))
-					+ " d at " + (int) flowPerDay(market) + " a day" + (why != null ? "; " + why : ""));
+					+ " d at " + (int) flowPerDay(market) + " a day" + (booked > 0f ? ", books " + (int) booked + " fuel" : "") + (why != null ? "; " + why : ""));
 		}
+	}
+
+	/**
+	 * THE SHIFT BOOKS ITS PASSAGE (the user, 2026-10-31, option A on hw326c's 358 drops): a shift order books the fuel its
+	 * wanted passage needs in the world's memory, and the stock's other callers (ThreatFuel.canPay, free) see that fuel
+	 * as spent, so the next order and the strike planner size themselves to what is left and no order drops on another
+	 * order's spend. Booked at passage / 0.95 so fuelAffordFP's margin returns the want exactly; re-booked when the want
+	 * falls (advance); released by clear (the spawn pays the real passage from the stock). Returns the fuel booked.
+	 */
+	protected static float bookFuel(MarketAPI from, MarketAPI to, float wantFP) {
+		MemoryAPI mem = from.getMemoryWithoutUpdate();
+		float fuel = 0f;
+		if (to != null && from.getStarSystem() != null && to.getStarSystem() != null) {
+			fuel = ThreatFuel.passage(wantFP, ThreatFuel.ly(from.getStarSystem(), to.getStarSystem()), false) / 0.95f;
+		}
+		if (fuel > 0f) mem.set(KEY_FUEL, fuel);
+		else mem.unset(KEY_FUEL);
+		bookedDirty = true;
+		return fuel;
+	}
+
+	private static float bookedCache = 0f;
+	private static float bookedDay = Float.NaN;
+	private static boolean bookedDirty = true;
+
+	/** The fuel every live shift order has booked for its passage (bookFuel); summed again when an order changes or the day turns. */
+	public static float bookedFuel() {
+		float today = ThreatPosture.today();
+		if (bookedDirty || today != bookedDay) {
+			float sum = 0f;
+			for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) {
+				if (c != null && SHIFT.equals(kind(c))) sum += Math.max(0f, c.getMemoryWithoutUpdate().getFloat(KEY_FUEL));
+			}
+			bookedCache = sum;
+			bookedDay = today;
+			bookedDirty = false;
+		}
+		return bookedCache;
 	}
 
 	protected static void clear(MarketAPI market) {
@@ -193,6 +234,10 @@ public class ThreatBudding {
 		mem.unset(KEY_SINCE);
 		mem.unset(KEY_POOL);
 		mem.unset(KEY_FOR_STRIKE);
+		if (mem.contains(KEY_FUEL)) {
+			mem.unset(KEY_FUEL);
+			bookedDirty = true;
+		}
 	}
 
 	/**
@@ -359,7 +404,7 @@ public class ThreatBudding {
 			}
 			// the passage sizes the swarm (fuelAffordFP): the pool fills only to what the free fuel pays one way today, and a
 			// shift the fuel cannot pay a seed's worth of settles back instead of standing as a swarm that cannot sail
-			float afford = fuelAffordFP(market, to);
+			float afford = fuelAffordFP(market, to, mem.getFloat(KEY_FUEL));
 			float floor = ThreatStrata.fpOf(Math.max(ThreatStrata.sizeAt(1), ThreatIncConfig.shiftFloorStrata()));
 			if (afford < Math.min(floor, want)) {
 				ThreatIncConfig.log("Budding: " + market.getName() + " drops its shift to " + to.getName() + ", the fuel pays the passage of "
@@ -371,6 +416,7 @@ public class ThreatBudding {
 			if (afford < want) {
 				want = afford;
 				mem.set(KEY_WANT, want);
+				bookFuel(market, to, want);
 			}
 			// a pool budded while the fuel was high and spawned after the strikes drained it (hw324c: 800-1,300 FP spawned
 			// against 3.5-5.6k fuel) settles its excess first, so what spawns is what sails
@@ -428,12 +474,14 @@ public class ThreatBudding {
 	 * Fleet points whose one-way passage from {@code from} to {@code to} the hive's free fuel pays today (ThreatFuel.passage is
 	 * linear in FP; unbounded with no fuel rule or in the same system). THE PASSAGE SIZES THE SHIFT (2026-10-30, hw322: the
 	 * richest donor budded one 5.4k-FP swarm of 320 ships whose passage ThreatFuel.canPay refused, and it stood as defence).
+	 * {@code ownBooked} is the fuel this order has booked itself (bookFuel): it reads as its own above the free stock, which
+	 * already counts every order's booking as spent (ThreatFuel.freeRaw) - a candidate donor passes 0.
 	 */
-	protected static float fuelAffordFP(MarketAPI from, MarketAPI to) {
+	protected static float fuelAffordFP(MarketAPI from, MarketAPI to, float ownBooked) {
 		if (from == null || to == null || from.getStarSystem() == null || to.getStarSystem() == null) return Float.MAX_VALUE;
 		float perPoint = ThreatFuel.passage(1f, ThreatFuel.ly(from.getStarSystem(), to.getStarSystem()), false);
 		if (perPoint <= 0f) return Float.MAX_VALUE;
-		return 0.95f * Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL)) / perPoint;
+		return 0.95f * Math.max(0f, ownBooked + ThreatFuel.freeRaw(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL)) / perPoint;
 	}
 
 	protected static MarketAPI receiverOf(MarketAPI market) {
@@ -818,7 +866,7 @@ public class ThreatBudding {
 			if (stagingSystems.contains(c.getStarSystem().getId())) continue;
 			if (ThreatPosture.underAttack(c.getStarSystem()) || ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
 			// what it can give: its buddable mass, at most the swarm whose passage the fuel pays (fuelAffordFP)
-			float can = Math.min(buddableFP(c, false), fuelAffordFP(c, receiver));
+			float can = Math.min(buddableFP(c, false), fuelAffordFP(c, receiver, 0f));
 			if (can < min) continue;
 			float ly = ThreatFuel.ly(c.getStarSystem(), receiver.getStarSystem());
 			float gives = Math.min(amount, can);
@@ -830,7 +878,7 @@ public class ThreatBudding {
 			}
 		}
 		if (donor == null) return;
-		float give = Math.min(amount, Math.min(buddableFP(donor, false), fuelAffordFP(donor, receiver)));
+		float give = Math.min(amount, Math.min(buddableFP(donor, false), fuelAffordFP(donor, receiver, 0f)));
 		order(donor, SHIFT, give, receiver, why + ", " + (int) near + " ly");
 	}
 

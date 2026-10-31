@@ -117,7 +117,17 @@ public class ThreatFuel {
 
 	/** The stock above what is reserved for the planner's answer (reserved): what everything else may draw. */
 	public static float free(String commodityId) {
-		return Math.max(0f, stock(commodityId) - reserved(commodityId));
+		return Math.max(0f, freeRaw(commodityId));
+	}
+
+	/**
+	 * free before its floor at 0: the stock less the planner's reserve and, for fuel, less what the shift orders have booked
+	 * for their passages (ThreatBudding.bookedFuel) - negative when the stock has been drawn under the bookings, which is
+	 * what makes a shift order settle (fuelAffordFP).
+	 */
+	public static float freeRaw(String commodityId) {
+		float booked = Commodities.FUEL.equals(commodityId) ? ThreatBudding.bookedFuel() : 0f;
+		return stock(commodityId) - reserved(commodityId) - booked;
 	}
 
 	/**
@@ -231,9 +241,11 @@ public class ThreatFuel {
 		return canPay(Commodities.FUEL, fuel);
 	}
 
-	/** Whether the stock holds {@code amount}; what it cannot pay is kept for held() to book as demand. */
+	/** Whether the stock holds {@code amount} above the shift orders' fuel bookings (ThreatBudding.bookedFuel); what it cannot pay is kept for held() to book as demand. */
 	public static boolean canPay(String commodityId, float amount) {
-		if (amount <= 0f || stock(commodityId) >= amount) return true;
+		if (amount <= 0f) return true;
+		float booked = Commodities.FUEL.equals(commodityId) ? ThreatBudding.bookedFuel() : 0f;
+		if (stock(commodityId) - booked >= amount) return true;
 		UNMET.put(commodityId, amount);
 		return false;
 	}

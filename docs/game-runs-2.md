@@ -2009,3 +2009,9 @@ balance inside s89's band.
   machine ran three games beside the session).
 - **Shifts:** 0 / 2 / 0 stuck (hw325's fix holds from day 0), drops 32 / 8 / 7 by the strategy read (the watcher's
   358 on c at w1,415 counts the pre-opening churn, see above), 2,500-3,300 shift swarms staged for strikes a game.
+
+**10:20 the user: "ok try A" (of A book the passage at order time / B a drop dwell / C share the figure).** BUILT 10:35:
+`ThreatBudding.bookFuel` / `bookedFuel` / `KEY_FUEL`, `fuelAffordFP(from, to, ownBooked)`, `ThreatFuel.freeRaw`, `canPay(FUEL)`
+above the bookings (facts). javac clean against the scratch dir while hw327 holds the jar; jar built after hw327 closes.
+Retest: hw328 set B / hw329 set A from day 0 (`run-seeds-44.ps1`), read against hw326 / hw327: drops near 0, orders
+about the spawns, the strike planner's fuel line lower by the bookings, balance held. No new commits on origin at 10:30.
