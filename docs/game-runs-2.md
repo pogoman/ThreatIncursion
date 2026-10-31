@@ -1993,3 +1993,19 @@ balance inside s89's band.
   in one tick). Strata not lost; c had 1,456 orders, 976 shift spawns, 32 settles, 358 drops (a 19, b 92) - churn on
   a fuel-poor swarm (c's fuel 1.2-1.8k pre-opening against 28-39k wanted), not a stuck navy. Candidate fix for the
   user: book the shift's passage fuel at order time (as held strikes book their shortfall) or a drop dwell.
+
+**hw326 END (09:38, set B on the merged jar; hw320 in brackets, hw320c cut at c's day):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | staged shifts | stuck | drops | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw326a | 3,811 | 347 (341) | 164 (138) | 248 (228) | 104 (103) | 79 (93) | 119 (88) | 67 (51) | 2,524 (0) | 0 (0) | 32 | 0 |
+| hw326b | 3,830 | 332 (352) | 121 (72) | 198 (155) | 100 (72) | 46 (93) | 58 (68) | 42 (49) | 2,505 (0) | 2 (10) | 8 | 0 |
+| hw326c @ 75 min | 2,732 | 264 (252) | 61 (74) | 112 (156) | 31 (68) | 65 (22) | 73 (31) | 73 (20) | 3,260 (0) | 0 (0) | 7 | 0 |
+
+- **Balance inside s89's band from day 0:** hives 347 / 332 at the end and 264 at c's cut against 341 / 352 / 252,
+  strikes up (164 / 121 against 138 / 72), consumed and lift-offs at or above. Retaken and dig-ins run higher on a
+  and c (119 / 73 against 88 / 31; 67 / 73 against 51 / 20) - the humans' ground game is livelier on this jar, one
+  round's reading. hw326c ran at ~45 d/min late and hit the 75-minute cap at w2,732 (hw320c reached 3,815: this
+  machine ran three games beside the session).
+- **Shifts:** 0 / 2 / 0 stuck (hw325's fix holds from day 0), drops 32 / 8 / 7 by the strategy read (the watcher's
+  358 on c at w1,415 counts the pre-opening churn, see above), 2,500-3,300 shift swarms staged for strikes a game.
