@@ -1982,3 +1982,14 @@ watcher `watch-seeds-43.sh` with `check-shift.sh`, tasks ThreatIncSeeds43 / Watc
 run then disabled). Read against hw320 / hw321 (the last day-0 rounds, s89: hives 251-377, retaken 32-88)
 and hw325 (0 stuck shifts). What to see: 0 exceptions on the merged UI code, 0 stuck shifts from day 0, the
 balance inside s89's band.
+
+- **08:53 watcher FAIL on c at w1,415, read on (watcher relaunched as WatchSeeds43b with both ignored):**
+  `shiftdrops` 358 "drops its shift ... the fuel pays" lines (hw325 5 / 65 all war) and `deadstrike` (check-siege's
+  old take-over signal). The drops are the SHARED FREE FUEL moving under far donors: `ThreatBudding.shift` orders a
+  donor whose give is min(buddable, fuelAffordFP) at order time, every concurrent order reads the same
+  `ThreatFuel.free` figure, and a 21-25 ly donor's pool fills over 10-15 days at 400 FP a day while strikes and
+  nearer shifts spend that fuel - a same-day dip takes its passage under the floor (afford 53-70 FP against
+  591-665 wanted) and `advance` settles the pool back (Beta Cormoran II / Meros / Bascule -> Delta Deina I, w836, all
+  in one tick). Strata not lost; c had 1,456 orders, 976 shift spawns, 32 settles, 358 drops (a 19, b 92) - churn on
+  a fuel-poor swarm (c's fuel 1.2-1.8k pre-opening against 28-39k wanted), not a stuck navy. Candidate fix for the
+  user: book the shift's passage fuel at order time (as held strikes book their shortfall) or a drop dwell.
