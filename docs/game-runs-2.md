@@ -1971,3 +1971,14 @@ against hw322 at the same war day.
 cost: the shift swarms are the same size (377-404 FP mean), the drops on fuel are rare (5 / 65 a game, 2 / 10
 settles), and the balance reads at or above hw322 - hives 269 / 324 against 228 / 315 at the same day,
 campaigns and strikes up, retaken down. KEPT. Set A's a seed and set B untested on this jar.
+
+## 92. hw326-hw327 - rounds 94-95, GENERAL SEED TEST from day 0 on the merged jar 08:20:52 (2026-10-31 08:23-)
+
+The user, 08:15: "git pull and build and run general seed test". Pulled 6ee74ef5 (the other machine's
+Fleet-lever / aid-parity rework, da05c946, on the passage-sizes-the-shift build), jar 08:20:52, symbols
+5,072 methods. Driver `run-seeds-43.ps1`: hw326 set B (OceanPena / ZhiFarah / AphelionDysnomia), hw327
+set A (AmaruDugas / PoseidonDeimos / AresDaniels), from day 0 `-Days 3800 -Snapshots 300 -MaxMinutes 75`;
+watcher `watch-seeds-43.sh` with `check-shift.sh`, tasks ThreatIncSeeds43 / WatchSeeds43 (/sd 01.01.2030,
+run then disabled). Read against hw320 / hw321 (the last day-0 rounds, s89: hives 251-377, retaken 32-88)
+and hw325 (0 stuck shifts). What to see: 0 exceptions on the merged UI code, 0 stuck shifts from day 0, the
+balance inside s89's band.
