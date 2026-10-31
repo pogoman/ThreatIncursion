@@ -1153,7 +1153,7 @@ public class ThreatFactionView {
 	 * World, Commodity (the full ask: "1,200 marines", "defence fleet of 900 FP"), Age (how long the
 	 * shortage has stood, ThreatAidRequests.shortageSince; a dash for a battle's need), Answer (the
 	 * convoy at sea with the good and whose it is, a task force bound for a fleets need, else waiting),
-	 * Standing (what Send would earn when it lands, ThreatAid.rewardEstimate / aidRepGuardArrived -
+	 * Standing (what Send would earn when it lands, ThreatAid.rewardEstimate; a fleet its FP as hulls -
 	 * the user, 2026-10-31: "show exact amount requested, standing reward and estimated eta"), ETA
 	 * (the convoy's `convoyEta`; the Send quote's passage while waiting) and **Send** (BUTTON_AID_NEED: a convoy of that good alone at the colonies table's
 	 * lever for it, Med when the lever is at None, from the player's colony sparing the most,
@@ -1220,7 +1220,7 @@ public class ThreatFactionView {
 			float reward;
 			if (n.isFleets()) {
 				q = ThreatAid.quoteDefend(m, frontLevers.length > 2 ? frontLevers[2] : 0);
-				reward = ThreatIncConfig.aidRepGuardArrived();
+				reward = ThreatAid.standingFor(m, ThreatNeeds.FLEETS, q.ok() ? q.points : n.max);
 				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
 						+ q.source.getName() + " to take the orbit, at the Fleet lever." : "Sends a task force to take the orbit.";
 			} else {
