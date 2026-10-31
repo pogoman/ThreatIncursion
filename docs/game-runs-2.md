@@ -2058,3 +2058,8 @@ snapshots `cp3ad3817` (~23 standing bases) / `cp3bd3545` (~19). Step 4 on main (
 the knob off: dismantled 22 (+1 fallen to a strike before) / 19 on the first tick, 0 exc, nothing founded after; the AI
 went on - launches 3 / 9, strikes 3 / 16, core builds 9 / 17, convoys 1,115 / 763 lines, fronts 23 / 31, retaken 13 / 4 over the full 500 days (w4,333 / 4,057), launches 7 / 12, strikes 7 / 23, core builds 10 / 58.
 Static on the deep saves: 40 classes, 0 missing, 0 undeclared mod fields. facts: "Are an 0.8.2 save's forward bases removed".
+
+**ROUNDS 96-97 RELAUNCHED 13:16 as hw330 (set B) / hw331 (set A), day 0, jar 13:14:11 (HEAD da5ee480: the booking build merged
+with the other machine's ThreatComms / ThreatOmens deletion, convoy hull bills, the fronts' Days lever):** driver
+`run-seeds-45.ps1`, watcher `watch-seeds-45.sh` (shiftdrops armed), tasks ThreatIncSeeds45 / WatchSeeds45. Read as for
+hw328 above; the hw328 fragment (w1,400) stays as the opening read: drops 0 / 2 / 75.
