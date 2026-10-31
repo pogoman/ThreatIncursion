@@ -2192,8 +2192,10 @@ public class ThreatFactionView {
 			// hyperspace: "have no idea what that means but it certainly hasnt arrived"); on station, a fleet
 			// with no term shows the days of supplies its hold keeps it out for (docs/fleet-provisions.md)
 			float holdDays = o.fleet != null && ThreatIncConfig.fleetUpkeep() ? ThreatReturns.holdDays(o.fleet) : Float.MAX_VALUE;
-			f.eta = !o.indefinite() ? (int) Math.ceil(o.daysLeft()) + " d left"
-					: holdDays < Float.MAX_VALUE ? (int) Math.floor(holdDays) + " d aboard" : "-";
+			float toGo = !o.arrived ? ThreatFleetOrders.etaDays(o) : 0f;
+			f.eta = toGo > 0f ? "~" + (int) Math.ceil(toGo) + " d"
+					: !o.indefinite() ? (int) Math.ceil(o.daysLeft()) + " d left"
+					: holdDays < Float.MAX_VALUE ? (int) Math.floor(holdDays) + " d supplies" : "-";
 			f.rowId = o.fleet;
 			f.recallKey = "order:" + i;
 			rows.add(f);

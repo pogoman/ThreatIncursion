@@ -3235,6 +3235,20 @@ public class ThreatFleetOrders {
 				+ " at " + (int) fleet.getFleetPoints() + " FP holds the orbit - " + why);
 	}
 
+	/**
+	 * Days until the order's fleet reaches its target, as ThreatReturns.etaDays reckons a leg home
+	 * (ThreatWarBoard.EST_LY_PER_DAY, one day in the target's own system); 0 with no fleet or target.
+	 */
+	public static float etaDays(Order o) {
+		if (o == null || o.fleet == null || o.targetId == null) return 0f;
+		ThreatBases.Base target = ThreatBases.of(o.targetId);
+		SectorEntityToken to = target != null ? target.entity() : null;
+		if (to == null) return 0f;
+		if (o.fleet.getContainingLocation() == to.getContainingLocation()) return 1f;
+		float ly = Misc.getDistanceLY(o.fleet.getLocationInHyperspace(), to.getLocationInHyperspace());
+		return (float) Math.ceil(ly / ThreatWarBoard.EST_LY_PER_DAY) + 1f;
+	}
+
 	/** Sends the fleet home (refund on arrival, see ThreatReturns) and forgets the order. */
 	public static void recall(Order o) {
 		if (o == null) return;
