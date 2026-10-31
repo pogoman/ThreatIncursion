@@ -2063,3 +2063,18 @@ Static on the deep saves: 40 classes, 0 missing, 0 undeclared mod fields. facts:
 with the other machine's ThreatComms / ThreatOmens deletion, convoy hull bills, the fronts' Days lever):** driver
 `run-seeds-45.ps1`, watcher `watch-seeds-45.sh` (shiftdrops armed), tasks ThreatIncSeeds45 / WatchSeeds45. Read as for
 hw328 above; the hw328 fragment (w1,400) stays as the opening read: drops 0 / 2 / 75.
+
+**hw330 END (14:26, set B on the booking jar 13:14:11; hw326 in brackets, hw326c cut at w2,732):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift orders / spawns / drops | stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw330a | 3,820 | 291 (347) | 104 (164) | 202 (248) | 109 (104) | 36 (79) | 27 (119) | 35 (67) | 3,714 / 3,340 / 0 (32) | 0 | 0 |
+| hw330b | 3,833 | 344 (332) | 126 (121) | 229 (198) | 119 (100) | 81 (46) | 38 (58) | 40 (42) | 6,251 / 5,275 / 0 (8) | 0 (2) | 0 |
+| hw330c | 3,827 | 360 (264 @ w2,732) | 136 (61) | 253 (112) | 140 (31) | 59 (65) | 35 (73) | 35 (73) | 3,945 / 3,769 / 9 (358 @ w1,415) | 0 | 0 |
+
+- **The booking ends the churn:** drops 0 / 0 / 9 all war (c's nine at its opening launch, w1,000-1,200) against 32 / 8 / 358+,
+  orders within 10-15% of the spawns, 0 stuck, 0 exceptions, and every game ran its 3,800 days inside the cap (hw326c had hit
+  it at w2,732 - fewer order-and-settle cycles per day).
+- **Balance held or up for the swarm:** hives 291 / 344 / 360; retaken down to 27 / 38 / 35 (119 / 58 / 73) and a's strikes
+  down (104 against 164) - a reads as the swarm needing fewer strikes, b / c as more of everything. The merged jar also
+  carries the other machine's convoy hull bills and Days lever, so the human-side shifts are not the booking's alone.
