@@ -995,9 +995,11 @@ public class ThreatWarBoard {
 		return Misc.ucFirst(ThreatGroundFronts.layerName(m));
 	}
 
-	/** The world's next objective: the industry its next district reclaims, else the layer itself. */
-	protected static String worldObjective(MarketAPI m, Industry release) {
-		return release != null ? release.getCurrentName() : Misc.ucFirst(ThreatGroundFronts.layerName(m));
+	/** The world's next objective: the industry its next district reclaims, "Extermination" while the landing holds no layer (Arkoman 5/5, the user, 2026-10-31: "why does it still say district"), else the layer itself. */
+	protected static String worldObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry release) {
+		if (release != null) return release.getCurrentName();
+		if (f.strataHeld <= 0) return "Extermination";
+		return Misc.ucFirst(ThreatGroundFronts.layerName(m));
 	}
 
 	/** Every live front, the player's own first, then by world name. */
@@ -1284,7 +1286,7 @@ public class ThreatWarBoard {
 				float lr = ThreatGroundFronts.lineRate(f, m);
 				boolean landingSide = lr >= 0f;
 				String obj = landingSide ? landingObjective(f, m, ThreatOccupation.nextClaim(m, f))
-						: worldObjective(m, ThreatOccupation.nextRelease(f, m));
+						: worldObjective(f, m, ThreatOccupation.nextRelease(f, m));
 				cell(cells, Alignment.MID, landingSide ? landerColour : worldColour, main.shortenString(obj, w[i] - 10f));
 				i++;
 			}
@@ -1537,7 +1539,7 @@ public class ThreatWarBoard {
 			tooltip.addPara("Objective of " + World + ": reclaim %s, consumed in %s d.", 4f, text, h,
 					tRelease.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tRelease)));
 		} else {
-			tooltip.addPara("Objective of " + World + ": %s.", 4f, text, h, worldObjective(m, null));
+			tooltip.addPara("Objective of " + World + ": %s.", 4f, text, h, worldObjective(f, m, null));
 		}
 		float victory = ThreatGroundFronts.victoryDays(f, m, toA);
 		if (victory < 0f) {
