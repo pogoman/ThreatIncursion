@@ -193,6 +193,33 @@ public class ThreatConvoys {
 	}
 
 	/**
+	 * THE DOOR SHUTS BOTH WAYS (the user, 2026-10-31: "if threat controls space then no convoys
+	 * should leave"): a colony the Threat blockades (ThreatBlockade.penalty above 0 - the same live
+	 * weighing as the door in, {@link #holdsOff}) sends nothing until its orbit is cleared: no hand
+	 * order, no planner's convoy, no front run, no founding kit, no aid. Every dispatch refuses it
+	 * and every donor pick passes it over, so the board's buttons grey with the reason
+	 * ({@link #sealedNote}). An outpost has no market to blockade.
+	 */
+	public static boolean sealed(ThreatBases.Base donor) {
+		return donor != null && donor.market != null && sealed(donor.market);
+	}
+
+	/** As above for a colony. */
+	public static boolean sealed(MarketAPI donor) {
+		return donor != null && ThreatBlockade.penalty(donor) > 0f;
+	}
+
+	/** " X's orbit is blockaded by the Threat." for every colony of the faction the door shuts, else "" - the tail of a disabled reason. */
+	public static String sealedNote(String factionId) {
+		if (factionId == null) return "";
+		String out = "";
+		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
+			if (sealed(m)) out += " " + m.getName() + "'s orbit is blockaded by the Threat.";
+		}
+		return out;
+	}
+
+	/**
 	 * What a hand order may take of one reserve good at a colony: its stock above its floor
 	 * (ThreatReserves.available) - and, on a world with a Threat army of its own, no more than
 	 * its front spares ({@link #frontWorldSpare}: Arkoman, 2026-10-28, sent Haven all 945 of the
@@ -1798,6 +1825,7 @@ public class ThreatConvoys {
 		// a link in the hive's own system is always nearest, and pickBase takes it
 		if (ThreatFrontlines.isOutpost(base)) base = colonyBase(faction, hive.getLocationInHyperspace(), base);
 		if (base != null && skip != null && skip.contains(base.getId())) base = null;
+		if (sealed(base)) base = null; // the door shuts both ways (2026-10-31)
 		if (pickup || hive.getStarSystem() == null) return ThreatBases.of(base);
 		// a front loads where the most of what it wants is: the nearest base, or any of the faction's
 		// markets in reach of the hive (the siege pool, IncursionManager.siegeDonors) - the player's any
@@ -1813,6 +1841,7 @@ public class ThreatConvoys {
 		for (MarketAPI m : pool) {
 			if (m == base || ThreatFrontlines.isOutpost(m)) continue;
 			if (skip != null && skip.contains(m.getId())) continue;
+			if (sealed(m)) continue;
 			float s = frontScore(m, wants);
 			if (s > bestScore) {
 				bestScore = s;
@@ -2053,7 +2082,7 @@ public class ThreatConvoys {
 		float[] asked = supplyAsk(front, hive, levers);
 		if (asked[0] < 1f && asked[1] < 1f) {
 			ThreatBases.Base base = pickFrontBase(faction, hive, false, frontWants(front, hive));
-			return base == null ? "No base in reach."
+			return base == null ? "No base in reach." + sealedNote(faction.getId())
 					: base.name() + " has no marines or heavy armaments above its floor to send at the levers.";
 		}
 		// the run's voyage, paid or nothing sails (buildHulls; the player's runs pay too, 2026-10-31)
@@ -2140,6 +2169,10 @@ public class ThreatConvoys {
 		SectorEntityToken from = base.entity();
 		SectorEntityToken door = ThreatFleetOrders.interceptPoint(hive.getStarSystem());
 		if (system == null || from == null || door == null) return null;
+		if (sealed(base)) { // the door shuts both ways (2026-10-31)
+			ThreatIncConfig.log("Front run refused at " + base.name() + ": blockaded by the Threat, nothing leaves");
+			return null;
+		}
 
 		// (2026-09-29: closed economy) a run's voyage and escort are what the base pays for -
 		// the player's too (2026-10-31)
@@ -2380,7 +2413,8 @@ public class ThreatConvoys {
 		String name = target != null ? target.name() : "the world";
 		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
 		if (allNone(levers)) return "Every lever is at None.";
-		return "No colony of " + whose + " can spare a load and the voyage's fuel for " + name + ".";
+		return "No colony of " + whose + " can spare a load and the voyage's fuel for " + name + "."
+				+ (target != null && target.market != null && target.market.getFaction() != null ? sealedNote(target.market.getFactionId()) : "");
 	}
 
 	/**
@@ -2408,6 +2442,7 @@ public class ThreatConvoys {
 		boolean bestIsStaging = true;
 		for (MarketAPI donor : ThreatReserves.marketsOf(faction.getId())) {
 			if (donor == target.market || donor.getStarSystem() == null) continue;
+			if (sealed(donor)) continue; // the door shuts both ways (2026-10-31)
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					target.starSystem().getLocation()) > stockReachLY(donor)) continue;
 			float[] load = stageLoad(donor, target, levers);
@@ -2470,6 +2505,7 @@ public class ThreatConvoys {
 		boolean bestIsStaging = true;
 		for (MarketAPI donor : ThreatReserves.marketsOf(faction.getId())) {
 			if (donor == besieged || donor.getStarSystem() == null) continue;
+			if (sealed(donor)) continue; // the door shuts both ways (2026-10-31)
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					besieged.getStarSystem().getLocation()) > stockReachLY(donor)) continue;
 			float[] load = reinforceLoad(donor, besieged, levers);
@@ -2511,7 +2547,8 @@ public class ThreatConvoys {
 				if (kept >= 1f) held += " " + m.getName() + "'s " + Misc.getWithDGS((int) kept) + " hold its own front.";
 			}
 		}
-		return "No colony of " + whose + " can spare " + (marines ? "marines" : "heavy armaments") + " for " + name + "." + held;
+		return "No colony of " + whose + " can spare " + (marines ? "marines" : "heavy armaments") + " for " + name + "." + held
+				+ (besieged != null && besieged.getFaction() != null ? sealedNote(besieged.getFactionId()) : "");
 	}
 
 	/**
@@ -2630,6 +2667,7 @@ public class ThreatConvoys {
 		for (MarketAPI donor : markets) {
 			if (donor == base || donor.getStarSystem() == null) continue;
 			if (skip != null && skip.contains(donor)) continue;
+			if (sealed(donor)) continue; // the door shuts both ways (2026-10-31)
 			// a donor reaches as far as its own fuel pays (stagingBaseFor)
 			float reach = base.isPlayerOwned() ? Float.MAX_VALUE : stockReachLY(donor);
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
@@ -2687,6 +2725,10 @@ public class ThreatConvoys {
 	public static Convoy dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction,
 			float[] load, Random random, String recipientFactionId, boolean aid) {
 		if (donor == null || base == null || faction == null) return null;
+		if (sealed(donor)) { // the door shuts both ways (2026-10-31)
+			ThreatIncConfig.log("Convoy refused at " + donor.name() + ": blockaded by the Threat, nothing leaves (" + faction.getId() + " -> " + base.name() + ")");
+			return null;
+		}
 		// a player colony's convoy stays the hulls its free points bought - the
 		// load is clamped to what they carry, the fleet is never grown past the
 		// ledger (nothing sails over-extended), and it is never split; NPC
@@ -3201,6 +3243,7 @@ public class ThreatConvoys {
 		if (donor == null || site == null || faction == null || cost == null) return null;
 		StarSystemAPI system = donor.starSystem();
 		SectorEntityToken from = donor.entity();
+		if (sealed(donor)) return null; // the door shuts both ways (2026-10-31)
 		if (system == null || from == null || site.getStarSystem() == null) return null;
 		float[] load = { 0f, 0f, cost[1], cost[0] };
 		float ly = Misc.getDistanceLY(donor.hyperLoc(), site.getLocationInHyperspace());
@@ -3621,6 +3664,7 @@ public class ThreatConvoys {
 		float bestSpare = 0f;
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
+			if (sealed(donor)) continue; // the door shuts both ways (2026-10-31)
 			float reach = helper.isPlayerFaction() ? Float.MAX_VALUE : stockReachLY(donor);
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					needy.getStarSystem().getLocation()) > reach) continue;

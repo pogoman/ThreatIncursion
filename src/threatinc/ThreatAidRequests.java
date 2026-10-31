@@ -1066,6 +1066,7 @@ public class ThreatAidRequests {
 		final String g = good;
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
+			if (ThreatConvoys.sealed(donor)) continue; // the door shuts both ways (2026-10-31)
 			if (Misc.getDistanceLY(donor.getLocationInHyperspace(), at) > ThreatConvoys.stockReachLY(donor)) continue;
 			if (!holdsSurplus(donor, good)) continue;
 			if (offerSpare(donor, good) >= minSpare(good)) out.add(donor);

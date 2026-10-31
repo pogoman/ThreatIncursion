@@ -498,6 +498,15 @@ and after `convoyBlockadeWaitDays` (30) still blockaded it turns for home with i
 an outpost has no market to blockade. Log: `Convoy holding off X: blockaded by the Threat`,
 `Convoy runs in to X: blockade lifted after N days`, `Convoy gave up at X`.
 
+**The door shuts both ways** (2026-10-31, the user: "if threat controls space then no convoys
+should leave"). A colony whose `ThreatBlockade.penalty` reads above 0 sends nothing while the
+orbit is held: `ThreatConvoys.sealed` refuses it in `dispatch`, `dispatchFrontRun` and
+`dispatchFounding`, and every donor pick passes it over (`stageDonor`, `reinforceDonor`,
+`pickDonor`, `pickAllyDonor`, `pickFrontBase`, `ThreatAidRequests.donors`), so the board's
+Transfer / Reinforce / Supply grey with "X's orbit is blockaded by the Threat." on the tail
+(`sealedNote`). Deployed fleets and their Attack are not convoys and sail regardless. Log:
+`Convoy refused at X: blockaded by the Threat, nothing leaves`, `Front run refused at X`.
+
 ### When the colony falls
 
 **THE OCCUPATION (the user, 2026-10-27, `docs/occupation.md`, built untested): with `occupationEnabled` (default) none of the below runs for the swarm.** `colonyGroundVictory` hands the front to `ThreatOccupation.occupy`: it stays on every district, the market keeps its faction, vanilla's deciv is held off, its claimed industries feed the swarm and a pool buds Infestation Swarms over the world; the owner reclaims it by pushing the front off. The conversion below is the knob-off path.
