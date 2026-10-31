@@ -235,9 +235,9 @@ past zero the push is **over-extended** - spread thin to the same degree as digg
 cover: the side's whole figure x 1 / (1 + (`frontEntrenchDefenseBonus` - 1) x over-extension), so
 after 30 days of pushing past zero it fights at 2/3 (`overExtension`, `overExtendMult`,
 `defenderOverExtension`, `defenderOverExtendMult`; the swarm's through `entrenchMult`, the colony's
-on `defenderStrength`, `counterAttackStrength` and the line's D). A district changing hands puts the
-side that took it at full cover (`frontEntrenchDays`) and the side that lost it at 0, dug in or
-over-extended (`takeStratum`, `loseStratum`; the user, 2026-10-31 - before, both went to 0). The kept fractions
+on `defenderStrength`, `counterAttackStrength` and the line's D). A district changing hands puts both
+sides at 0, dug in or over-extended (`takeStratum`, `loseStratum`; 2026-10-24 - the 2026-10-31 afternoon
+rule, the taker at full cover and the loser at 0, was reverted the same evening). The kept fractions
 (`frontEntrenchKeptFraction`, `defenderEntrenchKeptFraction`) and the reinforcement dilution are
 gone. The board reads "x 0.60 over-extended (12 of 30 days)" and "(over-extended x0.80, 12 of 30
 days)" in the push line. A long push therefore runs out of steam by itself: the doctrine sees the

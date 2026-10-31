@@ -2494,11 +2494,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	front.pushProgress = 0f;
 	front.strataHeld++;
 	ThreatOccupation.onDistrictTaken(front, market); // and an industry claimed with it (the occupation, 2026-10-27)
-	// a district changing hands: the side that took it stands at full cover, the side that lost it
-	// at none (the user, 2026-10-31: "when any faction takes a district or strata they should reset
-	// to cover 1.00, and the faction that was holding/defending loses all their cover"; 2026-10-24
-	// both went to 0)
-	front.entrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
+	// a district changing hands: both sides stand at no cover and earn it again (2026-10-24). The
+	// 2026-10-31 rule - the taker at full cover, the loser at none - lasted a day: Haven read
+	// 6,652 against 709 the moment the swarm took its third district (the user: "doesnt make
+	// sense for it to instantly go up")
+	front.entrenchDays = 0f;
 	front.defenderEntrenchDays = 0f;
 	int total = market.getSize();
 		ThreatAlarm.add(ownerOf(front), ThreatIncConfig.alarmPerStratum(),
@@ -2575,8 +2575,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatMarineXP.frontEarn(front, defense, pressure);
 		if (theatre == COLONY) ThreatMarineXP.colonyEarn(market, pressure, defense);
 		front.pushProgress = 0f;
-		front.entrenchDays = 0f; // the side that lost the district stands at no cover, the side that retook it at full (the user, 2026-10-31)
-		front.defenderEntrenchDays = clampEntrench(ThreatIncConfig.frontEntrenchDays());
+		front.entrenchDays = 0f; // both sides at no cover on a district changing hands (2026-10-24; the 2026-10-31 full-cover-for-the-taker rule was reverted the same day)
+		front.defenderEntrenchDays = 0f;
 		if (front.strataHeld > 0) {
 			// a district retaken releases ONE claim - the defenders' pick, military first, soonest lost
 			// (ThreatOccupation.release; the user, 2026-10-31 afternoon: "a district taken either side gives
