@@ -88,6 +88,8 @@ public class ThreatFactionView {
 	public static final String BUTTON_ENTRENCH = "threatinc_board_entrench:";
 	/** Player aid: a task force from a player colony guards another faction's colony (payload: factionId:marketId). */
 	public static final String BUTTON_AID_DEFEND = "threatinc_board_aiddefend:";
+	/** An NPC tab's Send on a defence-fleet need (2026-10-31 afternoon): a Defend sized at the Send lever's figure of the need, not the swarm in orbit. */
+	public static final String BUTTON_AID_FLEET = "threatinc_board_aidfleet:";
 	/** The Send button on an NPC faction's need row (2026-10-30): "factionId:marketId:good" - a convoy of the good at its lever, or Defend for a fleets need. */
 	public static final String BUTTON_AID_NEED = "threatinc_board_aidneed:";
 	/** The Requests toggles' Colony button (2026-10-31): the next Domain entry's id; no Confirm, ThreatIncursionIntel sets it. */
@@ -838,9 +840,10 @@ public class ThreatFactionView {
 				"Support / Defend: match the swarm over the world.",
 				"Support / Defend: x" + String.format("%.2f", ThreatIncConfig.orbitTierMedMargin()) + " the swarm.",
 				"Support / Defend: x" + String.format("%.2f", ThreatIncConfig.orbitTierMaxMargin()) + " the swarm." };
+		// Min, not None: the first setting is a force that matches the swarm (the user, 2026-10-31)
 		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
 				BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_FLEET + ":",
-				intel.lever(ThreatIncursionIntel.LEVER_FRONT_FLEET), fleetTips, 0f, LEVER_LABELS, LEVER_BUTTON_W);
+				intel.lever(ThreatIncursionIntel.LEVER_FRONT_FLEET), fleetTips, 0f, TIER_LABELS, LEVER_BUTTON_W);
 		// DAYS (the user, 2026-10-31: "a duration toggle to the defend action when aiding other
 		// factions"): the term an ally's Defend holds the orbit, and the stay its hold is priced on
 		String[] dayLabels = new String[3];
@@ -1234,10 +1237,13 @@ public class ThreatFactionView {
 			ThreatAid.Quote q;
 			float reward;
 			if (n.isFleets()) {
-				q = ThreatAid.quoteDefend(m, frontLevers.length > 2 ? frontLevers[2] : 0);
+				// the need's figure at the Send lever (Min / Med / Max), as any other good's Send; for the Days
+				// lever's term (the user, 2026-10-31: a Max Send on a 3,214 FP need quoted 467, the swarm in orbit)
+				q = ThreatAid.quoteDefend(m, sendAmount(n, intel), defendTerm(frontLevers));
 				reward = ThreatAid.standingFor(m, ThreatNeeds.FLEETS, q.ok() ? q.points : n.max);
 				help = q.ok() ? "Sends a task force of " + Misc.getWithDGS(Math.round(q.points)) + " fleet points from "
-						+ q.source.getName() + " to take the orbit, at the Fleet lever." : "Sends a task force to take the orbit.";
+						+ q.source.getName() + " to take the orbit for " + (int) q.days + " days, at the Send lever."
+						: "Sends a task force to take the orbit.";
 			} else {
 				// the ask at the Send lever (Min / Med / Max of the need), from the colony sparing the most
 				float amount = sendAmount(n, intel);
@@ -1251,8 +1257,12 @@ public class ThreatFactionView {
 			ThreatWarBoard.cell(cells, Alignment.LMID, text,
 					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
 			// the ask at the Send lever (the user, 2026-10-31: "exact amount requested"; the row tooltip has every tier)
-			float ask = n.isFleets() ? n.max : sendAmount(n, intel);
-			String asked = n.isFleets() ? "defence fleet of " + n.shown(n.max) : n.shown(ask) + " " + n.goodLabel();
+			float ask = sendAmount(n, intel);
+			// what Send would actually deliver when it is less than the ask (the user, 2026-10-31: "7,100 ship
+			// hulls" beside +59 - the quote sent the 590 FP the navy spared): "590 of 7,100 ship hulls"
+			float sent = q.ok() && !n.isFleets() ? sentOf(q, n.good) : ask;
+			String asked = n.isFleets() ? "defence fleet of " + n.shown(ask)
+					: (sent + 0.5f < ask ? n.shown(sent) + " of " : "") + n.shown(ask) + " " + n.goodLabel();
 			ThreatWarBoard.cell(cells, Alignment.LMID, n.color(),
 					main.shortenString(asked + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
 			Long since = n.isFleets() ? null : ThreatAidRequests.shortageSince().get(m.getId() + ":" + n.good);
@@ -1340,12 +1350,25 @@ public class ThreatFactionView {
 		return n.tier(intel != null ? intel.lever(ThreatIncursionIntel.LEVER_AID_SEND) : 1);
 	}
 
-	/** A Send on a fleets need is the fronts' Defend (BUTTON_AID_DEFEND); any other id passes through. */
+	/** Units of the good a quote's convoy carries (ship hulls: aboard and from the hull port), in the load's units. */
+	protected static float sentOf(ThreatAid.Quote q, String good) {
+		int idx = ThreatAid.index(good);
+		float out = q != null && q.load != null && idx >= 0 && idx < q.load.length ? q.load[idx] : 0f;
+		if (q != null && Commodities.SHIPS.equals(good)) out += q.hullUnits;
+		return out;
+	}
+
+	/** A Send on a fleets need is a Defend sized at the Send lever's figure of the need (BUTTON_AID_FLEET; the user, 2026-10-31: Max on a 3,214 FP need quoted 467, the swarm in orbit); any other id passes through. */
 	protected static String[] aidNeedParts(String[] parts) {
 		if (parts == null || !BUTTON_AID_NEED.equals(parts[0])) return parts;
 		String[] wt = withdrawTarget(parts[2]);
-		if (ThreatNeeds.FLEETS.equals(wt[1])) return new String[] {BUTTON_AID_DEFEND, parts[1], wt[0]};
+		if (ThreatNeeds.FLEETS.equals(wt[1])) return new String[] {BUTTON_AID_FLEET, parts[1], wt[0]};
 		return parts;
+	}
+
+	/** The term the fronts' Days lever sets for an ally's Defend (ThreatIncConfig.guardTermDays; the middle setting when the levers are short). */
+	protected static float defendTerm(int[] frontLevers) {
+		return ThreatIncConfig.guardTermDays(frontLevers != null && frontLevers.length > 3 ? frontLevers[3] : 1);
 	}
 
 	/** The convoys at sea to the market carrying some of the good, whoever sent them. */
@@ -2523,7 +2546,7 @@ public class ThreatFactionView {
 			// over it / x1.25 / x1.5 (ThreatAid.orbitAskFP), as the player's own Defend; every hull free before
 			int orbitTier = frontLevers.length > 2 ? frontLevers[2] : 0;
 			// for the Days lever's term, its hold priced on that stay (2026-10-31)
-			float term = ThreatIncConfig.guardTermDays(frontLevers.length > 3 ? frontLevers[3] : 1);
+			float term = defendTerm(frontLevers);
 			ThreatAid.Quote q = ThreatAid.quoteDefend(target, orbitTier, term);
 			if (!q.ok() || target == null) {
 				prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
@@ -2679,7 +2702,7 @@ public class ThreatFactionView {
 				if (voyageFrom != null) {
 					float[] run = {asked[0], asked[1], 0f, 0f};
 					addTakesLine(prompt, voyageFrom, ThreatConvoys.voyageBill(voyageFrom, run,
-							Misc.getDistanceLY(voyageFrom.hyperLoc(), hive.getLocationInHyperspace())));
+							Misc.getDistanceLY(voyageFrom.hyperLoc(), hive.getLocationInHyperspace()), true));
 				}
 			} else {
 				prompt.addPara("Send an evacuation convoy from " + (base != null ? base.getName()
@@ -2850,8 +2873,7 @@ public class ThreatFactionView {
 		if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			// at the fronts' Fleet lever (2026-10-29 evening), as the player's own Defend
 			return ThreatAid.dispatchDefend(Global.getSector().getEconomy().getMarket(parts[2]),
-					frontLevers.length > 2 ? frontLevers[2] : 0,
-					ThreatIncConfig.guardTermDays(frontLevers.length > 3 ? frontLevers[3] : 1)) ? "aid-defend" : null;
+					frontLevers.length > 2 ? frontLevers[2] : 0, defendTerm(frontLevers)) ? "aid-defend" : null;
 		}
 		if (BUTTON_REQ_ACCEPT.equals(parts[0])) {
 			ThreatAidRequests.Offer o = ThreatAidRequests.offerById(parts[2]);
@@ -2870,6 +2892,12 @@ public class ThreatFactionView {
 		}
 		if (!ThreatFleetOrders.canPlayerOrder(faction)) return null;
 		if (BUTTON_GUARD.equals(parts[0])) {
+		if (BUTTON_AID_FLEET.equals(parts[0])) {
+			// an NPC tab's Send on a defence-fleet need: the need's figure at the Send lever (2026-10-31 afternoon)
+			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
+			return ThreatAid.dispatchDefend(target, sendAmount(needFor(target, ThreatNeeds.FLEETS), intel),
+					defendTerm(frontLevers)) ? "aid-fleet" : null;
+		}
 			// DEPLOY (ThreatDeploy, 2026-10-29): a colony, the player's outpost or a hive its landing attacks - a new fleet every press
 			ThreatBases.Base target = ThreatBases.of(parts[2]);
 			return ThreatDeploy.execute(ThreatDeploy.plan(target, levers), faction);

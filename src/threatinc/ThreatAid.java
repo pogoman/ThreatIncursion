@@ -481,6 +481,28 @@ public class ThreatAid {
 		}
 	}
 
+	/**
+	 * A Defend sized in combat points - an NPC tab's Send on a defence-fleet need at the Send lever
+	 * (the need's Min / Med / Max figure, as any other good's Send; the user, 2026-10-31: a Max Send on
+	 * a 3,214 FP need quoted 467, the swarm then in orbit) - for a term of {@code days}, its hold
+	 * priced on that stay. From the nearest colony whose free hulls field it all (quoteTaskForce).
+	 */
+	public static Quote quoteDefend(MarketAPI target, float askFP, float days) {
+		Quote q = new Quote();
+		if (target == null || target.getStarSystem() == null) {
+			q.reason = ThreatNotice.Reason.of("No target");
+			return q;
+		}
+		q.days = Math.max(0f, days);
+		float was = ThreatReach.setStay(days);
+		try {
+			return quoteTaskForce(q, target.getLocationInHyperspace(), target.getName(), null, askFP,
+					"send the defence fleet " + target.getName() + " asks for");
+		} finally {
+			ThreatReach.setStay(was);
+		}
+	}
+
 	public static Quote quoteStrike(StarSystemAPI hive) {
 		return quoteStrike(hive, 0);
 	}
@@ -719,8 +741,18 @@ public class ThreatAid {
 		return dispatchDefend(target, tier, 0f);
 	}
 
+	/** As {@link #dispatchDefend(MarketAPI, int, float)} for a force of {@code askFP} combat points (an NPC tab's Send on a defence-fleet need at the Send lever, 2026-10-31 afternoon). */
+	public static boolean dispatchDefend(MarketAPI target, float askFP, float days) {
+		return dispatchDefend(target, -1, askFP, days);
+	}
+
 	/** As above for a term of {@code days} (the fronts' Days lever, 2026-10-31): the order's term, and the stay its hold is priced on. 0 = guardDays and the sortie's default stay. */
 	public static boolean dispatchDefend(MarketAPI target, int tier, float days) {
+		return dispatchDefend(target, tier, 0f, days);
+	}
+
+	/** The Defend order: at the Force tier, or - {@code askFP} above 0 - sized in combat points (the tier is then ignored). */
+	protected static boolean dispatchDefend(MarketAPI target, int tier, float askFP, float days) {
 		if (target == null) return false;
 		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
@@ -728,14 +760,17 @@ public class ThreatAid {
 					.lines(blocked).send();
 			return false;
 		}
-		Quote q = quoteDefend(target, tier, days);
+		Quote q = askFP > 0f ? quoteDefend(target, askFP, days) : quoteDefend(target, tier, days);
 		if (!q.ok()) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.lines(q.reason).send();
 			return false;
 		}
-		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(
-				Global.getSector().getPlayerFaction(), ThreatBases.of(target), q.source, true, tier, days);
+		ThreatFleetOrders.Order o = askFP > 0f
+				? ThreatFleetOrders.dispatchGuard(Global.getSector().getPlayerFaction(), ThreatBases.of(target), q.source,
+						true, askFP, days)
+				: ThreatFleetOrders.dispatchGuard(Global.getSector().getPlayerFaction(), ThreatBases.of(target), q.source,
+						true, tier, days);
 		if (o == null) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.line("No task force could be raised at %s", ThreatNotice.market(q.source)).send();

@@ -268,7 +268,7 @@ most urgent need of the good) - World, Commodity, Age (days the shortage has sto
 `convoysWith`; a task force bound for a fleets need; else waiting), Standing (a dash - NPC-to-NPC aid
 charges no standing, the user's decision 2026-10-31), ETA (`convoyEta`), and **Send** on every row (`BUTTON_AID_NEED`: exactly the
 Commodity figure of that good from the player's colony sparing the most - `ThreatAid.quoteAid(target,
-good, amount)`; a fleets need is the fronts' Defend at the Fleet lever). A **Send** lever above the
+good, amount)`; a fleets need is a Defend sized at the Send lever's figure of the need for the Days lever's term, `BUTTON_AID_FLEET`, since 2026-10-31 afternoon - the fronts' Defend at the Fleet lever, sized on the swarm in orbit, until then; a row whose quote sends less than the ask reads "590 of 7,100 ship hulls"). A **Send** lever above the
 table, Min / Med / Max (`ThreatIncursionIntel.LEVER_AID_SEND`, default Med), picks which of the
 need's three figures the Commodity column shows and Send sails (the row tooltip lists all three).
 Standing is one rate either way (`ThreatAid.standingFor`, 2026-10-31 late): what a Send earns on

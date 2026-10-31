@@ -1769,6 +1769,18 @@ public class ThreatFleetOrders {
 	 */
 	public static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
 			boolean aid, int tier, float termDays) {
+		return dispatchGuard(faction, target, base, aid, tier, 0f, termDays);
+	}
+
+	/** As above for a player force of {@code askFP} combat points (an NPC tab's Send on a defence-fleet need at the Send lever, 2026-10-31 afternoon), built as fleets until it is met (buildPlayerForce). */
+	public static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
+			boolean aid, float askFP, float termDays) {
+		return dispatchGuard(faction, target, base, aid, 0, askFP, termDays);
+	}
+
+	/** The guard: at the Force tier, or - {@code askFP} above 0 - sized in combat points. */
+	protected static Order dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base,
+			boolean aid, int tier, float askFP, float termDays) {
 		if (faction == null || target == null || target.entity() == null) return null;
 		if (base == null) return null;
 		boolean own = faction.isPlayerFaction() && !aid && ownBase(faction, target);
@@ -1793,7 +1805,10 @@ public class ThreatFleetOrders {
 		float was = ThreatReach.setStay(termDays);
 		List<CampaignFleetAPI> fleets;
 		try {
-			fleets = buildPlayerForce(base, faction, self, tier, target.hyperLoc(), "guard of " + target.name());
+			fleets = askFP > 0f
+					? buildPlayerForce(base, faction, self, Math.max(askFP, ThreatIncConfig.aidGuardMinFP()), true,
+							target.hyperLoc(), "guard of " + target.name())
+					: buildPlayerForce(base, faction, self, tier, target.hyperLoc(), "guard of " + target.name());
 		} finally {
 			ThreatReach.setStay(was);
 		}

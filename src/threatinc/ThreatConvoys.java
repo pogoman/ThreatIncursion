@@ -324,8 +324,60 @@ public class ThreatConvoys {
 	 * fuel takes it (2026-10-01).
 	 */
 	protected static boolean paysVoyage(ThreatBases.Base donor, float ly, float fuelLoad) {
-		float bill = haulFuel(ly);
+		return paysVoyage(donor, ly, fuelLoad, baseEscort());
+	}
+
+	/** As above for a convoy of {@code fp} fleet points - the hulls it sails with ({@link #hullPoints}), not the base escort alone (2026-10-31 afternoon). */
+	protected static boolean paysVoyage(ThreatBases.Base donor, float ly, float fuelLoad, float fp) {
+		float bill = voyageFuel(fp, ly);
 		return bill <= 0f || Math.max(voyageStock(donor, Commodities.FUEL), Math.max(0f, fuelLoad)) >= bill - 0.5f;
+	}
+
+	/**
+	 * THE HULLS A CONVOY SAILS WITH, in fleet points, as {@link #buildHulls} sizes them: the escort,
+	 * freighters to the cargo (a point per 60 units, 10 at least), tankers to the fuel (a point per
+	 * 100, 5 at least), transports to the troops (a point per 40 marines, 10 at least; a front run's
+	 * always). What its voyage is billed on since 2026-10-31 afternoon (the user, on a 2,365-marine
+	 * convoy quoted 151 fuel against a 467 FP task force's 2,252 over the same 12 ly: "the
+	 * difference is ridiculous") - until then the base escort's 30 FP, whatever sailed.
+	 */
+	public static float hullPoints(float[] ask, boolean frontRun, float escort) {
+		float marines = at(ask, 0), arms = at(ask, 1), fuel = at(ask, 2), supplies = at(ask, 3);
+		float cargoUnits = arms + fuel + supplies + hullsIn(ask);
+		float freighterPts = Math.max(10f, cargoUnits / 60f);
+		float tankerPts = fuel > 0f ? Math.max(5f, fuel / 100f) : 0f;
+		float transportPts = marines > 0f || frontRun ? Math.max(10f, marines / 40f) : 0f;
+		return Math.max(0f, escort) + freighterPts + tankerPts + transportPts;
+	}
+
+	/** A load's entry, 0 past its end (a front run's load is two long). */
+	protected static float at(float[] load, int i) {
+		return load != null && i < load.length ? Math.max(0f, load[i]) : 0f;
+	}
+
+	/** Fuel a convoy of {@code fp} fleet points burns over {@code ly}: the sortie rate (expeditionFuelPerPointLY a difficulty point a light-year), the voyage a task force pays. */
+	public static float voyageFuel(float fp, float ly) {
+		return threatinc.rules.ReachRules.voyageCost(Math.max(0f, fp), Math.max(0f, ly),
+				ThreatIncConfig.expeditionFuelPerPointLY(), 0f)[0];
+	}
+
+	/** Supplies a convoy of {@code fp} fleet points of this faction eats on the voyage there and back (no stay), at the faction's measured rate (ThreatReach.suppliesPerFP) - its hold, paid at launch; 0 with fleet upkeep off. */
+	public static float voyageHold(String factionId, float fp, float ly) {
+		if (!ThreatIncConfig.fleetUpkeep()) return 0f;
+		return ThreatReach.tripSupplies(factionId, fp, ThreatReach.daysAway(ly, true, 0f));
+	}
+
+	/** As above for the hulls actually built: their vanilla maintenance for the days there and back. */
+	public static float voyageHold(CampaignFleetAPI fleet, float ly) {
+		if (!ThreatIncConfig.fleetUpkeep() || fleet == null) return 0f;
+		return ThreatFrontlines.maintenancePerMonth(fleet) * ThreatReach.daysAway(ly, true, 0f) / 30f;
+	}
+
+	/** The fleet points a convoy of {@code load} from {@code donor} over {@code ly} would sail with ({@link #hullPoints} at the escort the donor pays for, paidEscort) - what a quote or gate bills before the hulls exist. */
+	public static float estimateFP(ThreatBases.Base donor, float[] load, float ly, boolean frontRun) {
+		float want = ThreatIncConfig.convoyEscortFP() + escortForValue(load);
+		float escort = donor != null ? paidEscort(donor, want, ly, at(load, 2), at(load, 3)) : want;
+		return hullPoints(load, frontRun, escort);
 	}
 
 	/**
@@ -378,10 +430,17 @@ public class ThreatConvoys {
 		float base = baseEscort();
 		float over = Math.max(0f, escort - base);
 		float[] burnt = new float[2];
-		// the voyage's fuel whatever the escort; supplies only for the escort that sails
-		float fuel = payEscortPart(donor, Commodities.FUEL, base * rate[0], over * rate[0], load[2], burnt, 0);
-		float supplies = payEscortPart(donor, Commodities.SUPPLIES, Math.min(escort, base) * rate[1],
-				over * rate[1], load[3], burnt, 1);
+		// the voyage's fuel on the hulls that sail - escort, freighters, tankers and transports (2026-10-31
+		// afternoon; the base escort's alone until then), or nothing sails: the pre-build gate (paysVoyage
+		// on hullPoints) read the ask, the hulls built can run over it
+		float voyage = voyageFuel(fleet.getFleetPoints(), ly);
+		if (voyage > 0f && Math.max(voyageStock(donor, Commodities.FUEL), at(load, 2)) < voyage - 0.5f) return null;
+		float fuel = payEscortPart(donor, Commodities.FUEL, voyage, 0f, at(load, 2), burnt, 0);
+		// the escort's deposit as before, and the hulls' maintenance for the days there and back (the hold a
+		// task force carries, voyageHold) - paid as far as the donor's stock and the supplies cargo go: a
+		// convoy burns nothing in flight (ThreatUpkeep.charge skips it), so a short hold holds nothing up
+		float supplies = payEscortPart(donor, Commodities.SUPPLIES, Math.min(escort, base) * rate[1] + voyageHold(fleet, ly),
+				over * rate[1], at(load, 3), burnt, 1);
 		// freighters draw no hulls from the faction's pool (ThreatHulls; hw30: supply fleets held
 		// more than the pool had and no warship could sail)
 		fleet.getMemoryWithoutUpdate().set(ThreatReturns.MEM_NO_HULLS, true);
@@ -436,24 +495,29 @@ public class ThreatConvoys {
 	 * (ThreatFactionView.addTakesLine, 2026-10-31).
 	 */
 	public static float[] voyageBill(ThreatBases.Base donor, float[] load, float ly) {
-		if (donor == null || load == null || load.length < 4) return new float[] {0f, 0f};
-		float[] rate = escortRate(ly);
-		float want = ThreatIncConfig.convoyEscortFP() + escortForValue(load);
-		float escort = paidEscort(donor, want, ly, load[2], load[3]);
-		float over = Math.max(0f, escort - baseEscort());
-		return new float[] {haulFuel(ly) + over * rate[0], escort * rate[1]};
+		return voyageBill(donor, load, ly, false);
 	}
 
-	/** Whether the donor's fuel above its floor, or the fuel in the load, pays a convoy's voyage of {@code ly} ({@link #paysVoyage}): a hand order's donor rule, the player's too (2026-10-31). */
+	/** As above; a front run's hulls carry transports whatever the load ({@code frontRun}). Since 2026-10-31 afternoon the bill is the hulls' ({@link #hullPoints}): their voyage fuel, the escort's deposit and their maintenance there and back ({@link #voyageHold}). */
+	public static float[] voyageBill(ThreatBases.Base donor, float[] load, float ly, boolean frontRun) {
+		if (donor == null || load == null) return new float[] {0f, 0f};
+		float[] rate = escortRate(ly);
+		float want = ThreatIncConfig.convoyEscortFP() + escortForValue(load);
+		float escort = paidEscort(donor, want, ly, at(load, 2), at(load, 3));
+		float fp = hullPoints(load, frontRun, escort);
+		return new float[] {voyageFuel(fp, ly), escort * rate[1] + voyageHold(donor.factionId(), fp, ly)};
+	}
+
+	/** Whether the donor's fuel above its floor, or the fuel in the load, pays a convoy's voyage of {@code ly} on the hulls the load takes ({@link #paysVoyage}, {@link #estimateFP}): a hand order's donor rule, the player's too (2026-10-31). */
 	public static boolean canPayVoyage(ThreatBases.Base donor, float[] load, float ly) {
-		return donor != null && paysVoyage(donor, ly, load != null && load.length > 2 ? load[2] : 0f);
+		return donor != null && paysVoyage(donor, ly, at(load, 2), estimateFP(donor, load, ly, false));
 	}
 
 	/** "Haven has 120 fuel above its floor; the voyage to Ogre takes 216." - why a hand order's donor sends nothing. */
-	public static String voyageShortText(ThreatBases.Base donor, float ly, String toName) {
+	public static String voyageShortText(ThreatBases.Base donor, float[] load, float ly, boolean frontRun, String toName) {
 		return donor.name() + " has " + Misc.getWithDGS((int) Math.max(0f, voyageStock(donor, Commodities.FUEL)))
 				+ " fuel above its floor; the voyage to " + toName + " takes "
-				+ Misc.getWithDGS((int) Math.ceil(haulFuel(ly))) + ".";
+				+ Misc.getWithDGS((int) Math.ceil(voyageFuel(estimateFP(donor, load, ly, frontRun), ly))) + ".";
 	}
 
 	/**
@@ -512,12 +576,13 @@ public class ThreatConvoys {
 	protected static final Map<String, Long> HELD_LOGGED = new HashMap<String, Long>();
 
 	/** Logs a sailing whose donor cannot pay its voyage (paysVoyage): its fuel above the floor against the bill. */
-	protected static void logHeld(ThreatBases.Base from, float ly) {
+	protected static void logHeld(ThreatBases.Base from, float ly, float fp) {
 		Long last = HELD_LOGGED.get(from.id());
 		if (last != null && Global.getSector().getClock().getElapsedDaysSince(last) < 30f) return;
 		HELD_LOGGED.put(from.id(), Global.getSector().getClock().getTimestamp());
-		ThreatIncConfig.log("Convoy held: " + from.name() + " cannot pay a " + Math.round(ly) + " ly voyage (fuel "
-				+ Math.round(voyageStock(from, Commodities.FUEL)) + " of " + Math.round(haulFuel(ly)) + ")");
+		ThreatIncConfig.log("Convoy held: " + from.name() + " cannot pay a " + Math.round(ly) + " ly voyage of "
+				+ Math.round(fp) + " FP (fuel " + Math.round(voyageStock(from, Commodities.FUEL)) + " of "
+				+ Math.round(voyageFuel(fp, ly)) + ")");
 	}
 
 	/** A convoy that never sailed: its escort's voyage back to the donor in full. */
@@ -2089,7 +2154,8 @@ public class ThreatConvoys {
 		ThreatBases.Base base = pickFrontBase(faction, hive, false, frontWants(front, hive));
 		if (base != null) {
 			float ly = Misc.getDistanceLY(base.hyperLoc(), hive.getLocationInHyperspace());
-			if (!paysVoyage(base, ly, 0f)) return voyageShortText(base, ly, hive.getName());
+			float[] run = {asked[0], asked[1], 0f, 0f};
+			if (!paysVoyage(base, ly, 0f, estimateFP(base, run, ly, true))) return voyageShortText(base, run, ly, true, hive.getName());
 		}
 		return null;
 	}
@@ -2215,7 +2281,14 @@ public class ThreatConvoys {
 			boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random) {
 		CampaignFleetAPI fleet = h.fleet;
 		float escort = builtEscort(h);
-		if (paysEscort) burn(h, payEscort(fleet, base, escort, ly, h.ask));
+		if (paysEscort) {
+			float[] paid = payEscort(fleet, base, escort, ly, h.ask);
+			if (paid == null) {
+				logHeld(base, ly, fleet.getFleetPoints());
+				return null;
+			}
+			burn(h, paid);
+		}
 		float[] load = h.ask;
 		StarSystemAPI system = base.starSystem();
 		SectorEntityToken from = base.entity();
@@ -2450,7 +2523,8 @@ public class ThreatConvoys {
 			if (value <= 0f) continue;
 			// the voyage's fuel or nothing sails (buildHulls) - the player's hand order too (2026-10-31)
 			ThreatBases.Base from = ThreatBases.of(donor);
-			if (!paysVoyage(from, Misc.getDistanceLY(from.hyperLoc(), target.hyperLoc()), load[2])) continue;
+			float voyageLY = Misc.getDistanceLY(from.hyperLoc(), target.hyperLoc());
+			if (!paysVoyage(from, voyageLY, load[2], estimateFP(from, load, voyageLY, false))) continue;
 			boolean staging = stagingHive(donor) != null;
 			// a donor that is not itself a staging base beats one that is
 			if (best != null && staging && !bestIsStaging) continue;
@@ -2811,7 +2885,15 @@ public class ThreatConvoys {
 		// paid before the cargo is drawn: it was sized on the stock beside the
 		// load, and what it burnt of the load does not sail
 		float escort = builtEscort(h);
-		if (paysEscort) burn(h, payEscort(fleet, donor, escort, ly, h.ask));
+		if (paysEscort) {
+			float[] paid = payEscort(fleet, donor, escort, ly, h.ask);
+			if (paid == null) {
+				// the hulls built want more voyage fuel than the donor has: nothing drawn, nothing placed
+				logHeld(donor, ly, fleet.getFleetPoints());
+				return null;
+			}
+			burn(h, paid);
+		}
 		float[] load = h.ask;
 
 		system.addEntity(fleet);
@@ -3017,17 +3099,19 @@ public class ThreatConvoys {
 			// radius abolished, 2026-10-01): a voyage unpaid stays home, and the
 			// escort shrinks to what is paid, to none - but never under the minimum asked
 			// for: that part's voyage is the caller's to pay (a founding kit's guard,
-			// dispatchFounding pays it from the garrison pool or sails nothing)
-			if (!paysVoyage(from, ly, reserve[2])) {
-				logHeld(from, ly);
+			// dispatchFounding pays it from the garrison pool or sails nothing).
+			// The voyage is the hulls' that will sail (hullPoints, 2026-10-31 afternoon)
+			float fpEst = hullPoints(ask, frontRun, escort);
+			if (!paysVoyage(from, ly, at(reserve, 2), fpEst)) {
+				logHeld(from, ly, fpEst);
 				return null;
 			}
-			escort = Math.max(minEscort, paidEscort(from, escort, ly, reserve[2], reserve[3]));
+			escort = Math.max(minEscort, paidEscort(from, escort, ly, at(reserve, 2), at(reserve, 3)));
 		}
-		float cargoUnits = ask[1] + ask[2] + ask[3] + hullsIn(ask);
+		float cargoUnits = at(ask, 1) + at(ask, 2) + at(ask, 3) + hullsIn(ask);
 		float freighterPts = Math.max(10f, cargoUnits / 60f);
-		float tankerPts = ask[2] > 0f ? Math.max(5f, ask[2] / 100f) : 0f;
-		float transportPts = ask[0] > 0f || frontRun ? Math.max(10f, ask[0] / 40f) : 0f;
+		float tankerPts = at(ask, 2) > 0f ? Math.max(5f, at(ask, 2) / 100f) : 0f;
+		float transportPts = at(ask, 0) > 0f || frontRun ? Math.max(10f, at(ask, 0) / 40f) : 0f;
 		FleetParamsV3 params = new FleetParamsV3(from.sourceMarket(), from.hyperLoc(),
 				faction.getId(), null, FleetTypes.SUPPLY_FLEET,
 				escort, freighterPts, tankerPts, transportPts, 0f, 0f, 0f);
