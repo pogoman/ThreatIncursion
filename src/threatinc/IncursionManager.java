@@ -6509,9 +6509,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/** A military structure: what fields fleets. Static so the mission board can ask the same question the purge logic does. */
 	protected static boolean hasMilitary(MarketAPI market) {
-		return market.hasIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.PATROLHQ)
-				|| market.hasIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.MILITARYBASE)
-				|| market.hasIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.HIGHCOMMAND);
+		// by id or a mod's tier above it (ThreatReserves.industryOrUpgrade): an upgrade replaces the vanilla industry's id
+		return ThreatReserves.industryOrUpgrade(market, com.fs.starfarer.api.impl.campaign.ids.Industries.PATROLHQ) != null
+				|| ThreatReserves.industryOrUpgrade(market, com.fs.starfarer.api.impl.campaign.ids.Industries.MILITARYBASE) != null
+				|| ThreatReserves.industryOrUpgrade(market, com.fs.starfarer.api.impl.campaign.ids.Industries.HIGHCOMMAND) != null;
 	}
 
 	/**
