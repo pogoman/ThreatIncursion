@@ -28,7 +28,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `HiveVitalityCondition.unapply(String id)` :54
 - `HiveVitalityCondition.createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded)` :65
 
-## IncursionManager (7053 lines)
+## IncursionManager (7054 lines)
 - `IncursionManager.isDone()` :84 - Set once the bootstrap heal has run this session (transient:
 - `IncursionManager.runWhilePaused()` :88
 - `IncursionManager.advance(float amount)` :95 - The live manager (transient, re-created each load), for static callers such as retaliation.
@@ -276,30 +276,30 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :6469
 - `IncursionManager.expeditionRangeLY(MarketAPI base)` :6500 - How far a colony can send a task force or siege expedition:
 - `IncursionManager.hasMilitary(MarketAPI market)` :6511 - A military structure:
-- `IncursionManager.isBase(MarketAPI market)` :6530 - A BASE:
-- `IncursionManager.getStrikeList()` :6536
-- `IncursionManager.countActiveStrikes()` :6545
-- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :6554 - Whether an active strike is already aimed at this market.
-- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :6573 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
-- `IncursionManager.strikeSatPasses(int stagingSize)` :6595 - Bombardment passes an expedition may deliver PER WORLD.
-- `IncursionManager.expeditionPasses(int fleets)` :6609 - Passes a ground-doctrine siege or strike has per world:
-- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :6618 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
-- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :6635 - Whether some strike staged from this colony is still in its recall window.
-- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :6669 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
-- `IncursionManager.recallSiegesOf(String factionId, String why)` :6707 - HOME UNDER ATTACK (the user, 2026-10-20:
-- `IncursionManager.siegeProgress(ThreatPurgeFGI purge)` :6742 - How far along its voyage a siege expedition is, 0 (nothing spawned, or still at its base) to 1 (a fleet in the target system), by its lead fleet's hyperspace position between the base and the target s
-- `IncursionManager.siegeFactionsIn(String systemId)` :6764 - Factions with a siege expedition still running against a colony of the system.
-- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6784 - The worlds the faction's running siege of the system is fighting (its purge's targets);
-- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6813 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
-- `IncursionManager.sweepOrphanedExpeditions()` :6859 - Catch-all for expeditions orphaned outside the event hooks:
-- `IncursionManager.upgradeInFlightStrikes()` :6909 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
-- `IncursionManager.dedupDecivIntel()` :6941 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
-- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6969
-- `IncursionManager.getPurgeList()` :6977
-- `IncursionManager.countActivePurges()` :6986
-- `IncursionManager.countActiveFGIs(List<Object> list)` :6990
-- `IncursionManager.getSystem(String systemId)` :7013
-- `IncursionManager.syncSystemMarkers()` :7024 - Keeps one map-visible intel marker per infested system:
+- `IncursionManager.isBase(MarketAPI market)` :6531 - A BASE:
+- `IncursionManager.getStrikeList()` :6537
+- `IncursionManager.countActiveStrikes()` :6546
+- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :6555 - Whether an active strike is already aimed at this market.
+- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :6574 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
+- `IncursionManager.strikeSatPasses(int stagingSize)` :6596 - Bombardment passes an expedition may deliver PER WORLD.
+- `IncursionManager.expeditionPasses(int fleets)` :6610 - Passes a ground-doctrine siege or strike has per world:
+- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :6619 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
+- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :6636 - Whether some strike staged from this colony is still in its recall window.
+- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :6670 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
+- `IncursionManager.recallSiegesOf(String factionId, String why)` :6708 - HOME UNDER ATTACK (the user, 2026-10-20:
+- `IncursionManager.siegeProgress(ThreatPurgeFGI purge)` :6743 - How far along its voyage a siege expedition is, 0 (nothing spawned, or still at its base) to 1 (a fleet in the target system), by its lead fleet's hyperspace position between the base and the target s
+- `IncursionManager.siegeFactionsIn(String systemId)` :6765 - Factions with a siege expedition still running against a colony of the system.
+- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6785 - The worlds the faction's running siege of the system is fighting (its purge's targets);
+- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6814 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
+- `IncursionManager.sweepOrphanedExpeditions()` :6860 - Catch-all for expeditions orphaned outside the event hooks:
+- `IncursionManager.upgradeInFlightStrikes()` :6910 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
+- `IncursionManager.dedupDecivIntel()` :6942 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
+- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6970
+- `IncursionManager.getPurgeList()` :6978
+- `IncursionManager.countActivePurges()` :6987
+- `IncursionManager.countActiveFGIs(List<Object> list)` :6991
+- `IncursionManager.getSystem(String systemId)` :7014
+- `IncursionManager.syncSystemMarkers()` :7025 - Keeps one map-visible intel marker per infested system:
 
 ## InfestedSystemIntel (323 lines)
 - `InfestedSystemIntel.InfestedSystemIntel(String systemId)` :28
@@ -4433,81 +4433,82 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReach.num(Object o)` :480
 - `ThreatReach.logMonth()` :487 - The month's reach line for the census log - the spare, the trips flown and how far the hive has spread - and the tallies reset.
 
-## ThreatReserves (1452 lines)
-- `ThreatReserves.get(String marketId)` :138
-- `ThreatReserves.getOrCreate(String marketId)` :143
-- `ThreatReserves.clear(String marketId)` :153
+## ThreatReserves (1484 lines)
+- `ThreatReserves.get(String marketId)` :140
+- `ThreatReserves.getOrCreate(String marketId)` :145
+- `ThreatReserves.clear(String marketId)` :155
 ### stock access
-- `ThreatReserves.stock(String marketId, String commodityId)` :161
+- `ThreatReserves.stock(String marketId, String commodityId)` :163
 ### backing: a player colony's reserve is its resource stockpile
-- `ThreatReserves.backing(String marketId)` :181 - The cargo that IS this colony's reserve, or null when the ledger is.
-- `ThreatReserves.backing(MarketAPI market)` :189
-- `ThreatReserves.isBacked(MarketAPI market)` :208 - Whether this colony's reserve is its resource stockpile rather than the ledger.
-- `ThreatReserves.vanillaStockpilePer30(MarketAPI market, String commodityId)` :219 - What vanilla adds to a backed colony's stockpile per 30 days:
-- `ThreatReserves.vanillaStockpileLimit(MarketAPI market, String commodityId)` :230 - Vanilla's stockpile limit for a backed colony - what it fills the stockpile up to.
-- `ThreatReserves.militiaPer30(MarketAPI market, String commodityId)` :244 - The militia trickle:
-- `ThreatReserves.tithePer30(MarketAPI market, String commodityId)` :263 - The Path's tithes (user's call 2026-09-27):
-- `ThreatReserves.pathTithes()` :285 - The Path's whole tithe per 30 days, [supplies, fuel, marines], from the cells vanilla has placed.
-- `ThreatReserves.hasDepot(MarketAPI market)` :322 - A base's logistics structure.
-- `ThreatReserves.hasDepot(ThreatBases.Base base)` :333 - As above for either kind of base:
-- `ThreatReserves.read(ColonyReserve r, String c)` :339
-- `ThreatReserves.write(ColonyReserve r, String c, float value)` :347
-- `ThreatReserves.noteSpent(String marketId, String commodityId, float taken)` :356 - What a draw took, as demand on the faction's stock plan (ThreatFactionStock.noteDemand).
-- `ThreatReserves.draw(String marketId, String commodityId, float amount)` :363 - Takes up to amount;
-- `ThreatReserves.available(MarketAPI market, String commodityId)` :392 - Stock above the colony's floor - what a sortie may actually take.
-- `ThreatReserves.frontKeep(MarketAPI market, String commodityId)` :412 - Stock that is fighting and cannot be shipped:
-- `ThreatReserves.stagingMarines(MarketAPI market)` :423 - Marines of the reserve (stock not yet deployed, #armedMarines) a base holds for the siege it stages (ThreatConvoys.stagingTarget), never ones its own front keeps (#frontKeep) - the board's "staging fo
+- `ThreatReserves.backing(String marketId)` :183 - The cargo that IS this colony's reserve, or null when the ledger is.
+- `ThreatReserves.backing(MarketAPI market)` :191
+- `ThreatReserves.isBacked(MarketAPI market)` :210 - Whether this colony's reserve is its resource stockpile rather than the ledger.
+- `ThreatReserves.vanillaStockpilePer30(MarketAPI market, String commodityId)` :221 - What vanilla adds to a backed colony's stockpile per 30 days:
+- `ThreatReserves.vanillaStockpileLimit(MarketAPI market, String commodityId)` :232 - Vanilla's stockpile limit for a backed colony - what it fills the stockpile up to.
+- `ThreatReserves.militiaPer30(MarketAPI market, String commodityId)` :246 - The militia trickle:
+- `ThreatReserves.tithePer30(MarketAPI market, String commodityId)` :265 - The Path's tithes (user's call 2026-09-27):
+- `ThreatReserves.pathTithes()` :287 - The Path's whole tithe per 30 days, [supplies, fuel, marines], from the cells vanilla has placed.
+- `ThreatReserves.hasDepot(MarketAPI market)` :324 - A base's logistics structure.
+- `ThreatReserves.industryOrUpgrade(MarketAPI market, String id)` :342 - The market's industry that IS the vanilla one with this id or a tier above it:
+- `ThreatReserves.hasDepot(ThreatBases.Base base)` :365 - As above for either kind of base:
+- `ThreatReserves.read(ColonyReserve r, String c)` :371
+- `ThreatReserves.write(ColonyReserve r, String c, float value)` :379
+- `ThreatReserves.noteSpent(String marketId, String commodityId, float taken)` :388 - What a draw took, as demand on the faction's stock plan (ThreatFactionStock.noteDemand).
+- `ThreatReserves.draw(String marketId, String commodityId, float amount)` :395 - Takes up to amount;
+- `ThreatReserves.available(MarketAPI market, String commodityId)` :424 - Stock above the colony's floor - what a sortie may actually take.
+- `ThreatReserves.frontKeep(MarketAPI market, String commodityId)` :444 - Stock that is fighting and cannot be shipped:
+- `ThreatReserves.stagingMarines(MarketAPI market)` :455 - Marines of the reserve (stock not yet deployed, #armedMarines) a base holds for the siege it stages (ThreatConvoys.stagingTarget), never ones its own front keeps (#frontKeep) - the board's "staging fo
 ### the garrison: which marines are actually armed, and how good they are
-- `ThreatReserves.armedMarines(MarketAPI market)` :443 - Marines that are called up, armed and posted:
-- `ThreatReserves.depositArmed(MarketAPI market, float marines, float level)` :466 - Marines arriving already trained and equipped - a front falling back onto a base, or survivors garrisoning what they took.
-- `ThreatReserves.armReturning(MarketAPI market, float marines, float level)` :477 - The bookkeeping half of #depositArmed, for callers that have already banked the bodies by another route (a returning convoy settles through ThreatBases).
-- `ThreatReserves.seedMarineArming()` :509 - Seeds the arming ramp for every colony that has not carried one, so a save upgraded to this build counts the marines it was ALREADY sitting on as armed - and everything shipped in afterwards has to be
-- `ThreatReserves.ensureMarineSeed(String marketId)` :539 - Records the ramp at the CURRENT stock before something is added to it, so the arrival has to be worked up rather than counting as a garrison that was always there.
-- `ThreatReserves.marineXp(MarketAPI market)` :551 - The colony's marine veterancy pool (ThreatMarineXP).
-- `ThreatReserves.addMarineXp(MarketAPI market, float gain)` :558 - Grants the colony's marines experience, clamped to the armed headcount.
-- `ThreatReserves.spendDefendingMarines(MarketAPI market, float amount)` :574 - Marines killed defending.
-- `ThreatReserves.tickMarineArming(MarketAPI market)` :593 - Advances the arming ramp.
-- `ThreatReserves.floor(MarketAPI market, String commodityId)` :652 - The home garrison's stock:
-- `ThreatReserves.noteBasis(MarketAPI market, ColonyReserve r, String c, float basis)` :688 - Remembers the months basis a depot banked at, so its floor survives the colony falling into deficit.
-- `ThreatReserves.baselineMonths(MarketAPI market, String commodityId)` :699 - Months of the banking the production share does not scale:
-- `ThreatReserves.basisShare(MarketAPI market, String commodityId)` :705 - The production share a colony's banking is scaled by;
-- `ThreatReserves.drawAbove(MarketAPI market, String commodityId, float amount)` :710 - Takes up to amount, never below the floor;
-- `ThreatReserves.spendable(MarketAPI market, String commodityId)` :723 - Stock a hunting force may take from this base:
-- `ThreatReserves.drawSpendable(MarketAPI market, String commodityId, float amount)` :731 - Takes up to amount of #spendable stock;
-- `ThreatReserves.deposit(String marketId, String commodityId, float amount)` :737 - Adds stock (a convoy arriving, a withdrawn front returning).
+- `ThreatReserves.armedMarines(MarketAPI market)` :475 - Marines that are called up, armed and posted:
+- `ThreatReserves.depositArmed(MarketAPI market, float marines, float level)` :498 - Marines arriving already trained and equipped - a front falling back onto a base, or survivors garrisoning what they took.
+- `ThreatReserves.armReturning(MarketAPI market, float marines, float level)` :509 - The bookkeeping half of #depositArmed, for callers that have already banked the bodies by another route (a returning convoy settles through ThreatBases).
+- `ThreatReserves.seedMarineArming()` :541 - Seeds the arming ramp for every colony that has not carried one, so a save upgraded to this build counts the marines it was ALREADY sitting on as armed - and everything shipped in afterwards has to be
+- `ThreatReserves.ensureMarineSeed(String marketId)` :571 - Records the ramp at the CURRENT stock before something is added to it, so the arrival has to be worked up rather than counting as a garrison that was always there.
+- `ThreatReserves.marineXp(MarketAPI market)` :583 - The colony's marine veterancy pool (ThreatMarineXP).
+- `ThreatReserves.addMarineXp(MarketAPI market, float gain)` :590 - Grants the colony's marines experience, clamped to the armed headcount.
+- `ThreatReserves.spendDefendingMarines(MarketAPI market, float amount)` :606 - Marines killed defending.
+- `ThreatReserves.tickMarineArming(MarketAPI market)` :625 - Advances the arming ramp.
+- `ThreatReserves.floor(MarketAPI market, String commodityId)` :684 - The home garrison's stock:
+- `ThreatReserves.noteBasis(MarketAPI market, ColonyReserve r, String c, float basis)` :720 - Remembers the months basis a depot banked at, so its floor survives the colony falling into deficit.
+- `ThreatReserves.baselineMonths(MarketAPI market, String commodityId)` :731 - Months of the banking the production share does not scale:
+- `ThreatReserves.basisShare(MarketAPI market, String commodityId)` :737 - The production share a colony's banking is scaled by;
+- `ThreatReserves.drawAbove(MarketAPI market, String commodityId, float amount)` :742 - Takes up to amount, never below the floor;
+- `ThreatReserves.spendable(MarketAPI market, String commodityId)` :755 - Stock a hunting force may take from this base:
+- `ThreatReserves.drawSpendable(MarketAPI market, String commodityId, float amount)` :763 - Takes up to amount of #spendable stock;
+- `ThreatReserves.deposit(String marketId, String commodityId, float amount)` :769 - Adds stock (a convoy arriving, a withdrawn front returning).
 ### accrual - rule 1: what arrives above peacetime needs banks
-- `ThreatReserves.accrualPer30(MarketAPI market, String commodityId)` :775 - What this colony adds to a reserve per 30 days:
-- `ThreatReserves.surplusMult(String commodityId)` :799 - The share of a unit of surplus banked a month:
-- `ThreatReserves.productionShare(String factionId, String commodityId)` :822 - The faction banks what it makes (2026-09-26):
-- `ThreatReserves.shareFigures(String factionId, String commodityId)` :841 - The figures behind #productionShare, in units:
-- `ThreatReserves.forgetCaches()` :868 - Drops the tithe and production-share memos, so a loaded game never reads the previous campaign's (game load).
-- `ThreatReserves.surplusUnits(MarketAPI market, CommodityOnMarketAPI com)` :881 - Units of availability above the colony's peacetime demand (the War footing's own left out), this mod's own trade modifiers excluded;
-- `ThreatReserves.bankUnits(MarketAPI market, CommodityOnMarketAPI com)` :895 - Units a war faction's colony banks:
-- `ThreatReserves.wartimeShare(CommodityOnMarketAPI com)` :908 - The share of the colony's peacetime demand that banks on top of its surplus:
-- `ThreatReserves.wartimeFuel(CommodityOnMarketAPI com)` :923 - Fuel banks at the war rate (reserveWartimeFuel, 2026-09-30):
-- `ThreatReserves.wartimeSupplies(CommodityOnMarketAPI com)` :936 - Supplies bank at the war rate too (reserveWartimeSuppliesShare, 2026-10-04, the share of peacetime demand that banks;
-- `ThreatReserves.structuralAvailable(CommodityOnMarketAPI com)` :941 - Vanilla's availability (units) less what this mod's own trade modifiers contribute to it.
-- `ThreatReserves.ownModUnits(CommodityOnMarketAPI com, String onlySource)` :955 - Whole econ units this mod's trade modifiers contribute to availability - every threatinc_ source, or one named source.
-- `ThreatReserves.coverQuantity(CommodityOnMarketAPI com)` :970 - Quantity of the depot's cover in force for this commodity, 0 if none.
-- `ThreatReserves.cap(MarketAPI market, String commodityId)` :982 - The colony's REFERENCE stock of a commodity - months of its own banking plus its staging bank - for "how full" readouts.
-- `ThreatReserves.stagingBank(MarketAPI market, String commodityId)` :995 - What an NPC staging base holds for the siege it stages (2026-09-24):
-- `ThreatReserves.monthsBasis(MarketAPI market, String commodityId)` :1009 - Months of the colony's own banking (reserveCapMonths of it):
-- `ThreatReserves.monthsCap(MarketAPI market, String commodityId)` :1018 - Old name of #monthsBasis, kept for callers not yet moved over;
+- `ThreatReserves.accrualPer30(MarketAPI market, String commodityId)` :807 - What this colony adds to a reserve per 30 days:
+- `ThreatReserves.surplusMult(String commodityId)` :831 - The share of a unit of surplus banked a month:
+- `ThreatReserves.productionShare(String factionId, String commodityId)` :854 - The faction banks what it makes (2026-09-26):
+- `ThreatReserves.shareFigures(String factionId, String commodityId)` :873 - The figures behind #productionShare, in units:
+- `ThreatReserves.forgetCaches()` :900 - Drops the tithe and production-share memos, so a loaded game never reads the previous campaign's (game load).
+- `ThreatReserves.surplusUnits(MarketAPI market, CommodityOnMarketAPI com)` :913 - Units of availability above the colony's peacetime demand (the War footing's own left out), this mod's own trade modifiers excluded;
+- `ThreatReserves.bankUnits(MarketAPI market, CommodityOnMarketAPI com)` :927 - Units a war faction's colony banks:
+- `ThreatReserves.wartimeShare(CommodityOnMarketAPI com)` :940 - The share of the colony's peacetime demand that banks on top of its surplus:
+- `ThreatReserves.wartimeFuel(CommodityOnMarketAPI com)` :955 - Fuel banks at the war rate (reserveWartimeFuel, 2026-09-30):
+- `ThreatReserves.wartimeSupplies(CommodityOnMarketAPI com)` :968 - Supplies bank at the war rate too (reserveWartimeSuppliesShare, 2026-10-04, the share of peacetime demand that banks;
+- `ThreatReserves.structuralAvailable(CommodityOnMarketAPI com)` :973 - Vanilla's availability (units) less what this mod's own trade modifiers contribute to it.
+- `ThreatReserves.ownModUnits(CommodityOnMarketAPI com, String onlySource)` :987 - Whole econ units this mod's trade modifiers contribute to availability - every threatinc_ source, or one named source.
+- `ThreatReserves.coverQuantity(CommodityOnMarketAPI com)` :1002 - Quantity of the depot's cover in force for this commodity, 0 if none.
+- `ThreatReserves.cap(MarketAPI market, String commodityId)` :1014 - The colony's REFERENCE stock of a commodity - months of its own banking plus its staging bank - for "how full" readouts.
+- `ThreatReserves.stagingBank(MarketAPI market, String commodityId)` :1027 - What an NPC staging base holds for the siege it stages (2026-09-24):
+- `ThreatReserves.monthsBasis(MarketAPI market, String commodityId)` :1041 - Months of the colony's own banking (reserveCapMonths of it):
+- `ThreatReserves.monthsCap(MarketAPI market, String commodityId)` :1050 - Old name of #monthsBasis, kept for callers not yet moved over;
 ### rule 3: the depot counters the colony's own shortage first
-- `ThreatReserves.deficitUnits(CommodityOnMarketAPI com)` :1027 - Units the colony is short of the commodity - demand above availability, the depot's own cover ignored.
-- `ThreatReserves.localDeficitUnits(MarketAPI market, CommodityOnMarketAPI com)` :1040 - Units short of the colony's PEACETIME demand, the depot's own cover ignored - what the depot covers.
-- `ThreatReserves.coverShortage(MarketAPI market, ColonyReserve r, String c)` :1061 - While a mobilised colony is short of a reserve commodity for its own peacetime needs (#localDeficitUnits) and no cover is in force, the governor issues one:
-- `ThreatReserves.coverSpendable(MarketAPI market, float stock, String c, float fraction)` :1089 - What one cover issue may spend:
+- `ThreatReserves.deficitUnits(CommodityOnMarketAPI com)` :1059 - Units the colony is short of the commodity - demand above availability, the depot's own cover ignored.
+- `ThreatReserves.localDeficitUnits(MarketAPI market, CommodityOnMarketAPI com)` :1072 - Units short of the colony's PEACETIME demand, the depot's own cover ignored - what the depot covers.
+- `ThreatReserves.coverShortage(MarketAPI market, ColonyReserve r, String c)` :1093 - While a mobilised colony is short of a reserve commodity for its own peacetime needs (#localDeficitUnits) and no cover is in force, the governor issues one:
+- `ThreatReserves.coverSpendable(MarketAPI market, float stock, String c, float fraction)` :1121 - What one cover issue may spend:
 ### rule 7: one commodity at one colony, in vanilla's units and ours
-- `ThreatReserves.status(MarketAPI market, String c)` :1132
+- `ThreatReserves.status(MarketAPI market, String c)` :1164
 ### rule 2: mobilisation is vanilla demand - the War footing condition
-- `ThreatReserves.syncWarFooting(List<String> warring)` :1201 - Every colony of a mobilised faction carries the War footing condition (the colony screen's face of the war:
-- `ThreatReserves.marketsOf(String factionId)` :1276 - Every market currently flying this faction's flag (hidden markets excluded).
-- `ThreatReserves.poll(float elapsedDays)` :1295 - The fast poll, pro-rated per 30 days, for every colony of every mobilised faction:
-- `ThreatReserves.logLedger(List<String> warring, float elapsedDays)` :1358 - Debug logging:
-- `ThreatReserves.seed(String factionId)` :1408 - Mobilisation stock:
-- `ThreatReserves.factionStock(String factionId, String commodityId)` :1433 - Total stock of a commodity across a faction's colonies (for the board).
-- `ThreatReserves.label(String commodityId)` :1444
+- `ThreatReserves.syncWarFooting(List<String> warring)` :1233 - Every colony of a mobilised faction carries the War footing condition (the colony screen's face of the war:
+- `ThreatReserves.marketsOf(String factionId)` :1308 - Every market currently flying this faction's flag (hidden markets excluded).
+- `ThreatReserves.poll(float elapsedDays)` :1327 - The fast poll, pro-rated per 30 days, for every colony of every mobilised faction:
+- `ThreatReserves.logLedger(List<String> warring, float elapsedDays)` :1390 - Debug logging:
+- `ThreatReserves.seed(String factionId)` :1440 - Mobilisation stock:
+- `ThreatReserves.factionStock(String factionId, String commodityId)` :1465 - Total stock of a commodity across a faction's colonies (for the board).
+- `ThreatReserves.label(String commodityId)` :1476
 
 ## ThreatResponseIntel (404 lines)
 - `ThreatResponseIntel.ThreatResponseIntel(java.util.List<CampaignFleetAPI> fleets, FactionAPI faction, String baseName, com.fs.starfarer.api.campaign.econ.MarketAPI targetColony, String targetSystemName)` :41
@@ -5227,7 +5228,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatUpkeep.charge(CampaignFleetAPI f, long now, Map<String, float[]> tally)` :243
 - `ThreatUpkeep.restockFleet(CampaignFleetAPI f, String factionId)` :316 - Fills a fleet's hold back to its launch load from its faction's bases in its system;
 
-## ThreatWarBoard (2971 lines)
+## ThreatWarBoard (2975 lines)
 - `ThreatWarBoard.isRelevant(String commodityId)` :103
 - `ThreatWarBoard.production(String id)` :121
 - `ThreatWarBoard.demand(String id)` :126
@@ -5263,97 +5264,97 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatWarBoard.addLedgerButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Ledger ledger)` :926 - Attack and Map on every ledger row (the user, 2026-10-30:
 ### ground fronts (docs/ground-war.md "Reading a front"): the table both
 - `ThreatWarBoard.landingObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry claim)` :992 - The landing's next objective (the user, 2026-10-31):
-- `ThreatWarBoard.worldObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry release)` :999 - The world's next objective:
-- `ThreatWarBoard.frontRows()` :1006 - Every live front, the player's own first, then by world name.
-- `ThreatWarBoard.compare(FrontRow a, FrontRow b)` :1019
-- `ThreatWarBoard.frontRowsIn(Entry e)` :1030 - The fronts on one system's worlds - the hive view's selected system.
-- `ThreatWarBoard.frontRowsFor(String factionId)` :1043 - The fronts a faction is party to:
-- `ThreatWarBoard.playerCanOrder(FrontRow r)` :1056 - Whether the player's row buttons apply to this front:
-- `ThreatWarBoard.playerCanReinforce(FrontRow r)` :1067 - Whether the player has orders on the world this front stands on (2026-10-17):
-- `ThreatWarBoard.lineColor(String line, Color pos, Color neg, Color h, Color text)` :1076 - The State cell's colour for a line word:
-- `ThreatWarBoard.heldCell(ThreatGroundFronts.GroundFront f, MarketAPI m)` :1091 - The Held / Strata cell:
-- `ThreatWarBoard.heldLabel(ThreatGroundFronts.GroundFront f, MarketAPI m)` :1102 - heldCell in words:
-- `ThreatWarBoard.addFronts(ThreatIncursionIntel intel, TooltipMakerAPI main, float width, float opad, List<FrontRow> rows, FactionAPI tableFaction)` :1118 - The fronts table:
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :1326
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :1327
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1328
-- `ThreatWarBoard.shortStance(String stance)` :1358 - A stance word short enough for the two-sided Stance cell:
-- `ThreatWarBoard.addFrontTooltip(TooltipMakerAPI tooltip, ThreatGroundFronts.GroundFront f, MarketAPI m)` :1363 - The arithmetic behind a front's row, one line per fact, in the Marines / Swarm words (2026-10-17).
-- `ThreatWarBoard.addFrontButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Fronts fronts)` :1656 - The fronts table's Actions column (2026-10-30 evening, the user:
-- `ThreatWarBoard.glColor(Color c, float alpha)` :1745
-- `ThreatWarBoard.glBegin()` :1750
-- `ThreatWarBoard.glEnd()` :1757
-- `ThreatWarBoard.quad(float x, float y, float w, float h, Color c, float alpha)` :1762
-- `ThreatWarBoard.outline(float x, float y, float w, float h, Color c, float alpha)` :1772
-- `ThreatWarBoard.hline(float x1, float x2, float y, Color c, float alpha)` :1783
-- `ThreatWarBoard.vline(float x, float y1, float y2, Color c, float alpha)` :1792
-- `ThreatWarBoard.bar(float x, float y, float w, float h, float frac, Color fill, float[] markers, float alpha)` :1802 - A vitality-style bar:
-- `ThreatWarBoard.trend(float cx, float cy, int dir, float alpha)` :1818 - Small triangle:
-- `ThreatWarBoard.sprite(String path)` :1838
-- `ThreatWarBoard.icon(String path, float x, float y, float size, Color tint, float alpha)` :1850 - Draws a sprite scaled into a square, bottom-left at x,y.
-- `ThreatWarBoard.text(CustomPanelAPI panel, float x, float y, float w, String str, Color color, Alignment align, boolean small)` :1866 - A positioned text element inside a custom panel.
-- `ThreatWarBoard.textHl(CustomPanelAPI panel, float x, float y, float w, String format, Color base, Color[] hlColors, String[] hl, Alignment align, boolean small)` :1879 - As #text but with per-highlight colors.
-- `ThreatWarBoard.topY(PositionAPI pos, float fromTop, float h)` :1893 - Y (screen, bottom-left origin) of a box `fromTop` below the panel's top edge.
-- `ThreatWarBoard.addHeader(TooltipMakerAPI main, float width)` :1899
-- `ThreatWarBoard.positionChanged(PositionAPI position)` :1906
-- `ThreatWarBoard.render(float alphaMult)` :1907
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :1953
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :1954
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1955
-- `ThreatWarBoard.addStrip(TooltipMakerAPI main, float width, List<Entry> entries)` :1981 - Returns the strip panel so the faction selector can anchor below it (a sibling).
-- `ThreatWarBoard.positionChanged(PositionAPI position)` :2006
-- `ThreatWarBoard.render(float alphaMult)` :2007
-- `ThreatWarBoard.addLedger(final ThreatIncursionIntel intel, final IntelUIAPI ui, TooltipMakerAPI main, float width, float opad, List<Entry> entries, Entry selected)` :2082
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2133
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2134
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2135
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2212
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2213
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2214
-- `ThreatWarBoard.cell(List<Object> cells, Alignment align, Color color, String text)` :2239
-- `ThreatWarBoard.sizeDigits(Entry e, Cols c)` :2246 - "5 4 4 4 4 4", largest first, capped to what the column fits;
-- `ThreatWarBoard.rewardShort(int reward)` :2263
-- `ThreatWarBoard.missionCode(ThreatMissionIntel b)` :2272 - S/I for the board, then the offer's priority on it - or once the player holds it.
-- `ThreatWarBoard.render(float alphaMult)` :2298
-- `ThreatWarBoard.addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow)` :2362
-- `ThreatWarBoard.addDetailHeading(TooltipMakerAPI main, float opad, Entry e)` :2429 - The selected system's heading line;
-- `ThreatWarBoard.addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e, List<Object[]> cardsOut)` :2448 - The selected system's colony cards (or the seeding note), after its fronts.
-- `ThreatWarBoard.addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e)` :2458
-- `ThreatWarBoard.addCards(TooltipMakerAPI main, float width, final Entry e, List<Object[]> cardsOut)` :2475 - Cards three across on a wide panel, two on a narrow one;
-- `ThreatWarBoard.organsOf(MarketAPI market)` :2499 - The organ icons a card shows, in a fixed order;
-- `ThreatWarBoard.commodityIcon(String commodityId)` :2516
-- `ThreatWarBoard.iconRow(TooltipMakerAPI tm, List<String> ids, List<Integer> nums, List<IconRenderMode> modes)` :2529 - A vanilla icon group:
-- `ThreatWarBoard.buildCard(TooltipMakerAPI main, final MarketAPI market, float cardW, Entry e)` :2543 - Measured name widths from the last card build, so the Map button can sit right of the name.
-- `ThreatWarBoard.positionChanged(PositionAPI position)` :2557
-- `ThreatWarBoard.render(float alphaMult)` :2558
-- `ThreatWarBoard.industryTooltip(final MarketAPI market, final Industry ind)` :2658 - What vanilla's colony screen says about an industry tile:
-- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2660
-- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2661
-- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2662
-- `ThreatWarBoard.forecastParts(MarketAPI market, float health)` :2736 - The size line, right-aligned on the card:
-- `ThreatWarBoard.forecastShort(MarketAPI market, float health)` :2770 - Plain-text form of the size line for tooltips.
-- `ThreatWarBoard.roleLabel(MarketAPI market)` :2775
-- `ThreatWarBoard.commodityName(String commodityId)` :2792
+- `ThreatWarBoard.worldObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry release)` :1003 - The world's next objective:
+- `ThreatWarBoard.frontRows()` :1010 - Every live front, the player's own first, then by world name.
+- `ThreatWarBoard.compare(FrontRow a, FrontRow b)` :1023
+- `ThreatWarBoard.frontRowsIn(Entry e)` :1034 - The fronts on one system's worlds - the hive view's selected system.
+- `ThreatWarBoard.frontRowsFor(String factionId)` :1047 - The fronts a faction is party to:
+- `ThreatWarBoard.playerCanOrder(FrontRow r)` :1060 - Whether the player's row buttons apply to this front:
+- `ThreatWarBoard.playerCanReinforce(FrontRow r)` :1071 - Whether the player has orders on the world this front stands on (2026-10-17):
+- `ThreatWarBoard.lineColor(String line, Color pos, Color neg, Color h, Color text)` :1080 - The State cell's colour for a line word:
+- `ThreatWarBoard.heldCell(ThreatGroundFronts.GroundFront f, MarketAPI m)` :1095 - The Held / Strata cell:
+- `ThreatWarBoard.heldLabel(ThreatGroundFronts.GroundFront f, MarketAPI m)` :1106 - heldCell in words:
+- `ThreatWarBoard.addFronts(ThreatIncursionIntel intel, TooltipMakerAPI main, float width, float opad, List<FrontRow> rows, FactionAPI tableFaction)` :1122 - The fronts table:
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :1330
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :1331
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1332
+- `ThreatWarBoard.shortStance(String stance)` :1362 - A stance word short enough for the two-sided Stance cell:
+- `ThreatWarBoard.addFrontTooltip(TooltipMakerAPI tooltip, ThreatGroundFronts.GroundFront f, MarketAPI m)` :1367 - The arithmetic behind a front's row, one line per fact, in the Marines / Swarm words (2026-10-17).
+- `ThreatWarBoard.addFrontButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Fronts fronts)` :1660 - The fronts table's Actions column (2026-10-30 evening, the user:
+- `ThreatWarBoard.glColor(Color c, float alpha)` :1749
+- `ThreatWarBoard.glBegin()` :1754
+- `ThreatWarBoard.glEnd()` :1761
+- `ThreatWarBoard.quad(float x, float y, float w, float h, Color c, float alpha)` :1766
+- `ThreatWarBoard.outline(float x, float y, float w, float h, Color c, float alpha)` :1776
+- `ThreatWarBoard.hline(float x1, float x2, float y, Color c, float alpha)` :1787
+- `ThreatWarBoard.vline(float x, float y1, float y2, Color c, float alpha)` :1796
+- `ThreatWarBoard.bar(float x, float y, float w, float h, float frac, Color fill, float[] markers, float alpha)` :1806 - A vitality-style bar:
+- `ThreatWarBoard.trend(float cx, float cy, int dir, float alpha)` :1822 - Small triangle:
+- `ThreatWarBoard.sprite(String path)` :1842
+- `ThreatWarBoard.icon(String path, float x, float y, float size, Color tint, float alpha)` :1854 - Draws a sprite scaled into a square, bottom-left at x,y.
+- `ThreatWarBoard.text(CustomPanelAPI panel, float x, float y, float w, String str, Color color, Alignment align, boolean small)` :1870 - A positioned text element inside a custom panel.
+- `ThreatWarBoard.textHl(CustomPanelAPI panel, float x, float y, float w, String format, Color base, Color[] hlColors, String[] hl, Alignment align, boolean small)` :1883 - As #text but with per-highlight colors.
+- `ThreatWarBoard.topY(PositionAPI pos, float fromTop, float h)` :1897 - Y (screen, bottom-left origin) of a box `fromTop` below the panel's top edge.
+- `ThreatWarBoard.addHeader(TooltipMakerAPI main, float width)` :1903
+- `ThreatWarBoard.positionChanged(PositionAPI position)` :1910
+- `ThreatWarBoard.render(float alphaMult)` :1911
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :1957
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :1958
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :1959
+- `ThreatWarBoard.addStrip(TooltipMakerAPI main, float width, List<Entry> entries)` :1985 - Returns the strip panel so the faction selector can anchor below it (a sibling).
+- `ThreatWarBoard.positionChanged(PositionAPI position)` :2010
+- `ThreatWarBoard.render(float alphaMult)` :2011
+- `ThreatWarBoard.addLedger(final ThreatIncursionIntel intel, final IntelUIAPI ui, TooltipMakerAPI main, float width, float opad, List<Entry> entries, Entry selected)` :2086
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2137
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2138
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2139
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2216
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2217
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2218
+- `ThreatWarBoard.cell(List<Object> cells, Alignment align, Color color, String text)` :2243
+- `ThreatWarBoard.sizeDigits(Entry e, Cols c)` :2250 - "5 4 4 4 4 4", largest first, capped to what the column fits;
+- `ThreatWarBoard.rewardShort(int reward)` :2267
+- `ThreatWarBoard.missionCode(ThreatMissionIntel b)` :2276 - S/I for the board, then the offer's priority on it - or once the player holds it.
+- `ThreatWarBoard.render(float alphaMult)` :2302
+- `ThreatWarBoard.addRowTooltip(TooltipMakerAPI tooltip, Entry e, boolean narrow)` :2366
+- `ThreatWarBoard.addDetailHeading(TooltipMakerAPI main, float opad, Entry e)` :2433 - The selected system's heading line;
+- `ThreatWarBoard.addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e, List<Object[]> cardsOut)` :2452 - The selected system's colony cards (or the seeding note), after its fronts.
+- `ThreatWarBoard.addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e)` :2462
+- `ThreatWarBoard.addCards(TooltipMakerAPI main, float width, final Entry e, List<Object[]> cardsOut)` :2479 - Cards three across on a wide panel, two on a narrow one;
+- `ThreatWarBoard.organsOf(MarketAPI market)` :2503 - The organ icons a card shows, in a fixed order;
+- `ThreatWarBoard.commodityIcon(String commodityId)` :2520
+- `ThreatWarBoard.iconRow(TooltipMakerAPI tm, List<String> ids, List<Integer> nums, List<IconRenderMode> modes)` :2533 - A vanilla icon group:
+- `ThreatWarBoard.buildCard(TooltipMakerAPI main, final MarketAPI market, float cardW, Entry e)` :2547 - Measured name widths from the last card build, so the Map button can sit right of the name.
+- `ThreatWarBoard.positionChanged(PositionAPI position)` :2561
+- `ThreatWarBoard.render(float alphaMult)` :2562
+- `ThreatWarBoard.industryTooltip(final MarketAPI market, final Industry ind)` :2662 - What vanilla's colony screen says about an industry tile:
+- `ThreatWarBoard.isTooltipExpandable(Object tooltipParam)` :2664
+- `ThreatWarBoard.getTooltipWidth(Object tooltipParam)` :2665
+- `ThreatWarBoard.createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam)` :2666
+- `ThreatWarBoard.forecastParts(MarketAPI market, float health)` :2740 - The size line, right-aligned on the card:
+- `ThreatWarBoard.forecastShort(MarketAPI market, float health)` :2774 - Plain-text form of the size line for tooltips.
+- `ThreatWarBoard.roleLabel(MarketAPI market)` :2779
+- `ThreatWarBoard.commodityName(String commodityId)` :2796
 ### helpers
-- `ThreatWarBoard.needLine(ThreatGroundFronts.GroundFront f, MarketAPI m, boolean forLanding, float s, float band, float overrun, boolean pushing, boolean worldPushes, String unit)` :2812 - " Needs 520 troops to push." - the count that side needs for the next tier its way (losing:
-- `ThreatWarBoard.n(float v)` :2840 - A figure with digit grouping, rounded.
-- `ThreatWarBoard.f2(float v)` :2842 - Two decimals.
-- `ThreatWarBoard.f1(float v)` :2844 - One decimal.
-- `ThreatWarBoard.join(List<String> parts)` :2846
-- `ThreatWarBoard.healthColor(float health)` :2856
-- `ThreatWarBoard.fedState(MarketAPI market)` :2872 - A hive world's Fabrication Core state (2026-10-25), on the engine's own clocks:
-- `ThreatWarBoard.fedStateName(int state)` :2878
-- `ThreatWarBoard.stateColor(int state)` :2883 - A Core state in the reserve key's colours:
-- `ThreatWarBoard.fedColor(float fed)` :2894 - A share of the supplies upkeep paid in the reserve key's colours:
-- `ThreatWarBoard.pct(float share)` :2903 - A share as a whole percentage, rounded.
-- `ThreatWarBoard.seenOver(ThreatIntel.Report r, MarketAPI world)` :2912 - A report's view of one world (ThreatIntel):
-- `ThreatWarBoard.grounded(MarketAPI market)` :2917 - Billed reach:
-- `ThreatWarBoard.swarmSource(List<MarketAPI> markets, MarketAPI staging)` :2927 - The world a system's swarm is judged by for billed reach:
-- `ThreatWarBoard.reachText(boolean grounded, String facedFaction, float facedLY)` :2938 - Billed reach's figure:
-- `ThreatWarBoard.reachColor(boolean grounded, String facedFaction)` :2945 - Its colour:
-- `ThreatWarBoard.factionColor(String factionId)` :2951 - A faction's own colour;
-- `ThreatWarBoard.getSystem(String systemId)` :2956
-- `ThreatWarBoard.findMarker(String systemId)` :2964
+- `ThreatWarBoard.needLine(ThreatGroundFronts.GroundFront f, MarketAPI m, boolean forLanding, float s, float band, float overrun, boolean pushing, boolean worldPushes, String unit)` :2816 - " Needs 520 troops to push." - the count that side needs for the next tier its way (losing:
+- `ThreatWarBoard.n(float v)` :2844 - A figure with digit grouping, rounded.
+- `ThreatWarBoard.f2(float v)` :2846 - Two decimals.
+- `ThreatWarBoard.f1(float v)` :2848 - One decimal.
+- `ThreatWarBoard.join(List<String> parts)` :2850
+- `ThreatWarBoard.healthColor(float health)` :2860
+- `ThreatWarBoard.fedState(MarketAPI market)` :2876 - A hive world's Fabrication Core state (2026-10-25), on the engine's own clocks:
+- `ThreatWarBoard.fedStateName(int state)` :2882
+- `ThreatWarBoard.stateColor(int state)` :2887 - A Core state in the reserve key's colours:
+- `ThreatWarBoard.fedColor(float fed)` :2898 - A share of the supplies upkeep paid in the reserve key's colours:
+- `ThreatWarBoard.pct(float share)` :2907 - A share as a whole percentage, rounded.
+- `ThreatWarBoard.seenOver(ThreatIntel.Report r, MarketAPI world)` :2916 - A report's view of one world (ThreatIntel):
+- `ThreatWarBoard.grounded(MarketAPI market)` :2921 - Billed reach:
+- `ThreatWarBoard.swarmSource(List<MarketAPI> markets, MarketAPI staging)` :2931 - The world a system's swarm is judged by for billed reach:
+- `ThreatWarBoard.reachText(boolean grounded, String facedFaction, float facedLY)` :2942 - Billed reach's figure:
+- `ThreatWarBoard.reachColor(boolean grounded, String facedFaction)` :2949 - Its colour:
+- `ThreatWarBoard.factionColor(String factionId)` :2955 - A faction's own colour;
+- `ThreatWarBoard.getSystem(String systemId)` :2960
+- `ThreatWarBoard.findMarker(String systemId)` :2968
 
 ## ThreatWarCouncil (636 lines)
 - `ThreatWarCouncil.inReach()` :96
