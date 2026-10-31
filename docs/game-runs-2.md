@@ -2053,3 +2053,8 @@ is lost); the user to say if the planner should honour the bookings instead.
 with bases ON (the harness store) to d3817 / d3713: 32 / 38 bases founded, 10 / 21 lost or given up in play, 0 exc;
 snapshots `cp3ad3817` (~23 standing bases) / `cp3bd3545` (~19). Step 4 on main (jar 11:07:56): both loaded on 0.9 with
 `threatinc_frontlinesEnabled=false` per game (`-Knobs`, what Luna migration 17 does to a player's store), 500 days.
+
+**FORWARD BASES ON UPGRADE: PASS (13:10).** cp4a (OceanPena d3817, ~23 bases) / cp4b (AmaruDugas d3545, 19) on 0.9 with
+the knob off: dismantled 22 (+1 fallen to a strike before) / 19 on the first tick, 0 exc, nothing founded after; the AI
+went on - launches 3 / 9, strikes 3 / 16, core builds 9 / 17, convoys 1,115 / 763 lines, fronts 13 / 22 by w4,193 / 3,847.
+Static on the deep saves: 40 classes, 0 missing, 0 undeclared mod fields. facts: "Are an 0.8.2 save's forward bases removed".
