@@ -50,6 +50,8 @@ public class ThreatAid {
 		public MarketAPI source;
 		/** Combat fleet points of a task force. */
 		public float fp;
+		/** Days an ally's Defend holds the orbit (the fronts' Days lever, 2026-10-31); 0 for any other force. */
+		public float days;
 		/** Ledger points the fleet holds. */
 		public float points;
 		/** Whole-fleet points the source has free to send - the pool {@link #points} is drawn from. */
@@ -450,13 +452,33 @@ public class ThreatAid {
 
 	/** As above at the board's Force tier. */
 	public static Quote quoteDefend(ThreatBases.Base target, int tier) {
+		return quoteDefend(target, tier, 0f);
+	}
+
+	/** As above over a market for a term of {@code days} (an ally's Defend at the fronts' Days lever, 2026-10-31). */
+	public static Quote quoteDefend(MarketAPI target, int tier, float days) {
+		return quoteDefend(ThreatBases.of(target), tier, days);
+	}
+
+	/**
+	 * As above for a term of {@code days} on station (an ally's Defend at the fronts' Days lever,
+	 * 2026-10-31): the hold is priced on that stay instead of sortieStayDays (ThreatReach.setStay),
+	 * so a 30-day Defend quotes a third of a 90-day one's hold. 0 = the sortie's default stay.
+	 */
+	public static Quote quoteDefend(ThreatBases.Base target, int tier, float days) {
 		Quote q = new Quote();
 		if (target == null || target.starSystem() == null) {
 			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
-		return quoteTaskForce(q, target.hyperLoc(), target.name(),
-				target.market != null && target.market.isPlayerOwned() ? target.market : null, tier);
+		q.days = Math.max(0f, days);
+		float was = ThreatReach.setStay(days);
+		try {
+			return quoteTaskForce(q, target.hyperLoc(), target.name(),
+					target.market != null && target.market.isPlayerOwned() ? target.market : null, tier);
+		} finally {
+			ThreatReach.setStay(was);
+		}
 	}
 
 	public static Quote quoteStrike(StarSystemAPI hive) {
@@ -694,6 +716,11 @@ public class ThreatAid {
 
 	/** As above at the board's Force tier. */
 	public static boolean dispatchDefend(MarketAPI target, int tier) {
+		return dispatchDefend(target, tier, 0f);
+	}
+
+	/** As above for a term of {@code days} (the fronts' Days lever, 2026-10-31): the order's term, and the stay its hold is priced on. 0 = guardDays and the sortie's default stay. */
+	public static boolean dispatchDefend(MarketAPI target, int tier, float days) {
 		if (target == null) return false;
 		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
@@ -701,14 +728,14 @@ public class ThreatAid {
 					.lines(blocked).send();
 			return false;
 		}
-		Quote q = quoteDefend(target, tier);
+		Quote q = quoteDefend(target, tier, days);
 		if (!q.ok()) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.lines(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(
-				Global.getSector().getPlayerFaction(), ThreatBases.of(target), q.source, true, tier);
+				Global.getSector().getPlayerFaction(), ThreatBases.of(target), q.source, true, tier, days);
 		if (o == null) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.line("No task force could be raised at %s", ThreatNotice.market(q.source)).send();
@@ -719,6 +746,7 @@ public class ThreatAid {
 				.line("From %s, %s fleet points", ThreatNotice.market(q.source), (int) q.points)
 				.line("Defending %s for %s", ThreatNotice.market(target),
 						ThreatNotice.faction(target.getFaction()))
+				.line("For %s days", (int) (days > 0f ? days : ThreatIncConfig.guardDays()))
 				.send();
 		return true;
 	}

@@ -1188,6 +1188,10 @@
 	# for this many days goes home; 0 holds it until the army on the ground is gone
 	"threatinc_reliefQuietDays": 7,
 	"threatinc_guardDays": 90,
+	# the fronts' Days lever (2026-10-31): an ally's Defend holds the orbit this long at its first / third setting
+	# (guardDays at the second), and its hold is priced on the term instead of sortieStayDays
+	"threatinc_guardDaysMin": 30,
+	"threatinc_guardDaysMax": 180,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP
 	# while it is there, and a siege / hunt / escort / guard from there

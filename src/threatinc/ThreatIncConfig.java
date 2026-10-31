@@ -996,6 +996,10 @@ public class ThreatIncConfig {
 	public static float reliefQuietDays() { return f("threatinc_reliefQuietDays"); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
+	/** The fronts' Days lever (2026-10-31): the term an ally's Defend holds the orbit at its three settings - guardDaysMin, guardDays, guardDaysMax - and the stay its hold is priced on. */
+	public static float guardTermDays(int tier) {
+		return tier <= 0 ? f("threatinc_guardDaysMin") : tier == 1 ? guardDays() : f("threatinc_guardDaysMax");
+	}
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */
 	public static float guardOwnDays()        { return f("threatinc_guardOwnDays"); }
 	/** Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown. Key kept from the order's old name. */

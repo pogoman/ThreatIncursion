@@ -841,6 +841,18 @@ public class ThreatFactionView {
 		addTierSelector(intel, main, anchor, "Fleet", LEVER_LABEL_W,
 				BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_FLEET + ":",
 				intel.lever(ThreatIncursionIntel.LEVER_FRONT_FLEET), fleetTips, 0f, LEVER_LABELS, LEVER_BUTTON_W);
+		// DAYS (the user, 2026-10-31: "a duration toggle to the defend action when aiding other
+		// factions"): the term an ally's Defend holds the orbit, and the stay its hold is priced on
+		String[] dayLabels = new String[3];
+		String[] dayTips = new String[3];
+		for (int t = 0; t < 3; t++) {
+			int d = (int) ThreatIncConfig.guardTermDays(t);
+			dayLabels[t] = d + " d";
+			dayTips[t] = "Defend: holds the orbit " + d + " days; its supplies are priced on that stay.";
+		}
+		addTierSelector(intel, main, anchor, "Days", LEVER_LABEL_W,
+				BUTTON_LEVER + ThreatIncursionIntel.LEVER_FRONT_DAYS + ":",
+				intel.lever(ThreatIncursionIntel.LEVER_FRONT_DAYS), dayTips, LEVER_PITCH, dayLabels, LEVER_BUTTON_W);
 	}
 
 	/**
@@ -1546,6 +1558,16 @@ public class ThreatFactionView {
 				Misc.getWithDGS((int) Math.max(0f, ThreatBases.available(base, Commodities.SUPPLIES))));
 	}
 
+	/** As {@link #addProvisionsLine(TooltipMakerAPI, MarketAPI, float, Vector2f, boolean)} from the quote's own figures (Quote.provisions, Quote.carried) - a Defend priced on its Days lever's term (2026-10-31). */
+	protected static void addProvisionsLine(TooltipMakerAPI prompt, ThreatAid.Quote q) {
+		if (q == null || q.source == null || q.provisions == null) return;
+		addTakesLine(prompt, q.source, q.provisions[0], q.provisions[1]);
+		if (q.carried != null && (q.carried[0] > 0.5f || q.carried[1] > 0.5f)) {
+			prompt.addPara("The fleets at " + q.source.getName() + " already carry %s.", 3f, Misc.getHighlightColor(),
+					ThreatFleetOrders.carriedText(q.carried));
+		}
+	}
+
 	/** A quote's size as a prompt's format and highlights, {@code more} highlights appended (ThreatAid.forcePrompt). */
 	protected static String[] forcePrompt(float points, float free, String... more) {
 		return forcePrompt(points, free, 1, more);
@@ -2062,7 +2084,9 @@ public class ThreatFactionView {
 			f.status = o.fleet != null && o.fleet.isAlive()
 					? (o.arrived ? "on station" : "en route") : "lost";
 			f.strength = fleetStrength(o.fleet);
-			// a fleet with no term shows what its hold keeps it out for (docs/fleet-provisions.md)
+			// en route: the days to its target (the user, 2026-10-31, of a Guard reading "80 d aboard" in
+			// hyperspace: "have no idea what that means but it certainly hasnt arrived"); on station, a fleet
+			// with no term shows the days of supplies its hold keeps it out for (docs/fleet-provisions.md)
 			float holdDays = o.fleet != null && ThreatIncConfig.fleetUpkeep() ? ThreatReturns.holdDays(o.fleet) : Float.MAX_VALUE;
 			f.eta = !o.indefinite() ? (int) Math.ceil(o.daysLeft()) + " d left"
 					: holdDays < Float.MAX_VALUE ? (int) Math.floor(holdDays) + " d aboard" : "-";
@@ -2498,11 +2522,13 @@ public class ThreatFactionView {
 			// DEFEND an ally's sieged world at the fronts' Fleet lever (2026-10-29 evening): match the swarm
 			// over it / x1.25 / x1.5 (ThreatAid.orbitAskFP), as the player's own Defend; every hull free before
 			int orbitTier = frontLevers.length > 2 ? frontLevers[2] : 0;
-			ThreatAid.Quote q = ThreatAid.quoteDefend(target, orbitTier);
+			// for the Days lever's term, its hold priced on that stay (2026-10-31)
+			float term = ThreatIncConfig.guardTermDays(frontLevers.length > 3 ? frontLevers[3] : 1);
+			ThreatAid.Quote q = ThreatAid.quoteDefend(target, orbitTier, term);
 			if (!q.ok() || target == null) {
 				prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
 			} else {
-				String[] f = forcePrompt(q.points, q.free, q.fleets, "" + (int) ThreatIncConfig.guardDays());
+				String[] f = forcePrompt(q.points, q.free, q.fleets, "" + (int) term);
 				prompt.addPara("Send a task force of " + f[0] + " from " + q.source.getName()
 						+ " to take the orbit of " + target.getName() + " for %s days, on behalf of "
 						+ who + "? Fuel and supplies come from " + q.source.getName()
@@ -2512,7 +2538,8 @@ public class ThreatFactionView {
 						+ " is earned when it arrives and again when it serves its term.", 0f, h,
 						highlights(f));
 				if (q.sized != null) prompt.addPara(q.sized, 3f);
-				addProvisionsLine(prompt, q.source, q.fp, target.getLocationInHyperspace(), false);
+				// the quote's own figures: priced on the term, not the sortie's default stay
+				addProvisionsLine(prompt, q);
 			}
 		} else if (BUTTON_REQ_ACCEPT.equals(parts[0]) || BUTTON_REQ_CANCEL.equals(parts[0])) {
 			ThreatAidRequests.Offer o = ThreatAidRequests.offerById(parts[2]);
@@ -2823,7 +2850,8 @@ public class ThreatFactionView {
 		if (BUTTON_AID_DEFEND.equals(parts[0])) {
 			// at the fronts' Fleet lever (2026-10-29 evening), as the player's own Defend
 			return ThreatAid.dispatchDefend(Global.getSector().getEconomy().getMarket(parts[2]),
-					frontLevers.length > 2 ? frontLevers[2] : 0) ? "aid-defend" : null;
+					frontLevers.length > 2 ? frontLevers[2] : 0,
+					ThreatIncConfig.guardTermDays(frontLevers.length > 3 ? frontLevers[3] : 1)) ? "aid-defend" : null;
 		}
 		if (BUTTON_REQ_ACCEPT.equals(parts[0])) {
 			ThreatAidRequests.Offer o = ThreatAidRequests.offerById(parts[2]);

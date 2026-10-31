@@ -87,10 +87,10 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
 			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6,
-			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8, LEVER_AID_SEND = 9;
-	protected static final int LEVER_COUNT = 10;
-	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max, the Domain's Fleet (2026-10-31: Transfer deploys a fleet with it set) None. */
-	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2, 0, 1 };
+			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8, LEVER_AID_SEND = 9, LEVER_FRONT_DAYS = 10;
+	protected static final int LEVER_COUNT = 11;
+	/** The fronts' Max, the colonies' Med, the fronts' Fleet (2026-10-29, a Request's task force) Max, the Domain's Fleet (2026-10-31: Transfer deploys a fleet with it set) None, the Send Med, the fronts' Days (2026-10-31) guardDays. */
+	protected static final int[] LEVER_DEFAULTS = { 2, 2, 1, 1, 1, 1, 1, 2, 0, 1, 1 };
 
 	public int lever(int which) {
 		if (levers == null || levers.length < LEVER_COUNT) {
@@ -110,10 +110,12 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	/**
 	 * The fronts table's levers as {marines, arms, fleet}: Supply's marines and arms are the colonies
 	 * table's levers (2026-10-29 evening - the fronts' own two went, "remove resource selectors from
-	 * ground fronts table"), the Fleet lever Support / Defend's outcome tier.
+	 * ground fronts table"), the Fleet lever Support / Defend's outcome tier - and, fourth, the Days
+	 * lever (2026-10-31): the term an ally's Defend holds the orbit (ThreatIncConfig.guardTermDays).
 	 */
 	public int[] frontLevers() {
-		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_FRONT_FLEET) };
+		return new int[] { lever(LEVER_COLONY_MARINES), lever(LEVER_COLONY_ARMS), lever(LEVER_FRONT_FLEET),
+				lever(LEVER_FRONT_DAYS) };
 	}
 
 	/**

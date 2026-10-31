@@ -321,7 +321,7 @@ fronts table"; Marines and Arms sat there until then), over the colonies **Fuel*
 **Marines**, **Arms** and **Hulls**, each **None / Med / Max** = nothing / half the source's spare /
 all of it (`ThreatConvoys.share`, `handSpare`, `leverLoad`); since 2026-10-30 evening a lever is ONE button reading its tier, pressed it sets the next round the ladder. The Fleet lever is Support / Defend's
 outcome tier (match the swarm / x1.25 / x1.5 - the Force ladder that set it went with the Attack's
-ladders), for the player's own fronts and the Defend of an ally's sieged world alike; the colonies'
+ladders), for the player's own fronts and the Defend of an ally's sieged world alike; beside it since 2026-10-31 the **Days** lever (`LEVER_FRONT_DAYS`, 30 d / 90 d / 180 d from `threatinc_guardDaysMin` / `guardDays` / `guardDaysMax`, `ThreatIncConfig.guardTermDays`) is the term an ally's Defend holds the orbit AND the stay its hold is priced on (`ThreatReach.setStay` around `ThreatAid.quoteDefend` and `ThreatFleetOrders.dispatchGuard`), so a 30-day Defend quotes a third of the 90-day hold - the Defend tooltip and prompt show the term and the fuel and supplies; the colonies'
 five size Transfer and the Deploy (above), the fronts' Supply reads the colonies' Marines and Arms
 (`ThreatIncursionIntel.frontLevers`), and a shortfall's request asks each faction at the same tier
 (Max all one colony spares, Med half). Transfer moves hulls between the player's colonies off the
