@@ -988,6 +988,18 @@ public class ThreatWarBoard {
 	protected static final float FRONT_STANCE_W = 56f;
 	protected static final float FRONT_DEFEND_W = 58f;
 
+	/** The landing's next objective (the user, 2026-10-31): the industry its next district claims, "Extermination" once it holds every layer, else the layer itself. */
+	protected static String landingObjective(ThreatGroundFronts.GroundFront f, MarketAPI m, Industry claim) {
+		if (claim != null) return claim.getCurrentName();
+		if (f.strataHeld >= Math.max(1, m.getSize())) return "Extermination";
+		return Misc.ucFirst(ThreatGroundFronts.layerName(m));
+	}
+
+	/** The world's next objective: the industry its next district reclaims, else the layer itself. */
+	protected static String worldObjective(MarketAPI m, Industry release) {
+		return release != null ? release.getCurrentName() : Misc.ucFirst(ThreatGroundFronts.layerName(m));
+	}
+
 	/** Every live front, the player's own first, then by world name. */
 	public static List<FrontRow> frontRows() {
 		List<FrontRow> rows = new ArrayList<FrontRow>();
@@ -1266,14 +1278,14 @@ public class ThreatWarBoard {
 			// claim (easiest to consume, a rebuild resumed) in the Threat's colour while the line moves
 			// its way, the world's next reclaim (military first, soonest lost) in the world's while it
 			// moves the world's; standing, the swarm's if one waits; "-" off an occupation
+			// the gaining side's (the landing's while the line stands); with no structure decided the
+			// layer itself, and "Extermination" once the landing holds every layer (the user, 2026-10-31)
 			{
-				Industry tClaim = ThreatOccupation.nextClaim(m, f);
-				Industry tRelease = ThreatOccupation.nextRelease(f, m);
 				float lr = ThreatGroundFronts.lineRate(f, m);
-				Industry t = lr > 0f ? tClaim : lr < 0f ? tRelease : tClaim != null ? tClaim : tRelease;
-				boolean swarmTarget = t != null && t == tClaim && lr >= 0f;
-				cell(cells, Alignment.MID, t == null ? gray : swarmTarget ? ThreatNotice.threatColor() : worldColour,
-						t == null ? "-" : main.shortenString(t.getCurrentName(), w[i] - 10f));
+				boolean landingSide = lr >= 0f;
+				String obj = landingSide ? landingObjective(f, m, ThreatOccupation.nextClaim(m, f))
+						: worldObjective(m, ThreatOccupation.nextRelease(f, m));
+				cell(cells, Alignment.MID, landingSide ? landerColour : worldColour, main.shortenString(obj, w[i] - 10f));
 				i++;
 			}
 			// armaments read as what they buy: days of fighting left. The swarm
@@ -1514,13 +1526,18 @@ public class ThreatWarBoard {
 		// Target: what the next district decides, both ways (the user, 2026-10-31)
 		Industry tClaim = ThreatOccupation.nextClaim(m, f);
 		Industry tRelease = ThreatOccupation.nextRelease(f, m);
+		String army = Army.toLowerCase();
 		if (tClaim != null) {
-			tooltip.addPara("Objective of the swarm: %s, %s d to consume" + (ThreatOccupation.rebuilding(tClaim) ? " (resumed from the rebuild)" : "") + ".",
+			tooltip.addPara("Objective of the " + army + ": %s, %s d to consume" + (ThreatOccupation.rebuilding(tClaim) ? " (resumed from the rebuild)" : "") + ".",
 					4f, text, h, tClaim.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tClaim)));
+		} else {
+			tooltip.addPara("Objective of the " + army + ": %s.", 4f, text, h, landingObjective(f, m, null));
 		}
 		if (tRelease != null) {
 			tooltip.addPara("Objective of " + World + ": reclaim %s, consumed in %s d.", 4f, text, h,
 					tRelease.getCurrentName(), "" + (int) Math.ceil(ThreatOccupation.consumeDaysLeftOf(tRelease)));
+		} else {
+			tooltip.addPara("Objective of " + World + ": %s.", 4f, text, h, worldObjective(m, null));
 		}
 		float victory = ThreatGroundFronts.victoryDays(f, m, toA);
 		if (victory < 0f) {

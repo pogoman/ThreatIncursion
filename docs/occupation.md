@@ -409,8 +409,9 @@ prioritise military buildings, whichever will be lost soonest". No progress ride
 is the front's, and the pick is resolved the moment the district changes hands ("if building is lost while
 they are pushing then it goes to next and progress is not lost"). THE OBJECTIVE COLUMN (fronts table, after ETA - named Target for an hour; the days column, Objective since
 2026-10-24, is ETA now): the industry the next district decides - the swarm's next claim in the Threat's colour while the
-line moves its way, the world's next reclaim in the world's while it moves the world's, the swarm's when it
-stands and one waits, "-" off an occupation; the row tooltip gives both ("Swarm claims next: X, N d to
+line moves its way, the world's next reclaim in the world's while it moves the world's, the landing's while it
+stands; with no structure decided the layer itself ("District" / "Stratum"), and "Extermination" once the landing
+holds every layer (the user, 2026-10-31); the row tooltip gives both ("Swarm claims next: X, N d to
 consume (resumed from the rebuild)", "W reclaims next: Y, consumed in M d"). Source typechecked 2026-10-31,
 UNTESTED.
 

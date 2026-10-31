@@ -90,7 +90,7 @@ is the layout it implements.
    `counterAttackRepelled`), Arms (days of armaments, "dry" red), ETA (days until this side takes the next layer, "-" while the
    line stands or moves against it; named Objective until 2026-10-31), Objective (the industry the next district decides - the swarm's next claim in the
    Threat's colour while the line moves its way, the world's next reclaim in the world's while it moves the world's,
-   "-" off an occupation; `ThreatOccupation.nextClaim` / `nextRelease`, 2026-10-31), Victory ("~N d" until this side wins the world - `victoryDays`), Space (who holds the space over the world in their colour, grey "Empty" when
+   the layer itself with no structure decided, "Extermination" once the landing holds every layer; `ThreatOccupation.nextClaim` / `nextRelease`, `landingObjective` / `worldObjective`, 2026-10-31), Victory ("~N d" until this side wins the world - `victoryDays`), Space (who holds the space over the world in their colour, grey "Empty" when
    nothing armed is there - `ThreatGroundFronts.spaceHolder`, the faction with the most armed
    points within `ORBIT_HOLD_RANGE`). The row tooltip is the arithmetic, one line per fact (`addFrontTooltip`):
    strength = troops x entrenchment x supply; defenders and the hold / grind requirements;
