@@ -464,26 +464,6 @@ public class ThreatOccupation {
 		ThreatGroundFronts.reapply(front.marketId);
 	}
 
-	/**
-	 * A district retaken releases a claim ({@link ThreatGroundFronts#loseStratum}): the newest one being
-	 * consumed (a district held is a consumption slot, and the last slot closes), else the newest claim.
-	 * What the swarm had eaten of it is REBUILT (the user, 2026-10-28: "the industry should start
-	 * rebuilding from where it was consumed up to ... it shouldnt just instantly be restored"): vanilla's
-	 * own build, its progress set so the days left are the eaten share of the build time - unpaid, the
-	 * world's own work.
-	 */
-	protected static void release(GroundFront front, MarketAPI market) {
-		if (!occupies(front, market)) return;
-		List<String> claims = claims(front);
-		if (claims.isEmpty()) return;
-		// the slot is read BEFORE the district count drops (ThreatGroundFronts.loseStratum calls this first):
-		// Arkoman 2026-10-28 evening, one district held, Mining being eaten - decremented first, active
-		// read empty and the newest claim (Orbital Works) was freed, Mining stayed green at "34 days left"
-		List<String> active = active(front, market);
-		String id = active.isEmpty() ? claims.get(claims.size() - 1) : active.get(active.size() - 1);
-		releaseClaim(front, market, id);
-	}
-
 	/** The claim is released: off the list, rebuilt from its eaten share, "Industry Reclaimed"; the reapply is the caller's. */
 	protected static void releaseClaim(GroundFront front, MarketAPI market, String id) {
 		List<String> claims = claims(front);

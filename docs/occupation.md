@@ -153,8 +153,8 @@ in human space. Ownership never moves.
   districts are contested, `budPool` once every district is held), `bud` (a garrison swarm of
   the pool at `occupationBudFP`, "Infestation Swarm", on `ThreatSwarmDefend` over the world for
   as long as the front stands, home = none so it despawns into hyperspace when the front
-  goes), `occupy` (the victory: stance entrench, "World Occupied" notice once), `release` (a
-  district retaken drops the newest claim, "Industry Reclaimed"), `holdDeciv` (`$core_noDeciv`
+  goes), `occupy` (the victory: stance entrench, "World Occupied" notice once), `trim` (a
+  district retaken releases a claim only when more are claimed than districts held, "Industry Reclaimed"), `holdDeciv` (`$core_noDeciv`
   + `DECIV_HELD_KEY` renewed 90 d a tick, the `raiseUnrest` guard).
 - `ThreatInfestation` (new): the visible structure card `threatinc_infestation`
   (industries.csv: structure, unraidable, no_saturation_bombardment, Swarm Nexus image, order
@@ -169,7 +169,7 @@ in human space. Ownership never moves.
   the line resets its progress instead of taking a district past the last; the seized
   industries are no longer pinned disrupted under the occupation (`districtSeizeDays` only
   with it off); `colonyGroundVictory` occupies and returns before the teardown;
-  `loseStratum` releases a claim; `infestGrowthPerDay` reads the occupation's figure.
+  `loseStratum` trims the claims to the districts held; `infestGrowthPerDay` reads the occupation's figure.
 - `ThreatWarBoard`: a front holding every district reads "occupying" in place of its stance.
 - Knobs (settings.json, LunaSettings.csv, no migration): `occupationEnabled` true,
   `occupationClaimDays` 30, `occupationStrataPerUnit` 1.0, `occupationBudFP` 60.
@@ -361,8 +361,10 @@ in the market's memory (`CONSUMED_KEY`, `$threatinc_consumed`) and sends Industr
 "industry" tag with a supply, never Population, ports, stations, ours), by id; then the key structures
 a holding front wears (`colonyKeyStructures`: Ground Defenses, Heavy Batteries, Patrol HQ, Military
 Base, High Command, the Lion's Guard) minus the orbital station, by id, under `occupationConsumeMilitary`.
-A district retaken still releases the newest claim, and its clock with it (what the swarm had eaten of
-it is saved; `release`).
+A district retaken releases a claim only when more are claimed than districts left held (`trim`, the
+newest not being consumed first; the user, Haven 2026-10-31: the Military Base, the last claim of four with
+five of six districts still held, was reclaimed - before, every district lost released the newest claim,
+`release`, now gone), and its clock with it (what the swarm had eaten of it is saved).
 
 **The bar** (the user: "show the progress like when its building"): the `Occupied*` plugins - the seven
 producers and the two new ones, `OccupiedMilitaryBase` (Patrol HQ, Military Base, High Command) and

@@ -14,7 +14,6 @@ import com.fs.starfarer.api.campaign.comm.CommMessageAPI.MessageClickAction;
 import com.fs.starfarer.api.campaign.comm.IntelInfoPlugin.ListInfoMode;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
-import com.fs.starfarer.api.impl.campaign.ids.Tags;
 import com.fs.starfarer.api.impl.campaign.intel.BaseIntelPlugin;
 import com.fs.starfarer.api.ui.LabelAPI;
 import com.fs.starfarer.api.ui.SectorMapAPI;
@@ -292,7 +291,7 @@ public class ThreatNotice extends BaseIntelPlugin {
 		Global.getSector().getCampaignUI().addMessage(this,
 				clickable ? MessageClickAction.INTERACTION_DIALOG : MessageClickAction.NOTHING,
 				clickable ? ThreatNoticeClickDialog.token(tab) : null);
-		// and kept in the Intel tab for noticeIntelDays, under Major events and the factions it
+		// and kept in the Intel tab for noticeIntelDays, under Abyssal War and the factions it
 		// concerns, so a notice missed can be found again (the user, 2026-10-31: "if i miss one
 		// theres no way to find it again"); silent - the message above is the notification
 		float keep = ThreatIncConfig.noticeIntelDays();
@@ -406,13 +405,12 @@ public class ThreatNotice extends BaseIntelPlugin {
 		return sound != null ? sound : getSoundMinorMessage();
 	}
 
-	/** The Intel tab's filters it is listed under: Major events, Abyssal War, and every faction it names or bears the crest of (the Threat's when none). */
+	/** The Intel tab's filters it is listed under: Abyssal War and every faction it names or bears the crest of (the Threat's when none). */
 	@Override
 	public Set<String> getIntelTags(SectorMapAPI map) {
 		Set<String> tags = new LinkedHashSet<String>();
 		Set<String> base = super.getIntelTags(map);
 		if (base != null) tags.addAll(base);
-		tags.add(Tags.INTEL_MAJOR_EVENT);
 		tags.add(ThreatIncursionIntel.TAG_THREAT); // the Abyssal War filter every mod intel sits under
 		tags.add(crestFactionId != null ? crestFactionId : Factions.THREAT);
 		if (mentionedFactionId != null) tags.add(mentionedFactionId);
