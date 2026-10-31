@@ -805,8 +805,8 @@ public class ThreatAidRequests {
 		float budget = (float) Math.floor(budget(helper));
 		int price = priceFor(target, c.good, amount);
 		if (price > budget) {
-			// the amount the standing buys: the price is linear in the amount (a cap only lowers it)
-			amount = (float) Math.floor(amount * budget / price);
+			// the amount the standing buys: the price curve inverted (ThreatAid.cutToPoints, aidRepCurve - a cap only lowers it)
+			amount = (float) Math.floor(ThreatAid.cutToPoints(amount, price, budget));
 			price = priceFor(target, c.good, amount);
 			while (amount >= minSpare(c.good) && price > budget) {
 				amount = (float) Math.floor(amount * 0.95f);
@@ -852,12 +852,17 @@ public class ThreatAidRequests {
 		// priced as the player's own guard earns; over the budget, the fleet shrinks to what the budget pays for
 		int price = priceFor(target, ThreatNeeds.FLEETS, fp);
 		if (price > budget) {
-			fp = (float) Math.floor(fp * budget / price);
+			// the curve inverted (ThreatAid.cutToPoints); a floor's rounding may leave a point over, shaved off
+			fp = (float) Math.floor(ThreatAid.cutToPoints(fp, price, budget));
+			price = priceFor(target, ThreatNeeds.FLEETS, fp);
+			while (fp >= min && price > budget) {
+				fp = (float) Math.floor(fp * 0.95f);
+				price = priceFor(target, ThreatNeeds.FLEETS, fp);
+			}
 			if (fp < min) {
 				q.why = "would take you below Favourable";
 				return q;
 			}
-			price = priceFor(target, ThreatNeeds.FLEETS, fp);
 		}
 		q.donor = base;
 		q.amount = fp;

@@ -1111,6 +1111,15 @@ public class ThreatAid {
 		return pointsFor(value);
 	}
 
+	/** The amount of a delivery priced at {@code price} points that {@code budget} points buy - the curve inverted (ThreatAidRequests cuts an offer to the standing the player can spend): amount x (budget / price) ^ (1 / aidRepCurve). */
+	public static float cutToPoints(float amount, float price, float budget) {
+		if (amount <= 0f || price <= 0f || budget <= 0f) return 0f;
+		if (budget >= price) return amount;
+		float curve = ThreatIncConfig.aidRepCurve();
+		float ratio = budget / price;
+		return amount * (curve > 0f && curve != 1f ? (float) Math.pow(ratio, 1f / curve) : ratio);
+	}
+
 	/** aidRepMaxPerDelivery above 0 caps a delivery's points; 0 leaves them to the rate. */
 	protected static float capped(float points) {
 		float cap = ThreatIncConfig.aidRepMaxPerDelivery();
