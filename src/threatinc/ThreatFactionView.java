@@ -1245,7 +1245,7 @@ public class ThreatFactionView {
 		// on the heading - the user, 2026-10-31: "send button is floating")
 		out.anchor = main.addSpacer(SELECTOR_ROW_H);
 		float tw = width - 24f;
-		String[] names = {"World", "Commodity", "Age", "Answer", "Standing", "ETA", "Actions"};
+		String[] names = {"World", "Request", "Age", "Answer", "Standing", "ETA", "Actions"};
 		float[] frac = {.13f, .13f, .06f, .30f, .08f, .07f, .23f};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < names.length; i++) {
@@ -1254,7 +1254,7 @@ public class ThreatFactionView {
 		}
 		out.table = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(1, "What the world asks of you: its need, cut to what you can field; the row tooltip has the purpose and the figures.");
+		main.addTableHeaderTooltip(1, "What the world asks of you: goods cut to what you can field; a defence fleet's Send sends every hull free at staging.");
 		main.addTableHeaderTooltip(2, "Days the shortage has stood.");
 		main.addTableHeaderTooltip(3, "Who answers it and with what; yours alone through the grace, then open to the sector.");
 		main.addTableHeaderTooltip(4, "Standing earned when what you send lands.");
@@ -1294,10 +1294,12 @@ public class ThreatFactionView {
 			List<Object> cells = new ArrayList<Object>();
 			ThreatWarBoard.cell(cells, Alignment.LMID, text,
 					main.shortenString(m.getName(), (float) Math.floor(tw * frac[0]) - 10f));
-			// the ask: what the player can field of the need; the good alone when nothing; an answered row, what was sent
+			// the ask: goods at what the player can field, the good alone when nothing; a fleet at the exact points asked
+			// ("2,679 FP defence fleet" - the user, 2026-10-31 evening: "put the exact FP they are asking for"); an
+			// answered row, what was sent
 			String asked;
 			if (answerOnly) asked = n.shown(n.max) + " " + n.goodLabel();
-			else if (n.isFleets()) asked = fielded > 0f ? "defence fleet of " + n.shown(fielded) : "defence fleet";
+			else if (n.isFleets()) asked = (askFigure(n) > 0f ? n.shown(askFigure(n)) + " " : "") + n.goodLabel();
 			else asked = (fielded > 0f ? n.shown(fielded) + " " : "") + n.goodLabel();
 			ThreatWarBoard.cell(cells, Alignment.LMID, answerOnly || fielded <= 0f ? gray : n.color(),
 					main.shortenString(asked + (n.suspended ? " - blockaded" : ""), (float) Math.floor(tw * frac[1]) - 10f));
@@ -1370,7 +1372,8 @@ public class ThreatFactionView {
 				public float getTooltipWidth(Object tooltipParam) { return 460f; }
 				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 					Color tx = Misc.getTextColor();
-					tooltip.addPara(m.getName() + ": " + n.line() + ".", tx, 0f);
+					// the purpose alone - no figures (the user, 2026-10-31 evening: "get rid of that hint shit")
+					tooltip.addPara(m.getName() + ": " + n.purpose + (n.suspended ? " - blockaded" : "") + ".", tx, 0f);
 					if (ask != null) {
 						float left = ThreatAidRequests.graceLeft(ask);
 						int age = (int) Global.getSector().getClock().getElapsedDaysSince(ask.since);

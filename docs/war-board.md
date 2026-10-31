@@ -274,7 +274,8 @@ delivers from the player's colony sparing the most (`askFigure`, `sentOf`) - "59
 alone when nothing can be fielded (Send off with the quote's reason); the row tooltip keeps the need's own
 three figures. A fleets need's Send is a Defend of every hull free at staging (`aidNeedParts` -> `BUTTON_AID_FLEET`,
 `ThreatAid.quoteDefend(market, 2, guardDays)`, as a Transfer to an own world at Max) for the default term -
-the row reads "defence fleet of 472 FP". No ladders on the table (the user: "player sends all or nothing. no
+the **Request** column (Commodity until 2026-10-31 evening) reads the exact points asked, "2,679 FP
+defence fleet"; the row tooltip is the purpose alone, no figures. No ladders on the table (the user: "player sends all or nothing. no
 buttons!").
 THE PLAYER FIRST, THEN THE SECTOR: every NPC-to-NPC sailing of the coalition first raises the world's need as
 an `ThreatAidRequests.Ask` (`sectorMayAnswer`), the player's alone for `threatinc_aidAskGraceDays` (4) from
