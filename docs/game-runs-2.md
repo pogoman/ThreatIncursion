@@ -2117,3 +2117,16 @@ inside its band.
 18460754** (a district changing hands touches neither side's cover, 49e549c3; the fleet-orders ETA, 87a7648b), jar rebuilt
 16:16:38 (1,333,921 bytes). **Restarted 16:17 as hw334 (set B) / hw335 (set A)**, driver `run-seeds-47.ps1`, watcher
 `watch-seeds-47.sh`, tasks ThreatIncSeeds47 / WatchSeeds47. Same read as above.
+
+**hw334 END (17:32, set B on jar 16:16:38; hw330 in brackets, hw330c at its end w3,827):**
+
+| game | war day | hives | strikes | consumed | lift-offs | restores | retaken | dig-ins | shift orders / spawns / drops | stuck | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw334a | 3,805 | 286 (291) | 115 (104) | 198 (202) | 77 (109) | 107 (36) | 84 (27) | 58 (35) | 6,473 / 5,348 / 0 (0) | 0 | 0 |
+| hw334b | 3,832 | 319 (344) | 123 (126) | 197 (229) | 99 (119) | 23 (81) | 41 (38) | 33 (40) | 2,885 / 2,603 / 0 (0) | 0 | 0 |
+| hw334c @ 75 min | 3,175 | 275 (360) | 110 (136) | 218 (253) | 72 (140) | 71 (59) | 66 (35) | 53 (35) | 4,883 / 4,365 / 232 (9) | 0 | 0 |
+
+- 0 exceptions on the cover change and the ETA; drops 0 / 0 / 232 (c's all in w1,500-2,000, the launch-window settles of
+  s92's open item); balance inside s92's band, retaken up on a (84 against 27, the cover no longer reset on a handover reads
+  as the humans holding districts better) - one round's reading. Watcher `savinglong` on b (584 days saving at w2,033,
+  hw330b saved long too) - read on; the watcher exited there, so hw335 is watched by `watch-seeds-47b.sh` (savinglong ignored).
