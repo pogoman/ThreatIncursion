@@ -85,6 +85,13 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		return requestTarget;
 	}
 
+	/** The colony the ledger's Attack builds at (a market id; ThreatFactionView.attackSource), set by the ledger's Colony button (2026-10-31 evening); null: the staging colony. */
+	protected String attackSource;
+
+	public String attackSource() {
+		return attackSource;
+	}
+
 	public static final int LEVER_FRONT_MARINES = 0, LEVER_FRONT_ARMS = 1, LEVER_COLONY_MARINES = 2,
 			LEVER_COLONY_ARMS = 3, LEVER_COLONY_FUEL = 4, LEVER_COLONY_SUPPLIES = 5, LEVER_COLONY_HULLS = 6,
 			LEVER_FRONT_FLEET = 7, LEVER_DOMAIN_FLEET = 8, LEVER_AID_SEND = 9, LEVER_FRONT_DAYS = 10,
@@ -425,6 +432,12 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		}
 		// THE REQUESTS TOGGLES (2026-10-31): the Colony button sets the entry, a good's button flips its call,
 		// Reject clears an offer - none with a Confirm, each a re-render in place
+		if (id.startsWith(ThreatFactionView.BUTTON_ATTACK_SOURCE)) {
+			// the ledger's Colony button (2026-10-31 evening): the next colony the Attack builds at, a re-render in place
+			attackSource = id.substring(ThreatFactionView.BUTTON_ATTACK_SOURCE.length());
+			rerenderInPlace(ui);
+			return;
+		}
 		if (id.startsWith(ThreatFactionView.BUTTON_REQ_TARGET)) {
 			// the calls are the one entry's: moving on withdraws them all (the user, 2026-10-31)
 			ThreatAidRequests.clearCalls();

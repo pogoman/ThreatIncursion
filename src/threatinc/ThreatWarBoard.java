@@ -930,8 +930,11 @@ public class ThreatWarBoard {
 		FactionAPI player = Global.getSector().getPlayerFaction();
 		boolean mayOrder = ThreatFleetOrders.canPlayerOrder(player);
 		String blocked = ThreatFleetOrders.orderBlockReason(player);
-		// the Attack at the ledger's Fleet and Days levers (ThreatIncursionIntel.ledgerLevers, 2026-10-31 evening)
+		// the Attack: built at the Colony toggle's colony at the ledger's Fleet and Days levers, loaded at the
+		// colony levers (ThreatFactionView.attackSource, ThreatIncursionIntel.ledgerLevers, 2026-10-31 evening)
 		int[] tiers = intel.ledgerLevers();
+		int[] levers = intel.colonyLevers();
+		MarketAPI base = ThreatFactionView.attackSource(intel);
 		int n = ledger.rows.size();
 		for (int i = 0; i < n; i++) {
 			Entry e = ledger.rows.get(i);
@@ -940,15 +943,14 @@ public class ThreatWarBoard {
 					ThreatFactionView.SMALL_BUTTON_W + 10f, "Attack",
 					ThreatFactionView.BUTTON_SIEGE + Factions.PLAYER + ":" + e.systemId);
 			attack.getPosition().belowRight(ledger.table, -up).setXAlignOffset(-6f);
-			MarketAPI base = e.system != null ? IncursionManager.attackBase(player, e.system) : null;
-			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system, tiers[0], tiers[1])
+			String why = e.system != null ? IncursionManager.attackBlockReason(base, player, e.system, tiers[0], tiers[1], levers)
 					: "Nothing there to attack yet.";
 			boolean ok = mayOrder && e.isColony() && why == null;
 			ThreatFactionView.disableWith(main, attack, ok, blocked != null ? blocked
 					: why != null ? why : "Nothing there to attack yet.",
-					"The fleet deployed at " + (base != null ? base.getName() : "the nearest colony")
-					+ ", at the Fleet lever's share, holds the orbit up to " + (int) ThreatIncConfig.attackTermDays(tiers[1])
-					+ " days a world, razes the strata for the fuel aboard past the passage and lands its marines.");
+					"A fleet built at " + (base != null ? base.getName() : "the colony chosen") + " at the Fleet lever, loaded at the"
+					+ " colony levers, holds the orbit up to " + (int) ThreatIncConfig.attackTermDays(tiers[1])
+					+ " days a world, razes the strata with the fuel aboard past the passage and lands its marines.");
 			com.fs.starfarer.api.ui.ButtonAPI map = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
 					BUTTON_MAP + e.systemId);
 			map.getPosition().belowRight(ledger.table, -up)

@@ -4717,88 +4717,67 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	// and lands its marines under the landing gate as built (ThreatPurgeFGI).
 	// ------------------------------------------------------------------
 
-	/** What an Attack from a base against a system would sail with at the board's three ladders. */
+	/**
+	 * What an Attack from a colony against a system would sail with at the ledger's levers (the user,
+	 * 2026-10-31 evening: "it shouldnt use the deployed fleet should deploy from selected colony").
+	 */
 	public static class Attack {
+		/** The colony the fleet is built at and sails from: the ledger's Colony toggle (ThreatFactionView.attackSource). */
 		public MarketAPI base;
 		public StarSystemAPI system;
 		public java.util.List<MarketAPI> targets = new ArrayList<MarketAPI>();
 		/** The largest hive there: what the prompt's strata figures name. */
 		public MarketAPI target;
 		public java.util.List<Integer> sizes = new ArrayList<Integer>();
-		public java.util.List<ThreatFleetOrders.Order> staged = new ArrayList<ThreatFleetOrders.Order>();
-		/** Whole-fleet points of the flotilla. */
+		/** Whole-fleet points of the fleet built: the Fleet lever's outcome, within the colony's free hulls and one fleet (fleetMaxFP); 0 when the colony cannot field the smallest. */
 		public float points;
-		/** The passage's fuel, the fuel drawn in all, the fuel past the passage and the strata it razes. */
+		/** The colony's own free hulls, whole-fleet points (ThreatAidCapacity.ownFreeFP). */
+		public float free;
+		/** The Defense Swarms seen in the system the force is sized against (0: none seen) and the Fleet lever's margin. */
+		public float swarm, margin;
+		/** The passage's fuel, the fuel loaded, the fuel past the passage and the strata it razes. */
 		public float passage, fuel, razeFuel, strata;
 		/** Days of bombardment the fuel buys at the flotilla's rate. */
 		public float days;
-		/** The marines drawn, the base's pool and what the fleets could carry. */
+		/** The marines loaded, the colony's pool and what the fleet could carry. */
 		public float marines, marinesHave, lift;
-		/** Heavy armaments and supplies aboard the deployed fleet, and the supplies the expedition's deposit and hold take (expeditionWants). */
+		/** Heavy armaments and supplies loaded, and the supplies the expedition's deposit and hold take (expeditionWants) - the least the Supplies lever loads. */
 		public float arms, supplies, suppliesWant;
 		/** What the system could bud against it and the days that takes, from the player's reports. */
 		public float budFP, budDays;
 		/** Days of passage at the board's estimated speed. */
 		public float passageDays;
-		/** The ledger's Fleet lever (2026-10-31 evening): the Defense Swarms seen in the system the force is sized against (0: none seen, everything deployed sails), the tier's margin (0: no sizing asked), and the share of the deployed fleet that sails (1: all of it). */
-		public float swarm, margin, share = 1f;
-		/** Whole-fleet points deployed at the base before the sizing. */
-		public float deployed;
 		/** Days the attack holds each world (the ledger's Days lever, ThreatIncConfig.attackTermDays). */
 		public float term;
+		/** The colonies table's levers the load is sized at (ThreatIncursionIntel.colonyLevers). */
+		public int[] levers;
 	}
 
 	/**
-	 * The colony of the faction's an Attack on the system sails from: the nearest with a fleet
-	 * deployed over it (ThreatDeploy; ThreatFleetOrders.stagedAt), or null with none anywhere.
+	 * The Attack's own gate: null when it would sail, else why not - a colony to build at
+	 * (ThreatFactionView.attackSource), a target, the smallest fleet within the colony's free hulls,
+	 * the passage's fuel and the expedition's supplies within what the colony holds above its floor
+	 * (the levers' share, floored at those two figures; {@link #attackPlan}).
 	 */
-	public static MarketAPI attackBase(FactionAPI faction, StarSystemAPI system) {
-		if (faction == null || system == null) return null;
-		MarketAPI best = null;
-		float bestDist = Float.MAX_VALUE;
-		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
-			if (m.getStarSystem() == null || ThreatFleetOrders.stagedAt(m).isEmpty()) continue;
-			float d = Misc.getDistanceLY(m.getStarSystem().getLocation(), system.getLocation());
-			if (d < bestDist) {
-				bestDist = d;
-				best = m;
-			}
-		}
-		return best;
-	}
-
-	/**
-	 * The Attack's own gate: null when it would sail, else why not - a fleet deployed somewhere
-	 * ({@link #attackBase}), a target, the passage's fuel aboard it, the expedition's supplies
-	 * aboard it (the user, 2026-10-29: "the attack button is available assuming the staged fleet
-	 * has enough supplies and fuel, i.e. it checks what is deployed at staging").
-	 */
-	public static ThreatNotice.Reason attackBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
-		return attackBlockFacts(base, faction, system, -1, 1);
-	}
-
-	/** As above at the ledger's levers ({@link #attackPlan(MarketAPI, FactionAPI, StarSystemAPI, int, int)}): the fuel and supplies gates price the share that sails. */
 	public static ThreatNotice.Reason attackBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system,
-			int fleetTier, int daysTier) {
-		if (base == null) {
-			return ThreatNotice.Reason.of("No fleet deployed over a colony of yours")
-					.line("Deploy on a colony's row sizes one at the levers");
-		}
+			int fleetTier, int daysTier, int[] levers) {
+		if (base == null) return ThreatNotice.Reason.of("No colony of yours to attack from");
 		if (system == null || collectSiegeTargets(system).isEmpty()) {
 			return ThreatNotice.Reason.of("Nothing there to attack yet");
 		}
 		if (faction == null) return null;
-		Attack a = attackPlan(base, faction, system, fleetTier, daysTier);
+		Attack a = attackPlan(base, faction, system, fleetTier, daysTier, levers);
 		if (a.sizes.isEmpty() || a.points <= 0f) {
-			return ThreatNotice.Reason.of("No fleet deployed over %s", ThreatNotice.market(base));
+			return ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(base),
+					Misc.getWithDGS((int) a.free))
+					.line("A fleet needs at least %s", Misc.getWithDGS((int) Math.ceil(ThreatDeploy.minPoints())));
 		}
 		if (a.fuel < a.passage - 0.5f) {
-			return ThreatNotice.Reason.of("The fleet at %s carries %s fuel", ThreatNotice.market(base),
-					Misc.getWithDGS((int) a.fuel))
+			return ThreatNotice.Reason.of("%s has %s fuel for it", ThreatNotice.market(base), Misc.getWithDGS((int) a.fuel))
 					.line("The passage takes %s", Misc.getWithDGS((int) Math.ceil(a.passage)));
 		}
 		if (a.supplies < a.suppliesWant - 0.5f) {
-			return ThreatNotice.Reason.of("The fleet at %s carries %s supplies", ThreatNotice.market(base),
+			return ThreatNotice.Reason.of("%s has %s supplies for it", ThreatNotice.market(base),
 					Misc.getWithDGS((int) a.supplies))
 					.line("The attack takes %s", Misc.getWithDGS((int) Math.ceil(a.suppliesWant)));
 		}
@@ -4806,86 +4785,74 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/** {@link #attackBlockFacts} as one string for a button's disabled tooltip. */
-	public static String attackBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
-		return ThreatNotice.text(attackBlockFacts(base, faction, system));
-	}
-
-	/** As above at the ledger's levers. */
-	public static String attackBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int fleetTier, int daysTier) {
-		return ThreatNotice.text(attackBlockFacts(base, faction, system, fleetTier, daysTier));
+	public static String attackBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int fleetTier,
+			int daysTier, int[] levers) {
+		return ThreatNotice.text(attackBlockFacts(base, faction, system, fleetTier, daysTier, levers));
 	}
 
 	/**
-	 * The Attack from the base: the fleet(s) deployed over it (ThreatDeploy) as they are, with
-	 * everything aboard - the fuel pays the passage first and razes with the rest, the marines
-	 * and arms land, the supplies are the expedition's deposit and hold ({@link #expeditionWants}).
-	 * Until 2026-10-29 three ladders over the hives table sized the fleet, fuel and marines out
-	 * of the base's reserve; the levers on the Deploy do that now.
+	 * The Attack from the colony at the ledger's levers (2026-10-31 evening, the user: "it shouldnt use the
+	 * deployed fleet should deploy from selected colony"; the deployed fleet sailed whole from 2026-10-29 to
+	 * then, three ladders out of the base's reserve before that). A NEW fleet is built at the colony from its
+	 * own free hulls, sized by the Fleet lever as the Defend's tiers size theirs: against the Defense Swarms
+	 * seen in the system as the player's reports show them (ThreatIntel.systemFP) - matched at Min,
+	 * x orbitTierMedMargin at Med, x orbitTierMaxMargin at Max; nothing seen, the smallest fleet / half /
+	 * all of the free hulls - never under ThreatDeploy.minPoints, never over the free hulls or one fleet
+	 * (fleetMaxFP). It is loaded at the colonies table's levers exactly as a Deploy is (ThreatDeploy.plan:
+	 * each good the lever's share of what the colony spares), the fuel never under the passage and the
+	 * supplies never under what the expedition takes while the colony holds them above its floor. The
+	 * {@code daysTier} is the term it holds each world (ThreatIncConfig.attackTermDays).
 	 */
-	public static Attack attackPlan(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
-		return attackPlan(base, faction, system, -1, 1);
-	}
-
-	/**
-	 * As above at the ledger's levers (2026-10-31 evening, the user: "we need fleet and days toggle like we have
-	 * for the defend button"): {@code fleetTier} sizes the force against the Defense Swarms seen in the system as
-	 * the player's reports show them (ThreatIntel.systemFP) - matched at Min, by orbitTierMedMargin at Med,
-	 * orbitTierMaxMargin at Max - and that share of the deployed fleet sails with that share of what it carries,
-	 * the rest staying deployed (ThreatFleetOrders.detachStaged at the launch); never under the smallest fleet a
-	 * Deploy makes, and everything deployed when nothing is seen there or the swarm outweighs it; -1 everything
-	 * deployed, no sizing. {@code daysTier} is the term it holds each world (ThreatIncConfig.attackTermDays).
-	 */
-	public static Attack attackPlan(MarketAPI base, FactionAPI faction, StarSystemAPI system, int fleetTier, int daysTier) {
+	public static Attack attackPlan(MarketAPI base, FactionAPI faction, StarSystemAPI system, int fleetTier, int daysTier,
+			int[] levers) {
 		Attack a = new Attack();
 		a.base = base;
 		a.system = system;
 		a.term = ThreatIncConfig.attackTermDays(daysTier);
+		a.levers = levers != null && levers.length >= 4 ? levers : new int[] { 1, 1, 1, 1, 1, 1 };
 		if (base == null || faction == null || system == null) return a;
 		a.targets = collectSiegeTargets(system);
 		for (MarketAPI m : a.targets) {
 			if (a.target == null || ThreatStrata.of(m) > ThreatStrata.of(a.target)) a.target = m;
 		}
-		// the fleet deployed at the base; one fleet since ONE FLEET, several from an older save
-		java.util.List<CampaignFleetAPI> fleets = new ArrayList<CampaignFleetAPI>();
-		float combat = 0f;
-		for (ThreatFleetOrders.Order o : ThreatFleetOrders.stagedAt(base)) {
-			CampaignFleetAPI f = o.fleet;
-			if (ThreatAidCapacity.heldBy(f) == null) continue;
-			a.staged.add(o);
-			fleets.add(f);
-			a.deployed += ThreatAidCapacity.liveFP(f);
-			combat += ThreatSoftening.combatFP(f);
-		}
-		// the Fleet lever: the share of it the outcome asks for
-		if (fleetTier >= 0 && combat > 0f) {
-			a.swarm = ThreatIntel.systemFP(ThreatIntel.observerOf(faction), system.getId());
-			a.margin = fleetTier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
-					: fleetTier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
-			if (a.swarm > 0f) {
-				a.share = Math.min(1f, a.swarm * Math.max(1f, a.margin) / combat);
-				float least = ThreatDeploy.minPoints();
-				if (a.share < 1f && a.deployed * a.share < least) a.share = Math.min(1f, least / Math.max(1f, a.deployed));
-			}
-		}
-		for (CampaignFleetAPI f : fleets) {
-			a.sizes.add(stagedSize(ThreatAidCapacity.liveFP(f) * a.share));
-			a.fuel += ThreatReturns.fuelAboard(f) * a.share;
-			a.supplies += ThreatReturns.hold(f) * a.share;
-			a.marines += (int) (f.getCargo().getMarines() * a.share);
-			a.arms += f.getCargo().getCommodityQuantity(com.fs.starfarer.api.impl.campaign.ids.Commodities.HAND_WEAPONS) * a.share;
-		}
-		a.points = ThreatAidCapacity.expeditionPoints(a.sizes);
+		// the fleet: the Fleet lever's outcome within the colony's own free hulls and one fleet
+		a.free = Math.max(0f, ThreatAidCapacity.ownFreeFP(base));
+		float least = ThreatDeploy.minPoints();
+		float cap = Math.min(a.free, ThreatIncConfig.fleetMaxFP());
+		a.swarm = ThreatIntel.systemFP(ThreatIntel.observerOf(faction), system.getId());
+		a.margin = fleetTier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
+				: fleetTier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
+		float want = a.swarm > 0f ? ThreatAidCapacity.taskForcePoints(a.swarm * Math.max(1f, a.margin))
+				: fleetTier >= 2 ? cap : fleetTier == 1 ? cap / 2f : least;
+		a.points = a.free < least - 0.5f ? 0f : (float) Math.floor(Math.min(cap, Math.max(least, want)));
+		if (a.points > 0f) a.sizes.add(stagedSize(a.points));
 		a.passage = expeditionPassage(base, system, a.sizes);
-		a.razeFuel = Math.max(0f, a.fuel - a.passage);
-		a.strata = ThreatGroundFronts.fuelPerStratum() > 0f ? a.razeFuel / ThreatGroundFronts.fuelPerStratum() : 0f;
-		float perDay = ThreatGroundFronts.hiveRazePerDay(a.points);
-		a.days = perDay > 0f ? a.strata / perDay : 0f;
-		a.marinesHave = a.marines;
-		a.lift = siegeRaidStrEstimate(a.sizes);
 		// the supplies the expedition takes: its hulls' deposit and the hold for the passage and
 		// the siege's months (expeditionWants; every world lands, nothing razed by plan)
 		a.suppliesWant = a.sizes.isEmpty() ? 0f
 				: expeditionWants(base, system, a.targets, a.sizes, new java.util.HashSet<String>(), 0f, 0f)[3];
+		// the load at the colonies table's levers (the Deploy's rule), the fuel floored at the passage and
+		// the supplies at the expedition's figure while the colony holds them above its floor
+		float[] load = new float[4];
+		for (int i = 0; i < 4; i++) {
+			load[i] = (float) Math.floor(ThreatConvoys.share(a.levers[i]) * ThreatConvoys.handSpare(base, ThreatReserves.COMMODITIES[i]));
+		}
+		if (load[2] < a.passage && ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) >= a.passage - 0.5f) {
+			load[2] = (float) Math.ceil(a.passage);
+		}
+		if (load[3] < a.suppliesWant && ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) >= a.suppliesWant - 0.5f) {
+			load[3] = (float) Math.ceil(a.suppliesWant);
+		}
+		a.marines = load[0];
+		a.arms = load[1];
+		a.fuel = load[2];
+		a.supplies = load[3];
+		a.razeFuel = Math.max(0f, a.fuel - a.passage);
+		a.strata = ThreatGroundFronts.fuelPerStratum() > 0f ? a.razeFuel / ThreatGroundFronts.fuelPerStratum() : 0f;
+		float perDay = ThreatGroundFronts.hiveRazePerDay(a.points);
+		a.days = perDay > 0f ? a.strata / perDay : 0f;
+		a.marinesHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+		a.lift = siegeRaidStrEstimate(a.sizes);
 		// the system's answer, as the player's reports show it (ThreatIntel.Report.budFP)
 		ThreatIntel.Report r = ThreatIntel.report(Factions.PLAYER, system);
 		if (r != null) {
@@ -4899,34 +4866,48 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * Sails the Attack: the siege expedition in attack mode with the deployed fleet - the Fleet lever's share of it
-	 * carved off to sail, the rest staying deployed (ThreatFleetOrders.detachStaged; whole where nothing can be
-	 * carved) - and everything aboard what sails, holding each world the Days lever's term. The plan's sizes and
-	 * goods are re-read from the fleets that actually sail. Null when refused.
+	 * Sails the Attack: the fleet is built at the colony (ThreatDeploy.build), staged over it for the
+	 * moment and loaded at the levers (ThreatDeploy.load; the fuel topped up to the passage), then the
+	 * siege expedition sails in attack mode with it and everything aboard it, holding each world the
+	 * Days lever's term. The plan's figures are re-read from the fleet as built. Null when refused -
+	 * a fleet built and then refused stands down where it is, its goods back in the reserve.
 	 */
 	public static ThreatPurgeFGI launchAttack(Attack a, FactionAPI faction, Random random) {
-		if (a == null || a.base == null || a.system == null || a.targets.isEmpty() || a.sizes.isEmpty()) return null;
-		java.util.List<ThreatFleetOrders.Order> sail = a.staged;
-		if (a.share < 0.999f) {
-			sail = new ArrayList<ThreatFleetOrders.Order>();
-			for (ThreatFleetOrders.Order o : a.staged) {
-				ThreatFleetOrders.Order piece = ThreatFleetOrders.detachStaged(o, a.base, faction, a.share, random);
-				sail.add(piece != null ? piece : o);
-			}
-			a.sizes.clear();
-			a.fuel = 0f;
-			a.marines = 0f;
-			for (ThreatFleetOrders.Order o : sail) {
-				if (o.fleet == null) continue;
-				a.sizes.add(stagedSize(ThreatAidCapacity.liveFP(o.fleet)));
-				a.fuel += ThreatReturns.fuelAboard(o.fleet);
-				a.marines += o.fleet.getCargo().getMarines();
-			}
-			a.points = ThreatAidCapacity.expeditionPoints(a.sizes);
-			if (a.sizes.isEmpty()) return null;
+		if (a == null || a.base == null || a.system == null || a.targets.isEmpty() || a.points <= 0f) return null;
+		ThreatBases.Base at = ThreatBases.of(a.base);
+		if (at == null) return null;
+		String label = "attack on the " + a.system.getNameWithLowercaseType();
+		float[] got = new float[] { 0f };
+		CampaignFleetAPI lead = ThreatDeploy.build(a.base, faction, a.points / ThreatAidCapacity.TASK_FORCE_HULL_MULT, null,
+				at, label, got);
+		if (lead == null) return null;
+		ThreatFleetOrders.Order order = ThreatFleetOrders.guardOrder(lead, faction, at, a.base,
+				ThreatIncConfig.guardOwnDays(), false);
+		order.arrived = true;
+		float[] back = new float[4];
+		float[] now = ThreatDeploy.load(lead, a.base, a.levers, a.suppliesWant, back);
+		if (now[2] < a.passage - 0.5f) {
+			float more = (float) Math.floor(ThreatReserves.drawAbove(a.base,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, a.passage - now[2]));
+			if (more > 0f) ThreatReturns.setFuelAboard(lead, now[2] + more);
 		}
-		return launchSiegeExpedition(a.base, faction, a.system, a.targets, a.sizes, true, random, a.marines,
-				new java.util.HashSet<String>(), null, sail, 0f, a.fuel, true, a.term);
+		a.sizes.clear();
+		a.sizes.add(stagedSize(ThreatAidCapacity.liveFP(lead)));
+		a.points = ThreatAidCapacity.expeditionPoints(a.sizes);
+		a.marines = lead.getCargo().getMarines();
+		a.arms = lead.getCargo().getCommodityQuantity(com.fs.starfarer.api.impl.campaign.ids.Commodities.HAND_WEAPONS);
+		a.fuel = ThreatReturns.fuelAboard(lead);
+		a.supplies = ThreatReturns.hold(lead);
+		a.razeFuel = Math.max(0f, a.fuel - a.passage);
+		a.strata = ThreatGroundFronts.fuelPerStratum() > 0f ? a.razeFuel / ThreatGroundFronts.fuelPerStratum() : 0f;
+		java.util.List<ThreatFleetOrders.Order> staged = new ArrayList<ThreatFleetOrders.Order>();
+		staged.add(order);
+		ThreatIncConfig.log("Attack built at " + a.base.getName() + " for the " + a.system.getName() + ": " + (int) a.points
+				+ " FP, aboard " + ThreatDeploy.loadText(new float[] { a.marines, a.arms, a.fuel, a.supplies }));
+		ThreatPurgeFGI purge = launchSiegeExpedition(a.base, faction, a.system, a.targets, a.sizes, true, random, a.marines,
+				new java.util.HashSet<String>(), null, staged, 0f, a.fuel, true, a.term);
+		if (purge == null) ThreatFleetOrders.fold(order, a.base);
+		return purge;
 	}
 
 	/**

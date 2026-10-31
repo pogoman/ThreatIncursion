@@ -31,11 +31,11 @@ import com.fs.starfarer.api.util.Misc;
  * "cant deploy to arkoman despite having 5k+ hulls at haven") - an outpost's or a hive's row
  * always the nearest - the fleet built and loaded there and sailed over.
  *
- * <p>What is deployed is what an Attack sails (IncursionManager.attackPlan: the nearest colony
- * with a fleet deployed, everything aboard it - the passage out of the fuel first, the rest
- * razes; the Attack button is off while the fleet carries less fuel than the passage or fewer
- * supplies than the expedition's hold). Nothing of this draws for a voyage: the levers are the
- * cost, chosen by the player.
+ * <p>The ledger's Attack is a Deploy that sails (IncursionManager.attackPlan / launchAttack, 2026-10-31
+ * evening): a fleet built here ({@link #build}) at the colony the ledger's Colony toggle names, sized by
+ * its Fleet lever, loaded at these levers ({@link #load}) with the fuel floored at the passage and the
+ * supplies at the expedition's figure, and sailed at once with everything aboard. Nothing of this draws
+ * for a voyage: the levers are the cost, chosen by the player.
  */
 public class ThreatDeploy {
 
