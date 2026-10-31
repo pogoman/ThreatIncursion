@@ -504,7 +504,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAcademyFleetGuard.createRouteParams(MiscFleetRouteManager manager, java.util.Random random)` :36
 - `ThreatAcademyFleetGuard.install()` :47 - Replaces vanilla's academy creator with Academy in the route manager's static list.
 
-## ThreatAid (1289 lines)
+## ThreatAid (1303 lines)
 - `ThreatAid.ok()` :82 - What a force sized for an outcome is sized against, one line for its prompt ("Against N fleet points of Defense Swarms seen");
 ### who may receive
 - `ThreatAid.canAid(FactionAPI faction)` :92 - Why the player cannot aid this faction, or null if they can.
@@ -570,23 +570,24 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAid.valueAt(MarketAPI market, String commodityId, float quantity)` :1030 - One unit's price to the receiving market, times the quantity.
 - `ThreatAid.rep(String factionId, float points, TextPanelAPI text)` :1050 - Standing with the faction:
 - `ThreatAid.standingText(float points)` :1061 - A standing change for a label or notice:
-- `ThreatAid.standingFor(MarketAPI market, String good, float amount)` :1075 - STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31:
-- `ThreatAid.standingFor(MarketAPI market, float[] load, int hullUnits)` :1089 - As above for a load in AID_COMMODITIES order, hull units in the fifth slot or hullUnits:
-- `ThreatAid.capped(float points)` :1101 - aidRepMaxPerDelivery above 0 caps a delivery's points;
-- `ThreatAid.rewardEstimate(MarketAPI market, float[] load, int hullUnits)` :1107 - The NPC tabs' Standing column:
-- `ThreatAid.rewardEstimate(MarketAPI market, String good, float amount)` :1112 - As above for an amount of one good.
-- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights)` :1123 - Goods landed at another faction's colony, by convoy or by hand.
-- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :1152 - The player's guard reached the colony it defends:
-- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :1167
-- `ThreatAid.target(ThreatFleetOrders.Order o)` :1180 - The order's target for a line:
-- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :1186 - A task force at a hive's door:
-- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :1218 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
+- `ThreatAid.standingFor(MarketAPI market, String good, float amount)` :1082 - STANDING, ONE RATE BOTH WAYS (the user, 2026-10-31:
+- `ThreatAid.pointsFor(float value)` :1095 - Standing points for a delivery's value in credits:
+- `ThreatAid.standingFor(MarketAPI market, float[] load, int hullUnits)` :1103 - As above for a load in AID_COMMODITIES order, hull units in the fifth slot or hullUnits:
+- `ThreatAid.capped(float points)` :1115 - aidRepMaxPerDelivery above 0 caps a delivery's points;
+- `ThreatAid.rewardEstimate(MarketAPI market, float[] load, int hullUnits)` :1121 - The NPC tabs' Standing column:
+- `ThreatAid.rewardEstimate(MarketAPI market, String good, float amount)` :1126 - As above for an amount of one good.
+- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights)` :1137 - Goods landed at another faction's colony, by convoy or by hand.
+- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :1166 - The player's guard reached the colony it defends:
+- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :1181
+- `ThreatAid.target(ThreatFleetOrders.Order o)` :1194 - The order's target for a line:
+- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :1200 - A task force at a hive's door:
+- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :1232 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
 ### presence, for the defence contract
-- `ThreatAid.playerAssetIn(MarketAPI market)` :1246 - The player's fleet, or a player guard on station, in the colony's system.
+- `ThreatAid.playerAssetIn(MarketAPI market)` :1260 - The player's fleet, or a player guard on station, in the colony's system.
 ### the board's lists
-- `ThreatAid.aidOrdersFor(String recipientFactionId)` :1266 - Player aid task forces bound for this faction's colonies (or, with null, the front).
-- `ThreatAid.aidConvoysFor(String recipientFactionId)` :1276
-- `ThreatAid.keep(Commodities c)` :1287 - Unused-import guard.
+- `ThreatAid.aidOrdersFor(String recipientFactionId)` :1280 - Player aid task forces bound for this faction's colonies (or, with null, the front).
+- `ThreatAid.aidConvoysFor(String recipientFactionId)` :1290
+- `ThreatAid.keep(Commodities c)` :1301 - Unused-import guard.
 
 ## ThreatAidAnswersIntel (191 lines)
 - `ThreatAidAnswersIntel.ThreatAidAnswersIntel(MarketAPI market, String asked)` :58
@@ -2792,7 +2793,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(SectorEntityToken target)` :31
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(Object param, SectorEntityToken target)` :41 - A notice's click asks through this overload, with a null param (ThreatNoticeClickDialog).
 
-## ThreatIncConfig (1257 lines)
+## ThreatIncConfig (1259 lines)
 - `ThreatIncConfig.lunaAvailable()` :15
 - `ThreatIncConfig.luna(String key)` :29 - Whether LunaLib holds this knob:
 - `ThreatIncConfig.i(String key)` :44
@@ -3264,95 +3265,96 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncConfig.aidMinRelation()` :1060 - Relationship (-1..1) below which a faction refuses the player's aid;
 - `ThreatIncConfig.aidRepPerCredits()` :1062 - Credits of delivered goods, at the receiving market's price, per point of standing.
 - `ThreatIncConfig.aidRepMaxPerDelivery()` :1064 - Most standing points one delivery earns.
-- `ThreatIncConfig.aidRepGuardArrived()` :1066 - The least standing a guard earns arriving on station (its fleet points as ship hulls when worth more, ThreatAid.standingFor).
-- `ThreatIncConfig.aidRepGuardCompleted()` :1068 - Standing points for a guard serving its full term.
-- `ThreatIncConfig.aidRepFrontTotal()` :1070 - Standing points split among every faction in a hive's strike reach for a task force at its door.
-- `ThreatIncConfig.aidRequestsEnabled()` :1072 - REQUEST AID (2026-10-23, docs/war-effort-rework.md 3):
-- `ThreatIncConfig.aidRequestMinSpare()` :1074 - The least a colony must spare of a good to answer the player's request with it (ThreatAidRequests.donors;
-- `ThreatIncConfig.aidRequestCheckDays()` :1076 - Days between one faction's looks at a request for aid (2026-10-29 evening:
-- `ThreatIncConfig.aidRequestBesetWeight()` :1078 - How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) gates its answer:
-- `ThreatIncConfig.aidRequestBesetDelay()` :1080 - How a faction's besetness stretches the days between its looks at a call (2026-10-31):
-- `ThreatIncConfig.aidAskTier()` :1082 - THE SECTOR'S ASKS OF THE PLAYER (2026-10-31 evening):
-- `ThreatIncConfig.aidAskGraceDays()` :1084 - Days an NPC world's ask is the player's alone before other factions may answer it (ThreatAidRequests.sectorMayAnswer).
-- `ThreatIncConfig.aidAnswerShownDays()` :1086 - Days an answered ask stays on the faction's tab after the answer lands (ThreatAidRequests.tickAsks).
-- `ThreatIncConfig.aidAskPriceMin()` :1088 - Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived).
-- `ThreatIncConfig.aidAskPriceMed()` :1089
-- `ThreatIncConfig.aidAskPriceMax()` :1090
-- `ThreatIncConfig.aidExpeditionNoteDays()` :1092 - Days a postponed siege's provisions need stands on the ledger (ThreatNeeds.notePostponed).
-- `ThreatIncConfig.aidRepWeightCritical()` :1094 - Standing weights for giving, by purpose (ThreatNeeds.weight):
-- `ThreatIncConfig.aidRepWeightUrgent()` :1095
-- `ThreatIncConfig.aidRepWeightRoutine()` :1096
-- `ThreatIncConfig.aidRepWeightSurplus()` :1097
-- `ThreatIncConfig.defendRequestRatio()` :1099 - A defence is requested when the strike's strength exceeds the defenders' times this.
-- `ThreatIncConfig.missionAidShortageDays()` :1101 - Days a vanilla deficit must stand before a colony's depot need goes on the ledger (ThreatAidRequests.shortageStanding).
-- `ThreatIncConfig.allyAidEnabled()` :1103 - Whether allied mobilised factions guard and resupply each other's colonies.
-- `ThreatIncConfig.allyAidChance()` :1105 - Chance per tick per need that a fully willing ally sends aid;
-- `ThreatIncConfig.coalitionRelief()` :1107 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
-- `ThreatIncConfig.reliefOneBody()` :1109 - ONE BODY OR NONE (2026-10-20):
-- `ThreatIncConfig.siegeStockMonths()` :1111 - A SIEGE IS PAID FROM THE STOCK (2026-10-21):
-- `ThreatIncConfig.coalitionHullCap()` :1113 - Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls);
-- `ThreatIncConfig.reliefCoalitionNoBase()` :1115 - A:
-- `ThreatIncConfig.allyAidJointRelief()` :1117 - B:
-- `ThreatIncConfig.alarmEnabled()` :1122 - Master switch for grudge, alarm and retaliation.
-- `ThreatIncConfig.alarmPerStratum()` :1124 - Grudge points a faction earns per stratum its front takes.
-- `ThreatIncConfig.alarmPerEradication()` :1126 - Grudge points per hive eradicated.
-- `ThreatIncConfig.alarmPerRaid()` :1128 - Grudge points per successful raid or tactical pass on a hive world.
-- `ThreatIncConfig.alarmDecayPer30()` :1130 - Fraction of every grudge that fades per 30 days.
-- `ThreatIncConfig.alarmTargetMult()` :1132 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
-- `ThreatIncConfig.retaliationEnabled()` :1134 - Whether a ground victory draws an immediate strike at the winner.
-- `ThreatIncConfig.coalitionEnabled()` :1139 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
-- `ThreatIncConfig.coalitionCallDays()` :1141 - Days a coalition call stays open.
-- `ThreatIncConfig.coalitionSupportChance()` :1143 - Chance per tick that an eligible ally answers a call with an Intercept task force.
-- `ThreatIncConfig.outpostsEnabled()` :1148 - Whether outposts can be built on purged worlds.
-- `ThreatIncConfig.outpostTier()` :1150 - Station tier:
-- `ThreatIncConfig.outpostCredits()` :1152 - Credits the player pays for an outpost.
-- `ThreatIncConfig.outpostSupplies()` :1154 - Supplies an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.outpostFuel()` :1156 - Fuel an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.frontlinesEnabled()` :1160
-- `ThreatIncConfig.frontlinePlanDays()` :1161
-- `ThreatIncConfig.frontlineLinkLY()` :1162
-- `ThreatIncConfig.frontlineReachLY()` :1163
-- `ThreatIncConfig.frontlineKeepLY()` :1164
-- `ThreatIncConfig.frontlineGrowDays()` :1165
-- `ThreatIncConfig.frontlineStarveDays()` :1166
-- `ThreatIncConfig.frontlineAbandonDays()` :1167
-- `ThreatIncConfig.frontlineRearGraceDays()` :1168
-- `ThreatIncConfig.pathTithes()` :1169
-- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1170
-- `ThreatIncConfig.pathTitheFuelPerSize()` :1171
-- `ThreatIncConfig.pathTitheMarinesPerSize()` :1172
-- `ThreatIncConfig.pathTitheSleeperFraction()` :1173
-- `ThreatIncConfig.pathMilitiaMult()` :1174
-- `ThreatIncConfig.pathZealotMarines()` :1175
-- `ThreatIncConfig.frontlineRelayAccess()` :1176
-- `ThreatIncConfig.frontlineStrikeWeight()` :1177
-- `ThreatIncConfig.frontlineReliefEnabled()` :1178
-- `ThreatIncConfig.strikeDetection()` :1179
-- `ThreatIncConfig.strikeDetectLY()` :1180
-- `ThreatIncConfig.permaHostile()` :1185 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
-- `ThreatIncConfig.bombardNoAtrocity()` :1187 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
-- `ThreatIncConfig.debugMode()` :1191
-- `ThreatIncConfig.debugLogging()` :1192
-- `ThreatIncConfig.debugForceStart()` :1193
-- `ThreatIncConfig.debugFastClock()` :1194
-- `ThreatIncConfig.debugGrantSensorMods()` :1195
-- `ThreatIncConfig.debugPlayerIgnored()` :1196
-- `ThreatIncConfig.debugSimDump()` :1197
-- `ThreatIncConfig.debugReset()` :1198
-- `ThreatIncConfig.debugInstantWar()` :1201
-- `ThreatIncConfig.debugInstantWarSystemsMin()` :1202
-- `ThreatIncConfig.debugInstantWarSystemsMax()` :1203
-- `ThreatIncConfig.debugInstantWarCoreMin()` :1204
-- `ThreatIncConfig.debugInstantWarCoreMax()` :1205
-- `ThreatIncConfig.debugInstantWarLinkLY()` :1206
-- `ThreatIncConfig.debugInstantWarCoreLY()` :1207
-- `ThreatIncConfig.debugInstantWarHomeSize()` :1208
-- `ThreatIncConfig.debugHiveFloorSize()` :1209
-- `ThreatIncConfig.debugInstantWarColonySize()` :1210
-- `ThreatIncConfig.log(String msg)` :1212
-- `ThreatIncConfig.logQuiet(String key, String msg)` :1226 - A line a poll repeats:
-- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1244 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
-- `ThreatIncConfig.forgetQuiet()` :1254 - Called on load:
+- `ThreatIncConfig.aidRepCurve()` :1066 - The power a delivery's value in rate units is raised to for its standing (ThreatAid.pointsFor):
+- `ThreatIncConfig.aidRepGuardArrived()` :1068 - The least standing a guard earns arriving on station (its fleet points as ship hulls when worth more, ThreatAid.standingFor).
+- `ThreatIncConfig.aidRepGuardCompleted()` :1070 - Standing points for a guard serving its full term.
+- `ThreatIncConfig.aidRepFrontTotal()` :1072 - Standing points split among every faction in a hive's strike reach for a task force at its door.
+- `ThreatIncConfig.aidRequestsEnabled()` :1074 - REQUEST AID (2026-10-23, docs/war-effort-rework.md 3):
+- `ThreatIncConfig.aidRequestMinSpare()` :1076 - The least a colony must spare of a good to answer the player's request with it (ThreatAidRequests.donors;
+- `ThreatIncConfig.aidRequestCheckDays()` :1078 - Days between one faction's looks at a request for aid (2026-10-29 evening:
+- `ThreatIncConfig.aidRequestBesetWeight()` :1080 - How hard a faction's besetness (the share of its worlds under a Threat army, blockade or strike) gates its answer:
+- `ThreatIncConfig.aidRequestBesetDelay()` :1082 - How a faction's besetness stretches the days between its looks at a call (2026-10-31):
+- `ThreatIncConfig.aidAskTier()` :1084 - THE SECTOR'S ASKS OF THE PLAYER (2026-10-31 evening):
+- `ThreatIncConfig.aidAskGraceDays()` :1086 - Days an NPC world's ask is the player's alone before other factions may answer it (ThreatAidRequests.sectorMayAnswer).
+- `ThreatIncConfig.aidAnswerShownDays()` :1088 - Days an answered ask stays on the faction's tab after the answer lands (ThreatAidRequests.tickAsks).
+- `ThreatIncConfig.aidAskPriceMin()` :1090 - Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived).
+- `ThreatIncConfig.aidAskPriceMed()` :1091
+- `ThreatIncConfig.aidAskPriceMax()` :1092
+- `ThreatIncConfig.aidExpeditionNoteDays()` :1094 - Days a postponed siege's provisions need stands on the ledger (ThreatNeeds.notePostponed).
+- `ThreatIncConfig.aidRepWeightCritical()` :1096 - Standing weights for giving, by purpose (ThreatNeeds.weight):
+- `ThreatIncConfig.aidRepWeightUrgent()` :1097
+- `ThreatIncConfig.aidRepWeightRoutine()` :1098
+- `ThreatIncConfig.aidRepWeightSurplus()` :1099
+- `ThreatIncConfig.defendRequestRatio()` :1101 - A defence is requested when the strike's strength exceeds the defenders' times this.
+- `ThreatIncConfig.missionAidShortageDays()` :1103 - Days a vanilla deficit must stand before a colony's depot need goes on the ledger (ThreatAidRequests.shortageStanding).
+- `ThreatIncConfig.allyAidEnabled()` :1105 - Whether allied mobilised factions guard and resupply each other's colonies.
+- `ThreatIncConfig.allyAidChance()` :1107 - Chance per tick per need that a fully willing ally sends aid;
+- `ThreatIncConfig.coalitionRelief()` :1109 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
+- `ThreatIncConfig.reliefOneBody()` :1111 - ONE BODY OR NONE (2026-10-20):
+- `ThreatIncConfig.siegeStockMonths()` :1113 - A SIEGE IS PAID FROM THE STOCK (2026-10-21):
+- `ThreatIncConfig.coalitionHullCap()` :1115 - Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls);
+- `ThreatIncConfig.reliefCoalitionNoBase()` :1117 - A:
+- `ThreatIncConfig.allyAidJointRelief()` :1119 - B:
+- `ThreatIncConfig.alarmEnabled()` :1124 - Master switch for grudge, alarm and retaliation.
+- `ThreatIncConfig.alarmPerStratum()` :1126 - Grudge points a faction earns per stratum its front takes.
+- `ThreatIncConfig.alarmPerEradication()` :1128 - Grudge points per hive eradicated.
+- `ThreatIncConfig.alarmPerRaid()` :1130 - Grudge points per successful raid or tactical pass on a hive world.
+- `ThreatIncConfig.alarmDecayPer30()` :1132 - Fraction of every grudge that fades per 30 days.
+- `ThreatIncConfig.alarmTargetMult()` :1134 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
+- `ThreatIncConfig.retaliationEnabled()` :1136 - Whether a ground victory draws an immediate strike at the winner.
+- `ThreatIncConfig.coalitionEnabled()` :1141 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
+- `ThreatIncConfig.coalitionCallDays()` :1143 - Days a coalition call stays open.
+- `ThreatIncConfig.coalitionSupportChance()` :1145 - Chance per tick that an eligible ally answers a call with an Intercept task force.
+- `ThreatIncConfig.outpostsEnabled()` :1150 - Whether outposts can be built on purged worlds.
+- `ThreatIncConfig.outpostTier()` :1152 - Station tier:
+- `ThreatIncConfig.outpostCredits()` :1154 - Credits the player pays for an outpost.
+- `ThreatIncConfig.outpostSupplies()` :1156 - Supplies an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.outpostFuel()` :1158 - Fuel an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.frontlinesEnabled()` :1162
+- `ThreatIncConfig.frontlinePlanDays()` :1163
+- `ThreatIncConfig.frontlineLinkLY()` :1164
+- `ThreatIncConfig.frontlineReachLY()` :1165
+- `ThreatIncConfig.frontlineKeepLY()` :1166
+- `ThreatIncConfig.frontlineGrowDays()` :1167
+- `ThreatIncConfig.frontlineStarveDays()` :1168
+- `ThreatIncConfig.frontlineAbandonDays()` :1169
+- `ThreatIncConfig.frontlineRearGraceDays()` :1170
+- `ThreatIncConfig.pathTithes()` :1171
+- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1172
+- `ThreatIncConfig.pathTitheFuelPerSize()` :1173
+- `ThreatIncConfig.pathTitheMarinesPerSize()` :1174
+- `ThreatIncConfig.pathTitheSleeperFraction()` :1175
+- `ThreatIncConfig.pathMilitiaMult()` :1176
+- `ThreatIncConfig.pathZealotMarines()` :1177
+- `ThreatIncConfig.frontlineRelayAccess()` :1178
+- `ThreatIncConfig.frontlineStrikeWeight()` :1179
+- `ThreatIncConfig.frontlineReliefEnabled()` :1180
+- `ThreatIncConfig.strikeDetection()` :1181
+- `ThreatIncConfig.strikeDetectLY()` :1182
+- `ThreatIncConfig.permaHostile()` :1187 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
+- `ThreatIncConfig.bombardNoAtrocity()` :1189 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
+- `ThreatIncConfig.debugMode()` :1193
+- `ThreatIncConfig.debugLogging()` :1194
+- `ThreatIncConfig.debugForceStart()` :1195
+- `ThreatIncConfig.debugFastClock()` :1196
+- `ThreatIncConfig.debugGrantSensorMods()` :1197
+- `ThreatIncConfig.debugPlayerIgnored()` :1198
+- `ThreatIncConfig.debugSimDump()` :1199
+- `ThreatIncConfig.debugReset()` :1200
+- `ThreatIncConfig.debugInstantWar()` :1203
+- `ThreatIncConfig.debugInstantWarSystemsMin()` :1204
+- `ThreatIncConfig.debugInstantWarSystemsMax()` :1205
+- `ThreatIncConfig.debugInstantWarCoreMin()` :1206
+- `ThreatIncConfig.debugInstantWarCoreMax()` :1207
+- `ThreatIncConfig.debugInstantWarLinkLY()` :1208
+- `ThreatIncConfig.debugInstantWarCoreLY()` :1209
+- `ThreatIncConfig.debugInstantWarHomeSize()` :1210
+- `ThreatIncConfig.debugHiveFloorSize()` :1211
+- `ThreatIncConfig.debugInstantWarColonySize()` :1212
+- `ThreatIncConfig.log(String msg)` :1214
+- `ThreatIncConfig.logQuiet(String key, String msg)` :1228 - A line a poll repeats:
+- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1246 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
+- `ThreatIncConfig.forgetQuiet()` :1256 - Called on load:
 
 ## ThreatIncData (518 lines)
 - `ThreatIncData.list(String key)` :74

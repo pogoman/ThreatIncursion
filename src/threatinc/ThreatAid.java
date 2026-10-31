@@ -1071,18 +1071,32 @@ public class ThreatAid {
 	 * least: it was aidRepGuardArrived flat whatever the size until 2026-10-31 (the user, of a
 	 * 3,214 FP fleet beside 12,000 fuel at +43: "+3 standing??????????????").
 	 * aidRepMaxPerDelivery caps it only when above 0 (0 by default now).
+	 *
+	 * <p>ON A CURVE since 2026-10-31 evening ({@link #pointsFor}: (value / aidRepPerCredits) to the
+	 * power aidRepCurve, 0.5): a linear rate could not serve both ends of a 60x range of deliveries -
+	 * at 10,000 credits a point 4,100 FP of hulls read +410 (the user: "YOU HAVE GOT TO BE FUCKING
+	 * JOKING"), at a rate that read that sanely a 2,000-fuel convoy earned nothing. The root: 2,000
+	 * fuel +3, 12,000 fuel +7, 2,375 marines +7, 1,944 armaments +10, a 590 FP hull offer 8 charged,
+	 * a 3,214 FP fleet +18, 4,100 FP of hulls +20 - vanilla's scale, the big favours still the biggest.
 	 */
 	public static float standingFor(MarketAPI market, String good, float amount) {
 		if (amount <= 0f || good == null) return 0f;
 		if (ThreatNeeds.FLEETS.equals(good)) {
 			float floor = Math.max(0f, ThreatIncConfig.aidRepGuardArrived());
 			if (market == null) return floor;
-			float points = capped(valueAt(market, Commodities.SHIPS, amount / ThreatHulls.unitFP())
-					/ Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+			float points = pointsFor(valueAt(market, Commodities.SHIPS, amount / ThreatHulls.unitFP()));
 			return Math.max(floor, points);
 		}
 		if (market == null) return 0f;
-		return capped(valueAt(market, good, amount) / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+		return pointsFor(valueAt(market, good, amount));
+	}
+
+	/** Standing points for a delivery's value in credits: (value / aidRepPerCredits) to the power aidRepCurve (0.5 - the square root), capped only when aidRepMaxPerDelivery is above 0. */
+	public static float pointsFor(float value) {
+		if (value <= 0f) return 0f;
+		float units = value / Math.max(1f, ThreatIncConfig.aidRepPerCredits());
+		float curve = ThreatIncConfig.aidRepCurve();
+		return capped(curve > 0f && curve != 1f ? (float) Math.pow(units, curve) : units);
 	}
 
 	/** As above for a load in AID_COMMODITIES order, hull units in the fifth slot or {@code hullUnits}: one figure for the whole delivery. */
@@ -1094,7 +1108,7 @@ public class ThreatAid {
 			if (i == ThreatReserves.AID_COMMODITIES.length - 1 && hullUnits > 0) q += hullUnits;
 			if (q > 0f) value += valueAt(market, ThreatReserves.AID_COMMODITIES[i], q);
 		}
-		return capped(value / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
+		return pointsFor(value);
 	}
 
 	/** aidRepMaxPerDelivery above 0 caps a delivery's points; 0 leaves them to the rate. */

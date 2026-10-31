@@ -1329,6 +1329,11 @@
 	# faction in the hive's reach
 	"threatinc_aidRepPerCredits": 10000,
 	"threatinc_aidRepMaxPerDelivery": 0,
+	# aidRepCurve (2026-10-31 evening): standing = (value / aidRepPerCredits) ^ this, earned and charged alike. 1 is
+	# linear - which read +410 for 4,100 FP of hulls while a 2,000-fuel convoy would earn nothing at any rate that
+	# read it sanely. 0.5, the square root, at 10,000 credits a unit: 2,000 fuel +3, 12,000 fuel +7, 2,375 marines
+	# +7, 1,944 armaments +10, a 590 FP hull offer 8 charged, a 3,214 FP task force +18, 4,100 FP of hulls +20.
+	"threatinc_aidRepCurve": 0.5,
 	"threatinc_aidRepGuardArrived": 3,
 	"threatinc_aidRepGuardCompleted": 2,
 	"threatinc_aidRepFrontTotal": 5,
