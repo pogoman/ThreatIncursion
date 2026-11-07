@@ -1761,5 +1761,11 @@
 	# the normal growth step. Fires once per value; 0 = off. For catching a
 	# save up after a stall.
 	"threatinc_debugHiveFloorSize": 0,
+	# Reclaimed Swarm (fires once when toggled on): every live hive world's reclaimed-hull ledger is
+	# seeded with debugReclaimedSeedFP of converted-hull shapes, and a swarm of the "reclaimed"
+	# archetype, debugReclaimedSwarmFP, buds from the hive nearest the player and intercepts them.
+	"threatinc_debugReclaimedSwarm": false,
+	"threatinc_debugReclaimedSwarmFP": 400,
+	"threatinc_debugReclaimedSeedFP": 3000,
 	"threatinc_debugReset": false,
 }

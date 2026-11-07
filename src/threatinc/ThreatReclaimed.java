@@ -257,6 +257,29 @@ public final class ThreatReclaimed {
 		return booked;
 	}
 
+	/**
+	 * Debug (ThreatDebugWar.pollReclaimed): about {@code fp} points of shapes put on the world's ledger,
+	 * one of every converted hull in turn until the points are spent - no strata, nothing destroyed.
+	 * Returns the shapes booked.
+	 */
+	public static int seed(MarketAPI world, float fp) {
+		index();
+		if (world == null || fp <= 0f || convertedByBase.isEmpty()) return 0;
+		List<String> bases = new ArrayList<String>(convertedByBase.keySet());
+		java.util.Collections.sort(bases);
+		float left = fp;
+		int booked = 0;
+		while (left > 0f && booked < 2000) {
+			for (String base : bases) {
+				if (left <= 0f) break;
+				bump(world, base, 1);
+				left -= Math.max(1f, hullFP(base));
+				booked++;
+			}
+		}
+		return booked;
+	}
+
 	// ------------------------------------------------------------------
 	// where a claim goes
 	// ------------------------------------------------------------------

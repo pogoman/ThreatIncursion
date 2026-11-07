@@ -146,4 +146,14 @@ reclaimed. `ThreatReclaimed`:
 - **Seen**: the debug board's hive section lists "Reclaimed hulls" (total shapes, FP, each world's
   summary). Nothing on the war board.
 
-Untested in-game beyond a clean load.
+- **Testing it (debug, 2026-11-08)**: the LunaLib switch "Reclaimed Swarm" (`threatinc_debugReclaimedSwarm`,
+  fires once per toggle-on, `ThreatDebugWar.pollReclaimed`) seeds every live hive world's ledger with
+  `threatinc_debugReclaimedSeedFP` (3000) of shapes, one of every converted hull in turn, then buds a
+  "Reclaimed Swarm" of the `reclaimed` archetype at `threatinc_debugReclaimedSwarmFP` (400) from the
+  hive nearest the player (`ThreatFleetComposer.createArchetype`), tagged as that hive's garrison,
+  places it 1,500 units from the player's fleet in their location and orders it to intercept them for
+  60 days. A notice reports the ship count, converted count and FP. Turn the switch off afterward or
+  it fires again on the next save loaded with it on. The seeded shapes stay on the ledgers, so the
+  worlds' later buds carry converted hulls too.
+
+Untested in-game beyond a clean load: the switch above is how.

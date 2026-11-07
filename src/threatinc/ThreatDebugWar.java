@@ -124,6 +124,76 @@ public class ThreatDebugWar {
 		}
 	}
 
+	public static final String KEY_RECLAIMED_LATCH = "threatinc_reclaimedSwarmLatched";
+
+	/**
+	 * Reclaimed Swarm (threatinc_debugReclaimedSwarm, fires once per toggle-on; 2026-11-08, to test
+	 * the converted hulls in a real battle from a mid-war save): every live hive world's reclaimed-hull
+	 * ledger is seeded with debugReclaimedSeedFP of shapes drawn from every converted hull, then a swarm
+	 * of the "reclaimed" archetype, debugReclaimedSwarmFP, buds from the hive nearest the player and
+	 * is placed beside the player's fleet with orders to intercept it. Turn the switch off afterward.
+	 */
+	public static void pollReclaimed() {
+		if (!ThreatIncConfig.debugReclaimedSwarm()) {
+			Global.getSector().getPersistentData().remove(KEY_RECLAIMED_LATCH);
+			return;
+		}
+		if (Boolean.TRUE.equals(Global.getSector().getPersistentData().get(KEY_RECLAIMED_LATCH))) return;
+		Global.getSector().getPersistentData().put(KEY_RECLAIMED_LATCH, true);
+		try {
+			List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
+			if (hives.isEmpty()) {
+				ThreatNotice.titled("Debug: Reclaimed Swarm").bad().line("No live hive world to bud from.").send();
+				return;
+			}
+			int shapes = 0;
+			float seedFP = ThreatIncConfig.debugReclaimedSeedFP();
+			for (MarketAPI m : hives) shapes += ThreatReclaimed.seed(m, seedFP);
+			com.fs.starfarer.api.campaign.CampaignFleetAPI player = Global.getSector().getPlayerFleet();
+			MarketAPI home = player != null ? ThreatReclaimed.nearest(player.getLocationInHyperspace()) : null;
+			if (home == null) home = hives.get(0);
+			float fp = ThreatIncConfig.debugReclaimedSwarmFP();
+			Random random = new Random();
+			com.fs.starfarer.api.campaign.CampaignFleetAPI fleet =
+					ThreatFleetComposer.createArchetype("reclaimed", fp, random, home);
+			if (fleet == null || fleet.getFleetData().getNumMembers() == 0) {
+				ThreatNotice.titled("Debug: Reclaimed Swarm").bad()
+						.line("No swarm could be built (archetypes off, or no reclaimed archetype).").send();
+				return;
+			}
+			fleet.setName("Reclaimed Swarm");
+			fleet.getMemoryWithoutUpdate().set(ThreatColonyManager.GARRISON_FLAG, home.getId());
+			ThreatColonyManager.makeDetectable(fleet);
+			int converted = 0;
+			for (com.fs.starfarer.api.fleet.FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+				if (m.getHullSpec().hasTag(ThreatFleetComposer.CONVERTED_TAG)) converted++;
+			}
+			if (player != null && player.getContainingLocation() != null) {
+				player.getContainingLocation().addEntity(fleet);
+				org.lwjgl.util.vector.Vector2f p = player.getLocation();
+				fleet.setLocation(p.x + 1500f, p.y + 1500f);
+				fleet.addAssignment(com.fs.starfarer.api.campaign.FleetAssignment.INTERCEPT, player, 60f,
+						"intercepting your fleet");
+				fleet.addAssignment(com.fs.starfarer.api.campaign.FleetAssignment.HOLD, null, 365f);
+			} else {
+				ThreatColonyManager.placeGarrisonSwarm(home, fleet, random);
+			}
+			Global.getLogger(ThreatDebugWar.class).info("[ThreatInc] Reclaimed Swarm: " + fleet.getFleetData().getNumMembers()
+					+ " ships (" + converted + " converted), " + (int) fleet.getFleetPoints() + " FP, from " + home.getName()
+					+ "; ledgers seeded with " + shapes + " shapes over " + hives.size() + " worlds; " + home.getName()
+					+ " now holds " + ThreatReclaimed.summary(home));
+			ThreatNotice.titled("Debug: Reclaimed Swarm")
+					.line("%s ships, %s of them converted, %s FP, budded from %s beside your fleet.",
+							fleet.getFleetData().getNumMembers(), converted, (int) fleet.getFleetPoints(), home.getName())
+					.line("%s shapes seeded over %s hive worlds.", shapes, hives.size())
+					.send();
+		} catch (Throwable t) {
+			Global.getLogger(ThreatDebugWar.class).error("[ThreatInc] Reclaimed swarm failed", t);
+			ThreatNotice.titled("Debug: Reclaimed Swarm").bad()
+					.line("Reclaimed swarm failed - see %s.", "starsector.log").send();
+		}
+	}
+
 	protected static void apply(IncursionManager manager, Random random) {
 		int total = between(random, ThreatIncConfig.debugInstantWarSystemsMin(),
 				ThreatIncConfig.debugInstantWarSystemsMax());

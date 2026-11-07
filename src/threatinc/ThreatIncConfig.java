@@ -1220,6 +1220,9 @@ public class ThreatIncConfig {
 	public static float debugInstantWarCoreLY()    { return f("threatinc_debugInstantWarCoreLY"); }
 	public static int debugInstantWarHomeSize()    { return i("threatinc_debugInstantWarHomeSize"); }
 	public static int debugHiveFloorSize()         { return i("threatinc_debugHiveFloorSize"); }
+	public static boolean debugReclaimedSwarm()    { return b("threatinc_debugReclaimedSwarm", false); }
+	public static float debugReclaimedSwarmFP()    { return f("threatinc_debugReclaimedSwarmFP"); }
+	public static float debugReclaimedSeedFP()     { return f("threatinc_debugReclaimedSeedFP"); }
 	public static int debugInstantWarColonySize()  { return i("threatinc_debugInstantWarColonySize"); }
 
 	public static void log(String msg) {

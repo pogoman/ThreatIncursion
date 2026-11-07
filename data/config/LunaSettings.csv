@@ -69,6 +69,9 @@ threatinc_debugGrantSensorMods,Grant Threat Sensor Mods,Boolean,false,Gives you 
 threatinc_debugPlayerIgnored,Fleets Ignore You,Boolean,false,No fleet stops for yours. Turn off to play.,,
 threatinc_debugSimDump,Simulator Dump,Boolean,false,Writes war-state dumps to saves/common. Leave off to play.,,
 threatinc_debugInstantWar,Instant War,Boolean,false,Fires once when toggled on: stands up a mature hive network across the sector. Turn off again afterward.,,
+threatinc_debugReclaimedSwarm,Reclaimed Swarm,Boolean,false,Fires once when toggled on: seeds every hive world's reclaimed-hull ledger and buds a swarm of converted hulls beside your fleet that hunts you. Turn off again afterward.,,
+threatinc_debugReclaimedSwarmFP,Reclaimed Swarm FP,Int,400,Fleet points of the debug Reclaimed Swarm.,50,1500
+threatinc_debugReclaimedSeedFP,Reclaimed Seed FP,Int,3000,Fleet points of converted-hull shapes seeded on each hive world's ledger by the Reclaimed Swarm switch.,0,20000
 threatinc_debugReset,RESET War,Boolean,false,DANGER: wipes the whole war from this save. Fires once when toggled on; turn it off again afterward.,,
 threatinc_satBombFuelMult,Saturation Bomb Fuel,Double,5,"A saturation bombardment of a hive costs its strata's tactical price times this; it also disrupts every industry the hive runs for a year.",1,50
 threatinc_satBombStrataDays,Saturation Bomb Strata,Double,3,Days of tactical bombardment a saturation bombardment of a hive razes at a stroke.,1,30

@@ -198,6 +198,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// picks the new colonies up in the same pass
 		ThreatDebugWar.poll(this, random);
 		ThreatDebugWar.pollFloor();
+		ThreatDebugWar.pollReclaimed();
 
 		daysSinceTick += interval.getIntervalDuration();
 

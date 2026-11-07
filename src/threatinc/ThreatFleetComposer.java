@@ -203,6 +203,24 @@ public class ThreatFleetComposer {
 	}
 
 	/**
+	 * A fleet of about the given fleet points built as one named archetype (debug: the Reclaimed Swarm,
+	 * ThreatDebugWar.pollReclaimed), its converted_* groups filled from the world's ledger. Null when
+	 * archetypes are off or the archetype is unknown.
+	 */
+	public static CampaignFleetAPI createArchetype(String archetypeId, float fp, Random random, MarketAPI ledger) {
+		if (random == null) random = new Random();
+		Archetype a = archetypeId != null && archetypes != null ? archetypes.get(archetypeId) : null;
+		if (a == null) return null;
+		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
+				new ThreatFleetCreationParams(), random);
+		beltGuard(fleet);
+		fill(fleet, a, fp, random, ledger);
+		fleet.getMemoryWithoutUpdate().set(ARCHETYPE_KEY, archetypeId);
+		finish(fleet);
+		return fleet;
+	}
+
+	/**
 	 * Carves a fleet of about targetFP off {@code from}: its smallest ships first, until the piece
 	 * reaches the target, never past capFP and never the last ship. The piece carries every flag a
 	 * Threat fleet gets (createThreatFleet) and the belt guard; the caller names, tags and places
