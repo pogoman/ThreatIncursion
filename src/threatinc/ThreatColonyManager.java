@@ -2889,7 +2889,7 @@ public class ThreatColonyManager {
 
 		CampaignFleetAPI fleet = source == null
 				? ThreatFleetComposer.create(ThreatFleetComposer.JOB_SEEDING, 1, escort, random)
-				: ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_SEEDING, seedFP(), random);
+				: ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_SEEDING, seedFP(), random, source);
 		if (fleet == null) return false;
 
 		if (source != null) {
@@ -5025,7 +5025,7 @@ public class ThreatColonyManager {
 	protected static CampaignFleetAPI buildGarrisonSwarm(MarketAPI market, int[] spec, Random random) {
 		if (market.getPrimaryEntity() == null || market.getStarSystem() == null) return null;
 		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_GARRISON,
-				spec[0], FabricatorEscortStrength.values()[spec[1]], random);
+				spec[0], FabricatorEscortStrength.values()[spec[1]], random, market);
 		if (fleet == null) return null;
 		fleet.setName("Defense Swarm");
 		fleet.getMemoryWithoutUpdate().set(GARRISON_FLAG, market.getId());

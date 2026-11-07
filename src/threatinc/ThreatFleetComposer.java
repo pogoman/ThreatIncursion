@@ -14,6 +14,7 @@ import org.json.JSONObject;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
+import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.combat.ShipVariantAPI;
 import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
@@ -57,6 +58,8 @@ public class ThreatFleetComposer {
 	private static Map<String, Archetype> archetypes = null;
 	private static Map<String, Map<String, Float>> jobs = null;
 	private static Map<String, List<String>> variantsByHull = null;
+	/** Converted variants by vanilla base hull (the ledger's shapes), filled with variantsByHull. */
+	private static Map<String, List<String>> convertedVariantsByBase = new HashMap<String, List<String>>();
 	private static boolean loadFailed = false;
 
 	// ------------------------------------------------------------------
@@ -115,16 +118,25 @@ public class ThreatFleetComposer {
 		}
 	}
 
-	/** A vanilla-sized Threat fleet, composed as an archetype picked for the job. */
+	/** A vanilla-sized Threat fleet, composed as an archetype picked for the job; no converted hulls (no ledger). */
 	public static CampaignFleetAPI create(String job, int fabricators,
 			FabricatorEscortStrength escorts, Random random) {
+		return create(job, fabricators, escorts, random, null);
+	}
+
+	/**
+	 * As above, built at a hive world: the archetype's converted_* groups are filled from that
+	 * world's reclaimed-hull ledger (ThreatReclaimed), and from nothing with {@code ledger} null.
+	 */
+	public static CampaignFleetAPI create(String job, int fabricators,
+			FabricatorEscortStrength escorts, Random random, MarketAPI ledger) {
 		if (random == null) random = new Random();
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				fabricators, 0, 0, escorts, random);
 		if (fleet == null) return null;
 		beltGuard(fleet);
 		String archetype = pickArchetype(job, random);
-		if (archetype != null) recompose(fleet, archetype, random);
+		if (archetype != null) recompose(fleet, archetype, random, ledger);
 		return fleet;
 	}
 
@@ -166,6 +178,11 @@ public class ThreatFleetComposer {
 	 * every flag a Threat fleet gets; unnamed - the caller names, tags and places it.
 	 */
 	public static CampaignFleetAPI createSized(String job, float fp, Random random) {
+		return createSized(job, fp, random, null);
+	}
+
+	/** As above, budded at a hive world whose reclaimed-hull ledger fills the converted_* groups. */
+	public static CampaignFleetAPI createSized(String job, float fp, Random random, MarketAPI ledger) {
 		if (random == null) random = new Random();
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				new ThreatFleetCreationParams(), random);
@@ -173,7 +190,7 @@ public class ThreatFleetComposer {
 		String archetype = pickArchetype(job, random);
 		Archetype a = archetype != null && archetypes != null ? archetypes.get(archetype) : null;
 		if (a != null) {
-			fill(fleet, a, fp, random);
+			fill(fleet, a, fp, random, ledger);
 			fleet.getMemoryWithoutUpdate().set(ARCHETYPE_KEY, archetype);
 		} else {
 			// archetypes off or the file failed: vanilla picks, two fifths of the points in capitals
@@ -249,6 +266,11 @@ public class ThreatFleetComposer {
 	 * stays.
 	 */
 	public static void recompose(CampaignFleetAPI fleet, String archetypeId, Random random) {
+		recompose(fleet, archetypeId, random, null);
+	}
+
+	/** As above, with the hive world whose reclaimed-hull ledger fills the converted_* groups (null: none). */
+	public static void recompose(CampaignFleetAPI fleet, String archetypeId, Random random, MarketAPI ledger) {
 		if (!load()) return;
 		Archetype a = archetypes.get(archetypeId);
 		if (a == null) return;
@@ -258,7 +280,7 @@ public class ThreatFleetComposer {
 			budget += m.getFleetPointCost();
 			fleet.getFleetData().removeFleetMember(m);
 		}
-		fill(fleet, a, budget, random);
+		fill(fleet, a, budget, random, ledger);
 		finish(fleet);
 		fleet.getMemoryWithoutUpdate().set(ARCHETYPE_KEY, archetypeId);
 		ThreatIncConfig.log("Composed " + fleet.getName() + " as " + archetypeId
@@ -276,9 +298,25 @@ public class ThreatFleetComposer {
 	 * lands within half a ship of the budget either way.
 	 */
 	private static void fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random) {
-		// a mix key's price: its hull's FP, or the mean over a converted group's hulls
+		fill(fleet, a, budget, random, null);
+	}
+
+	/**
+	 * As above; a converted_* group in the mix is priced at the ledger world's mean shape of the
+	 * class and each pick takes a shape off that ledger (ThreatReclaimed.draw), so a world buds only
+	 * the hulls it has reclaimed. Without a ledger, or with none of the class on it, the group is
+	 * empty and its share goes to the mix's other hulls.
+	 */
+	private static void fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random, MarketAPI ledger) {
+		// a mix key's price: its hull's FP, or the ledger's mean over a converted group's shapes
 		Map<String, Float> hullFP = new HashMap<String, Float>();
 		for (String hull : a.mix.keySet()) {
+			if (isConvertedGroup(hull)) {
+				if (ledger == null || convertedVariantsByBase.isEmpty()) continue;
+				float mean = ThreatReclaimed.meanFP(ledger, hull);
+				if (mean > 0f) hullFP.put(hull, mean);
+				continue;
+			}
 			List<String> variants = variantsByHull.get(hull);
 			if (variants == null || variants.isEmpty()) continue;
 			float sum = 0f;
@@ -295,20 +333,58 @@ public class ThreatFleetComposer {
 				if (w > 0f && left >= fp * 0.5f) picker.add(e.getKey(), w / fp);
 			}
 			if (picker.isEmpty()) break;
-			String variant = pickVariant(picker.pick(), a, random);
+			String key = picker.pick();
+			String variant;
+			if (isConvertedGroup(key)) {
+				variant = pickConverted(ledger, key, a, random);
+				if (variant == null) {
+					hullFP.remove(key);
+					continue;
+				}
+				float mean = ThreatReclaimed.meanFP(ledger, key);
+				if (mean > 0f) hullFP.put(key, mean);
+				else hullFP.remove(key);
+			} else {
+				variant = pickVariant(key, a, random);
+			}
 			fleet.getFleetData().addFleetMember(variant);
 			left -= variantFP(variant);
 			added++;
 		}
 		if (added == 0 && budget > 0f) {
-			// too small for any hull at half cost: one of the cheapest
+			// too small for any hull at half cost: one of the cheapest Threat hulls
 			String cheapest = null;
 			for (Map.Entry<String, Float> e : hullFP.entrySet()) {
-				if (a.mix.get(e.getKey()) <= 0f) continue;
+				if (isConvertedGroup(e.getKey()) || a.mix.get(e.getKey()) <= 0f) continue;
 				if (cheapest == null || e.getValue() < hullFP.get(cheapest)) cheapest = e.getKey();
 			}
 			if (cheapest != null) fleet.getFleetData().addFleetMember(pickVariant(cheapest, a, random));
 		}
+	}
+
+	public static boolean isConvertedGroup(String mixKey) {
+		return mixKey != null && mixKey.startsWith("converted_");
+	}
+
+	/**
+	 * A shape of the group off the ledger, as one of its converted variants (the archetype's favour
+	 * applies by variant id); null with none of the class on the ledger. A shape with no variant
+	 * loaded (the knob turned off mid-game) goes back on the ledger.
+	 */
+	private static String pickConverted(MarketAPI ledger, String group, Archetype a, Random random) {
+		String hull = ThreatReclaimed.draw(ledger, group, random);
+		if (hull == null) return null;
+		List<String> variants = convertedVariantsByBase.get(hull);
+		if (variants == null || variants.isEmpty()) {
+			ThreatReclaimed.claimHull(ledger, hull, 0f);
+			return null;
+		}
+		WeightedRandomPicker<String> picker = new WeightedRandomPicker<String>(random);
+		for (String id : variants) {
+			Float w = a.favour.get(id);
+			picker.add(id, w != null ? w : 1f);
+		}
+		return picker.pick();
 	}
 
 	private static float variantFP(String variantId) {
@@ -439,6 +515,12 @@ public class ThreatFleetComposer {
 				List<String> list = out.get(hull);
 				if (list == null) out.put(hull, list = new ArrayList<String>());
 				if (!list.contains(id)) list.add(id);
+				if (v.getHullSpec().hasTag(CONVERTED_TAG)) {
+					String base = v.getHullSpec().getBaseHullId();
+					List<String> byBase = convertedVariantsByBase.get(base);
+					if (byBase == null) convertedVariantsByBase.put(base, byBase = new ArrayList<String>());
+					if (!byBase.contains(id)) byBase.add(id);
+				}
 			}
 		}
 		return out;

@@ -12,6 +12,7 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 
@@ -496,7 +497,7 @@ public class ThreatBudding {
 		String forStrike = to != null ? mem.getString(KEY_FOR_STRIKE) : null;
 		clear(market);
 		if (poolFP <= 0.5f) return;
-		CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, poolFP, random);
+		CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, poolFP, random, market);
 		if (fleet == null || fleet.getFleetData().getNumMembers() == 0) {
 			ThreatStrata.add(market, ThreatStrata.strataOf(poolFP), "Absorbed into", null);
 			ThreatIncConfig.log("Budding: no fleet could be built at " + market.getName() + " for " + (int) poolFP + " FP; the pool settles");
@@ -566,12 +567,16 @@ public class ThreatBudding {
 		float got;
 		if (have <= fp + 0.5f || fleet.getFleetData().getNumMembers() <= 1) {
 			got = have;
+			ThreatReclaimed.refundAll(market, fleet);
 			ThreatIncData.garrisonsFor(market.getId()).remove(fleet);
 			ThreatSwarmDefend.release(fleet);
 			fleet.despawn();
 		} else {
-			got = ThreatGroundFronts.applyFleetLosses(fleet, fp, null, ABSORB_KEY);
+			java.util.List<FleetMemberAPI> lost = new java.util.ArrayList<FleetMemberAPI>();
+			got = ThreatGroundFronts.applyFleetLosses(fleet, fp, lost, ABSORB_KEY);
 			if (got <= 0f) return 0f;
+			// converted hulls absorbed keep their shape on the world's ledger
+			ThreatReclaimed.refund(market, lost);
 		}
 		float strata = Math.min(ThreatStrata.strataOf(got), ThreatStrata.room(market));
 		if (strata > 0f) ThreatStrata.add(market, strata, "Absorbed into", null);

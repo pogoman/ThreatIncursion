@@ -54,6 +54,21 @@ public class ThreatDebugBoard {
 		}
 		main.addPara("Day " + (int) day + ". Stance " + ThreatStance.stanceName() + " - " + ThreatStance.summary, text, opad);
 		main.addPara("Losing: " + ThreatStance.losingSummary(), text, 3f);
+		{
+			int shapes = 0;
+			float shapeFP = 0f;
+			StringBuilder top = new StringBuilder();
+			for (MarketAPI m : hives) {
+				int n = ThreatReclaimed.total(m);
+				if (n <= 0) continue;
+				shapes += n;
+				shapeFP += ThreatReclaimed.totalFP(m);
+				if (top.length() > 0) top.append("; ");
+				top.append(m.getName()).append(" ").append(ThreatReclaimed.summary(m));
+			}
+			main.addPara("Reclaimed hulls (shapes the worlds bud converted ships from): " + shapes + " (" + n(shapeFP) + " FP)"
+					+ (top.length() > 0 ? " - " + top : ""), text, 3f);
+		}
 		main.addPara("Worlds " + hives.size() + " in " + systems + " systems. Strata " + n(strata) + " (" + n(ThreatStrata.fpOf(strata))
 				+ " FP), spare above the keeps " + n(spare) + " FP, staged " + n(staged) + " FP, swarms standing or flying home " + n(standing)
 				+ " FP. Strike fund " + n(ThreatColonyManager.strikeFund()) + " FP (escrow " + n(ThreatColonyManager.strikeEscrow())

@@ -110,3 +110,40 @@ Pillow, numpy) regenerates it all from vanilla's files, so change the script, ne
 Untested in-game as of writing: the load (45 skins, 107 variants), the swarm overlay and THREAT
 engines on a converted hull, and the fleet mix. `tools/converted-hulls/preview.png` is the
 recolour beside vanilla's Lasher, Hammerhead, Eagle, Onslaught and two Threat units.
+
+### The reclaimed-hull ledger (2026-11-07, the user's decisions the same evening)
+
+The converted share is no longer cosmetic: a world buds converted hulls only of the shapes it has
+reclaimed. `ThreatReclaimed`:
+
+- **The ledger** is a count per vanilla base hull in each hive world's market memory
+  (`$threatinc_reclaimed`). It is shape, never mass.
+- **Claims, both channels** (the user: off-screen fights carry most of the human losses - 82-452 a
+  run in hw200a-c / hw202b-c, 8-24k human FP a run against 150-230 logged real scout/patrol battles):
+  - a battle the Threat wins (`ThreatReclaimed.Listener`, transient): every hull vanilla's snapshot
+    says the losers lost (`Misc.getSnapshotMembersLost`), the player's included, named, booked to the
+    winning swarm's own world (`GARRISON_FLAG`) or the nearest live hive;
+  - the mod's off-screen fights (`ThreatAbstractBattle`): the ships `removeShare` strikes from real
+    fleets are named claims (a strike's defenders, a hive's besieger's hunts); a route not yet spawned
+    and a human expedition's own autoresolve damage are fleet points only, claimed by class
+    (`claimFP`: shapes drawn from the losing faction's known hulls with converted skins, the cheaper
+    the likelier, until the points are spent). A swarm attacking books at its nearest hive; a hive
+    besieged books at itself.
+- **Mass**: every claim adds strata at the world, `reclaimStrataShare` (0.5, the user: a wreck is half
+  a ship) of the hull's FP through `ThreatColonyManager.absorb`, so a capped world spills to the
+  nearest. The swarm's own dead (Threat and converted hulls) are never reclaimed again.
+- **Spending**: `ThreatFleetComposer.fill` takes a ledger world (`create`/`createSized`/`recompose`
+  overloads; `ThreatBudding.spawn`, garrisons, seeding from a source, occupation buds and strikes
+  from their staging `getParams().source` pass theirs). A converted group is priced at the ledger's
+  mean shape of the class and each pick is `ThreatReclaimed.draw`; with no ledger or no shape of the
+  class the group is empty and its share goes to Threat hulls - so the first swarms are all Threat
+  and converted hulls appear as the war's losses mount. `createScouts` and fleets built with no
+  world never carry them.
+- **Return**: `ThreatBudding.absorbHulls` and `ThreatOccupation.absorb` refund the converted hulls
+  they absorb (`applyFleetLosses`' lost list; the whole fleet when it is absorbed whole). A converted
+  hull destroyed, or broken into troops at a landing, is spent. A shape is in one place: a ledger,
+  or a fleet.
+- **Seen**: the debug board's hive section lists "Reclaimed hulls" (total shapes, FP, each world's
+  summary). Nothing on the war board.
+
+Untested in-game beyond a clean load.

@@ -2222,8 +2222,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	/** One swarm of an expedition size, at the damage the strike spawns with; its cost is learned for the strike job. */
 	protected CampaignFleetAPI createSwarm(int size, float damage) {
 		int[] spec = specFor(size, damage);
+		// the staging world's reclaimed-hull ledger fills the archetype's converted groups
 		CampaignFleetAPI swarm = ThreatFleetComposer.create(ThreatFleetComposer.JOB_STRIKE,
-				spec[0], FabricatorEscortStrength.values()[spec[1]], getRandom());
+				spec[0], FabricatorEscortStrength.values()[spec[1]], getRandom(), getParams().source);
 		if (swarm != null) {
 			ThreatColonyManager.learnSwarmCost(ThreatFleetComposer.JOB_STRIKE, spec, swarm.getFleetPoints());
 		}

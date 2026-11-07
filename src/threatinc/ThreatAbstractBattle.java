@@ -104,6 +104,10 @@ public final class ThreatAbstractBattle {
 		java.util.Map<String, Float> byFaction = new java.util.HashMap<String, Float>();
 		float[] lost = share > 0f ? strike(attacker, where, share, byFaction, defenders) : new float[4];
 		book(attacker, where, lost, byFaction, attackerLostFP);
+		// a human expedition's fleet points lost to the hive: shapes by class at the system's hive (ThreatReclaimed)
+		if (!Factions.THREAT.equals(attacker.getId()) && attackerLostFP > 0f) {
+			ThreatReclaimed.claimFP(ThreatReclaimed.nearest(where), attacker.getId(), attackerLostFP);
+		}
 		ThreatIncConfig.log("Off-screen fight in " + where.getName() + " (" + what + "): " + attacker.getId() + " "
 				+ (int) attackerStr + " vs " + (int) defenderStr + " defending (vanilla units); attacker lost "
 				+ (int) Math.max(0f, attackerLostFP) + " FP, defenders " + Math.round(share * 100f) + "%: "
@@ -174,12 +178,19 @@ public final class ThreatAbstractBattle {
 		float[] lost = new float[4];
 		int hunts = 0;
 		float huntsLost = 0f;
+		// the reclaimed-hull ledger (ThreatReclaimed): a swarm besieging claims the defenders it strikes at
+		// its nearest hive; a hive besieged claims the besieger's hunts it strikes, and the besieger's own
+		// fleet points lost by class, at itself
+		boolean threatAttacks = Factions.THREAT.equals(attacker.getId());
+		MarketAPI home = threatAttacks ? ThreatReclaimed.nearest(where) : world;
 		if (friendShare > 0f && friends != null && !friends.isEmpty()) {
 			Random random = new Random();
 			for (CampaignFleetAPI fleet : friends) {
 				if (fleet == null || !fleet.isAlive() || fleet.isStationMode() || fleet.isPlayerFleet()) continue;
 				hunts++;
-				huntsLost += removeShare(fleet, friendShare, random);
+				List<FleetMemberAPI> struck = !threatAttacks ? new ArrayList<FleetMemberAPI>() : null;
+				huntsLost += removeShare(fleet, friendShare, random, struck);
+				if (struck != null) for (FleetMemberAPI m : struck) ThreatReclaimed.claim(home, m);
 			}
 			attackerLostFP += huntsLost;
 		}
@@ -189,11 +200,16 @@ public final class ThreatAbstractBattle {
 				if (fleet == null || fleet.getFaction() == null || !fleet.isAlive()) continue;
 				if (fleet.isStationMode() || fleet.isPlayerFleet()) continue;
 				String fid = fleet.getFaction().getId();
-				float fp = removeShare(fleet, share, random);
+				List<FleetMemberAPI> struck = threatAttacks && !Factions.THREAT.equals(fid) ? new ArrayList<FleetMemberAPI>() : null;
+				float fp = removeShare(fleet, share, random, struck);
+				if (struck != null) for (FleetMemberAPI m : struck) ThreatReclaimed.claim(home, m);
 				lost[Factions.THREAT.equals(fid) ? 0 : 1] += fp;
 				lost[2]++;
 				add(byFaction, fid, fp);
 			}
+		}
+		if (!threatAttacks && attackerLostFP - huntsLost > 0f) {
+			ThreatReclaimed.claimFP(home, attacker.getId(), attackerLostFP - huntsLost);
 		}
 		book(attacker, where, lost, byFaction, attackerLostFP);
 		// every day logged (a siege fights a handful): pd6a's one line a month hid days 2-10
@@ -220,6 +236,8 @@ public final class ThreatAbstractBattle {
 		if (defenders.isEmpty()) return lost;
 		Random random = new Random();
 		Set<CampaignFleetAPI> seen = new HashSet<CampaignFleetAPI>();
+		// the swarm attacking claims what it strikes: named ships, and routes by class (ThreatReclaimed)
+		MarketAPI home = Factions.THREAT.equals(attacker.getId()) ? ThreatReclaimed.nearest(where) : null;
 		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(where.getFleets())) {
 			if (fleet == null || fleet.getFaction() == null || !defenders.contains(fleet.getFaction().getId())) continue;
 			if (fleet.isStationMode() || fleet.isPlayerFleet() || !fleet.isAlive()) continue;
@@ -227,7 +245,9 @@ public final class ThreatAbstractBattle {
 			if (fleet.getMemoryWithoutUpdate().getBoolean(MemFlags.MEMORY_KEY_SMUGGLER)) continue;
 			seen.add(fleet);
 			String fid = fleet.getFaction().getId();
-			float fp = removeShare(fleet, share, random);
+			List<FleetMemberAPI> struck = home != null && !Factions.THREAT.equals(fid) ? new ArrayList<FleetMemberAPI>() : null;
+			float fp = removeShare(fleet, share, random, struck);
+			if (struck != null) for (FleetMemberAPI m : struck) ThreatReclaimed.claim(home, m);
 			lost[Factions.THREAT.equals(fid) ? 0 : 1] += fp;
 			lost[2]++;
 			add(byFaction, fid, fp);
@@ -246,6 +266,9 @@ public final class ThreatAbstractBattle {
 			lost[Factions.THREAT.equals(route.getFactionId()) ? 0 : 1] += fp;
 			lost[3]++;
 			add(byFaction, route.getFactionId(), fp);
+			if (home != null && !Factions.THREAT.equals(route.getFactionId())) {
+				ThreatReclaimed.claimFP(home, route.getFactionId(), fp);
+			}
 		}
 		return lost;
 	}
@@ -283,6 +306,11 @@ public final class ThreatAbstractBattle {
 	 * with nothing is destroyed. Returns the fleet points struck.
 	 */
 	protected static float removeShare(CampaignFleetAPI fleet, float share, Random random) {
+		return removeShare(fleet, share, random, null);
+	}
+
+	/** As above; {@code struck}, when given, collects the ships removed (the reclaimed-hull ledger's named claims). */
+	protected static float removeShare(CampaignFleetAPI fleet, float share, Random random, List<FleetMemberAPI> struck) {
 		List<FleetMemberAPI> members = fleet.getFleetData().getMembersListCopy();
 		float total = fleet.getFleetPoints();
 		float target = total * Math.max(0f, Math.min(1f, share));
@@ -296,11 +324,13 @@ public final class ThreatAbstractBattle {
 			if (removed + fp > target) {
 				if (random.nextFloat() * fp < target - removed) {
 					fleet.getFleetData().removeFleetMember(m);
+					if (struck != null) struck.add(m);
 					removed += fp;
 				}
 				break;
 			}
 			fleet.getFleetData().removeFleetMember(m);
+			if (struck != null) struck.add(m);
 			removed += fp;
 		}
 		if (fleet.getFleetData().getNumMembers() <= 0) {

@@ -147,6 +147,8 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// v3 (2026-10-27): raids are vanilla's (ThreatFortificationRaids deleted with phase 1b)
 		// hears the player's battles for the swarm bounties
 		Global.getSector().addTransientListener(new ThreatSwarmBountyIntel.Kills());
+		// hears every battle the swarm wins for the reclaimed-hull ledger (converted hulls)
+		Global.getSector().addTransientListener(new ThreatReclaimed.Listener());
 		// unfound hives veiled on the map and intel screens while a core tab is open
 		ThreatMapFog fog = new ThreatMapFog();
 		Global.getSector().addTransientScript(fog);

@@ -604,6 +604,8 @@ public class ThreatIncConfig {
 	public static boolean fleetArchetypes()  { return b("threatinc_fleetArchetypes", true); }
 	/** Converted vanilla hulls (Threat skins, tools/converted-hulls/gen.py) in the archetypes' mixes. */
 	public static boolean convertedHulls()   { return b("threatinc_convertedHulls", true); }
+	/** Strata a wreck the swarm claims adds, as a share of the hull's fleet points (ThreatReclaimed.strata). */
+	public static float reclaimStrataShare() { return f("threatinc_reclaimStrataShare"); }
 	public static float playerGraceDays()    { return f("threatinc_playerGraceDays"); }
 
 	// ---- faction reactive defense ----

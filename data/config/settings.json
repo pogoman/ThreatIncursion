@@ -357,6 +357,9 @@
 	# - in the archetypes' mixes (the converted_* groups in threatinc_fleets.json); false =
 	# Threat hulls only. Read once per game launch, with the archetypes.
 	"threatinc_convertedHulls": true,
+	# strata a wreck the swarm claims adds to the claiming world, as a share of the hull's fleet
+	# points (the user, 2026-11-07: half - a wreck is half a ship); 0 = shapes only, no mass
+	"threatinc_reclaimStrataShare": 0.5,
 
 	"threatinc_playerGraceDays": 120,
 	# breaking the staging colony's forge (raid/bombardment/destruction) while

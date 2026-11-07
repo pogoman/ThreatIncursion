@@ -908,7 +908,7 @@ public class ThreatOccupation {
 		String bound = null;
 		SectorEntityToken planet = market.getPrimaryEntity();
 		if (fp >= 1f && planet != null && planet.getContainingLocation() != null) {
-			CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, fp, Misc.random);
+			CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, fp, Misc.random, market);
 			if (fleet != null && fleet.getFleetData().getNumMembers() > 0) {
 				fleet.setName("Infestation Swarm");
 				ThreatColonyManager.makeDetectable(fleet);
@@ -1199,11 +1199,14 @@ public class ThreatOccupation {
 		float got;
 		if (have <= fp + 0.5f || pick.getFleetData().getNumMembers() <= 1) {
 			got = have;
+			ThreatReclaimed.refundAll(market, pick);
 			ThreatSwarmDefend.release(pick);
 			pick.despawn();
 		} else {
-			got = ThreatGroundFronts.applyFleetLosses(pick, fp, null, ABSORB_KEY);
+			java.util.List<com.fs.starfarer.api.fleet.FleetMemberAPI> lost = new java.util.ArrayList<com.fs.starfarer.api.fleet.FleetMemberAPI>();
+			got = ThreatGroundFronts.applyFleetLosses(pick, fp, lost, ABSORB_KEY);
 			if (got <= 0f) return false;
+			ThreatReclaimed.refund(market, lost);
 		}
 		front.budPool += ThreatStrata.strataOf(got);
 		ThreatBudding.visual(market, "Swarm absorbed", got, false);
@@ -1256,7 +1259,7 @@ public class ThreatOccupation {
 		if (poolFP < Math.max(1f, ThreatIncConfig.occupationBudFP())) return;
 		SectorEntityToken planet = market.getPrimaryEntity();
 		if (planet == null || planet.getContainingLocation() == null) return;
-		CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, poolFP, Misc.random);
+		CampaignFleetAPI fleet = ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_GARRISON, poolFP, Misc.random, market);
 		if (fleet == null || fleet.getFleetData().getNumMembers() == 0) {
 			ThreatIncConfig.logQuiet("occnobud:" + market.getId(), "Occupation: no swarm could be built over "
 					+ market.getName() + " for " + (int) poolFP + " FP; the strata wait");
