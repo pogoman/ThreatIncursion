@@ -29,7 +29,8 @@ Quick facts:
   and normalise in patch scripts before matching.
 - Two sessions have edited `ThreatWarBoard.java` concurrently before; re-read a file
   immediately before patching it.
-- `python` is a Windows Store stub here and fails. Script with Perl, PowerShell or the Edit tool.
+- `python` is Python 3.12 with Pillow and numpy on this machine (verified 2026-11-07; before that it
+  was a Windows Store stub). `tools/converted-hulls/gen.py` depends on it. Perl and PowerShell as before.
 
 ## UI text and layout - less is more
 

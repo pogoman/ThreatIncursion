@@ -254,7 +254,7 @@ public class ThreatFleetComposer {
 		if (a == null) return;
 		float budget = 0f;
 		for (FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
-			if (!a.mix.containsKey(m.getHullSpec().getBaseHullId())) continue;
+			if (!a.mix.containsKey(mixKey(m.getHullSpec()))) continue;
 			budget += m.getFleetPointCost();
 			fleet.getFleetData().removeFleetMember(m);
 		}
@@ -276,12 +276,14 @@ public class ThreatFleetComposer {
 	 * lands within half a ship of the budget either way.
 	 */
 	private static void fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random) {
+		// a mix key's price: its hull's FP, or the mean over a converted group's hulls
 		Map<String, Float> hullFP = new HashMap<String, Float>();
 		for (String hull : a.mix.keySet()) {
 			List<String> variants = variantsByHull.get(hull);
 			if (variants == null || variants.isEmpty()) continue;
-			hullFP.put(hull, (float) Global.getSettings().getVariant(variants.get(0))
-					.getHullSpec().getFleetPoints());
+			float sum = 0f;
+			for (String id : variants) sum += variantFP(id);
+			hullFP.put(hull, sum / variants.size());
 		}
 		float left = budget;
 		int added = 0;
@@ -293,9 +295,9 @@ public class ThreatFleetComposer {
 				if (w > 0f && left >= fp * 0.5f) picker.add(e.getKey(), w / fp);
 			}
 			if (picker.isEmpty()) break;
-			String hull = picker.pick();
-			fleet.getFleetData().addFleetMember(pickVariant(hull, a, random));
-			left -= hullFP.get(hull);
+			String variant = pickVariant(picker.pick(), a, random);
+			fleet.getFleetData().addFleetMember(variant);
+			left -= variantFP(variant);
 			added++;
 		}
 		if (added == 0 && budget > 0f) {
@@ -307,6 +309,32 @@ public class ThreatFleetComposer {
 			}
 			if (cheapest != null) fleet.getFleetData().addFleetMember(pickVariant(cheapest, a, random));
 		}
+	}
+
+	private static float variantFP(String variantId) {
+		return Global.getSettings().getVariant(variantId).getHullSpec().getFleetPoints();
+	}
+
+	/** Hull tag the generator stamps on every converted skin (tools/converted-hulls/gen.py). */
+	public static final String CONVERTED_TAG = "threatinc_converted";
+
+	/**
+	 * The key an archetype's mix names a hull by: the base hull id, or for a converted vanilla
+	 * hull (a Threat skin of one, 2026-11-07) its weight class as a group - converted_frigate,
+	 * converted_destroyer, converted_cruiser, converted_capital - so a mix buys "a converted
+	 * cruiser" and the variant picker chooses which.
+	 */
+	public static String mixKey(com.fs.starfarer.api.combat.ShipHullSpecAPI spec) {
+		if (spec.hasTag(CONVERTED_TAG)) {
+			switch (spec.getHullSize()) {
+				case FRIGATE: return "converted_frigate";
+				case DESTROYER: return "converted_destroyer";
+				case CRUISER: return "converted_cruiser";
+				case CAPITAL_SHIP: return "converted_capital";
+				default: break;
+			}
+		}
+		return spec.getBaseHullId();
 	}
 
 	private static String pickVariant(String hull, Archetype a, Random random) {
@@ -380,23 +408,34 @@ public class ThreatFleetComposer {
 		return out;
 	}
 
+	/** The ship roles the converted hulls' variants are listed under, by weight class. */
+	public static final String[] CONVERTED_ROLES = {"threatincConvertedFrigate",
+			"threatincConvertedDestroyer", "threatincConvertedCruiser", "threatincConvertedCapital"};
+
 	/**
-	 * Every variant the Threat's ship roles name, by base hull - vanilla's
-	 * and this mod's (data/world/factions/default_ship_roles.json), so a new
-	 * variant only has to be added to the roles to be picked here.
+	 * Every variant the Threat's ship roles name, by mix key (base hull, or a
+	 * converted group - mixKey) - vanilla's and this mod's
+	 * (data/world/factions/default_ship_roles.json), so a new variant only has
+	 * to be added to the roles to be picked here. The converted hulls sit in
+	 * their own roles so vanilla's abyss fleets never draw them; they are read
+	 * only while the convertedHulls knob is on.
 	 */
 	private static Map<String, List<String>> threatVariants() {
 		FactionAPI faction = Global.getSector().getFaction(Factions.THREAT);
-		String[] roles = {ShipRoles.COMBAT_SMALL, ShipRoles.COMBAT_MEDIUM, ShipRoles.COMBAT_LARGE,
+		List<String> roles = new ArrayList<String>(java.util.Arrays.asList(
+				ShipRoles.COMBAT_SMALL, ShipRoles.COMBAT_MEDIUM, ShipRoles.COMBAT_LARGE,
 				ShipRoles.COMBAT_CAPITAL, ShipRoles.THREAT_FABRICATOR, ShipRoles.THREAT_HIVE,
-				ShipRoles.THREAT_OVERSEER};
+				ShipRoles.THREAT_OVERSEER));
+		if (ThreatIncConfig.convertedHulls()) roles.addAll(java.util.Arrays.asList(CONVERTED_ROLES));
 		Map<String, List<String>> out = new HashMap<String, List<String>>();
 		for (String role : roles) {
-			for (String id : faction.getVariantsForRole(role)) {
+			java.util.Set<String> ids = faction.getVariantsForRole(role);
+			if (ids == null) continue;
+			for (String id : ids) {
 				if (!Global.getSettings().doesVariantExist(id)) continue;
 				ShipVariantAPI v = Global.getSettings().getVariant(id);
 				if (v.getHullSpec() == null || !v.getHullSpec().hasTag("threat")) continue;
-				String hull = v.getHullSpec().getBaseHullId();
+				String hull = mixKey(v.getHullSpec());
 				List<String> list = out.get(hull);
 				if (list == null) out.put(hull, list = new ArrayList<String>());
 				if (!list.contains(id)) list.add(id);

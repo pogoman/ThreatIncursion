@@ -353,6 +353,10 @@
 	# Threat fleets built as archetypes (data/config/threatinc_fleets.json);
 	# false = vanilla's mix
 	"threatinc_fleetArchetypes": true,
+	# converted vanilla hulls - Threat skins of 45 vanilla warships (tools/converted-hulls/gen.py)
+	# - in the archetypes' mixes (the converted_* groups in threatinc_fleets.json); false =
+	# Threat hulls only. Read once per game launch, with the archetypes.
+	"threatinc_convertedHulls": true,
 
 	"threatinc_playerGraceDays": 120,
 	# breaking the staging colony's forge (raid/bombardment/destruction) while

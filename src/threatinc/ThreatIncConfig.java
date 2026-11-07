@@ -602,6 +602,8 @@ public class ThreatIncConfig {
 	public static int strikeMinSize()        { return i("threatinc_strikeMinSize"); }
 	public static float strikeStrengthMult() { return f("threatinc_strikeStrengthMult"); }
 	public static boolean fleetArchetypes()  { return b("threatinc_fleetArchetypes", true); }
+	/** Converted vanilla hulls (Threat skins, tools/converted-hulls/gen.py) in the archetypes' mixes. */
+	public static boolean convertedHulls()   { return b("threatinc_convertedHulls", true); }
 	public static float playerGraceDays()    { return f("threatinc_playerGraceDays"); }
 
 	// ---- faction reactive defense ----

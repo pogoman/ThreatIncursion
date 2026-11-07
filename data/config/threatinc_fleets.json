@@ -3,23 +3,30 @@
 	# Vanilla sizes every fleet; its archetype then re-spends the escorts' fleet points.
 	#   mix:    share of the escort FP spent on each hull (relative weights).
 	#           Hulls not named here (fabricators) stay as vanilla built them.
+	#           converted_frigate / _destroyer / _cruiser / _capital are the converted vanilla
+	#           hulls as groups (ThreatFleetComposer.mixKey): the group's share buys any hull of
+	#           that class, priced at its own FP. Empty with threatinc_convertedHulls off, so a
+	#           mix that names them then spends their share on its other hulls.
 	#   favour: variants picked favourWeight times as often as the hull's others.
 	"favourWeight": 4,
 
 	"archetypes": {
-		# about vanilla's own mix: overseer-led, frigate screen
+		# about vanilla's own mix: overseer-led, frigate screen, a few reclaimed hulls
 		"host": {
-			"mix": {"skirmish_unit": 25, "assault_unit": 10, "standoff_unit": 10, "overseer_unit": 40, "hive_unit": 15},
+			"mix": {"skirmish_unit": 20, "assault_unit": 10, "standoff_unit": 10, "overseer_unit": 35, "hive_unit": 10,
+					"converted_frigate": 5, "converted_destroyer": 5, "converted_cruiser": 5},
 			"favour": [],
 		},
 		# close-range spearhead
 		"vanguard": {
-			"mix": {"skirmish_unit": 15, "assault_unit": 45, "standoff_unit": 10, "overseer_unit": 30},
+			"mix": {"skirmish_unit": 15, "assault_unit": 40, "standoff_unit": 10, "overseer_unit": 25,
+					"converted_destroyer": 5, "converted_cruiser": 5},
 			"favour": ["assault_unit_Type202", "assault_unit_Type200", "skirmish_unit_Type102", "overseer_unit_Type251"],
 		},
 		# long-range siege line
 		"battery": {
-			"mix": {"skirmish_unit": 10, "assault_unit": 5, "standoff_unit": 50, "overseer_unit": 20, "hive_unit": 15},
+			"mix": {"skirmish_unit": 10, "assault_unit": 5, "standoff_unit": 45, "overseer_unit": 20, "hive_unit": 10,
+					"converted_cruiser": 5, "converted_capital": 5},
 			"favour": ["standoff_unit_Type300", "standoff_unit_Type303", "standoff_unit_Type304", "skirmish_unit_Type104", "overseer_unit_Type252"],
 		},
 		# fragment carriers
@@ -29,7 +36,7 @@
 		},
 		# fast torpedo pack, no big hulls - raiders prefer these
 		"hunter": {
-			"mix": {"skirmish_unit": 35, "assault_unit": 50, "overseer_unit": 15},
+			"mix": {"skirmish_unit": 30, "assault_unit": 45, "overseer_unit": 15, "converted_frigate": 10},
 			"favour": ["skirmish_unit_Type101", "skirmish_unit_Type102", "assault_unit_Type201"],
 		},
 		# frigates only
@@ -37,12 +44,18 @@
 			"mix": {"skirmish_unit": 100},
 			"favour": ["skirmish_unit_Type104", "skirmish_unit_Type103"],
 		},
+		# the hive's salvage: overseers herding reclaimed vanilla warships of every class
+		"reclaimed": {
+			"mix": {"overseer_unit": 25, "skirmish_unit": 10,
+					"converted_frigate": 10, "converted_destroyer": 20, "converted_cruiser": 25, "converted_capital": 10},
+			"favour": ["overseer_unit_Type251"],
+		},
 	},
 
 	# which archetypes each kind of fleet is built as (relative weights)
 	"jobs": {
-		"strike":   {"vanguard": 3, "battery": 3, "tide": 2, "host": 2},
-		"garrison": {"host": 3, "battery": 3, "tide": 2, "hunter": 2},
+		"strike":   {"vanguard": 3, "battery": 3, "tide": 2, "host": 2, "reclaimed": 2},
+		"garrison": {"host": 3, "battery": 3, "tide": 2, "hunter": 2, "reclaimed": 2},
 		"seeding":  {"host": 1},
 		"scout":    {"scout": 1},
 	},

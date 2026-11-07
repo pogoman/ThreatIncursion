@@ -68,3 +68,45 @@ flight in an older save, or out of the Abyss, still digs in as one.
   higher than intended).
 - The new variants fight sensibly under the AI (Type 202 and 304 carry Defabrication Swarm
   off the fabricator; Type 252 has no fragments at all).
+
+## Converted hulls (2026-11-07)
+
+The Threat in the sector sails reclaimed vanilla warships beside its own units - "converted
+ships of the fleets it destroyed" (the user's ask, 2026-11-07). 45 vanilla combat hulls (every
+frigate to capital that is not phase, civilian-grade, a module ship, a station or unique; carriers
+included) each get a Threat skin. Nothing is hand-made: `tools/converted-hulls/gen.py` (Python 3,
+Pillow, numpy) regenerates it all from vanilla's files, so change the script, never the output.
+
+- **Sprite** `graphics/threatinc/ships/<hull>_conv.png`: the vanilla sprite's luminance histogram
+  matched to vanilla's own Threat sprites (`threat_reference`), coloured from the Threat's
+  luminance-to-colour ramp sampled from them, faction paint turned amber, a low-frequency mottle,
+  and a few mirrored amber glow nodes for the hive's hatches. Only brightness is remapped, so panel
+  lines and shading survive. Built-in decorative weapons (Onslaught TPCs, Legion covers) keep their
+  vanilla sprites.
+- **Skin** `data/hulls/skins/threatinc_<hull>_conv.skin`: hull id `threatinc_<hull>_conv`, name
+  "<Hull> (Converted)", tech Threat, tags `threat`, `threat_combat` (vanilla's
+  `ThreatCombatStrategyAI.isCombatUnit`, so the Threat's battle coordination counts them),
+  `threatinc_converted`; built-ins `automated`, `threat_hullmod`, `fragment_swarm` (vanilla's
+  `FragmentSwarmHullmod` draws its swarm on any non-Threat-tagged hull - the branch exists for the
+  player's own ships); every engine slot restyled `THREAT` (`engineSlotChanges`); hint UNBOARDABLE.
+  Fleet points, OP, slots and the base description are the vanilla hull's.
+- **Variants** `data/variants/threatinc_converted/`: vanilla's goal variants of each hull (not the
+  Starting/Tutorial ones) cloned onto the skin - 107 of them, vanilla loadouts, the reclaimed
+  armament. The Threat faction only "knows" Threat weapons, so they are never autofitted: the
+  composer adds variants by id.
+- **Roles** `threatincConvertedFrigate/Destroyer/Cruiser/Capital` in `default_ship_roles.json`
+  (between the generator's marker comments): roles of their own, so vanilla's abyss fleets and
+  `DisposableThreatFleetManager.addShips` never draw them.
+- **Composer**: `ThreatFleetComposer.mixKey` keys a converted hull by its class group
+  (`converted_frigate` ... `converted_capital`) instead of its base hull; a mix's group share buys
+  any hull of the class, priced at the variant's own FP (`fill` now charges the variant picked, and
+  a group's price for the pick weight is its mean FP). `threatVariants` reads the converted roles
+  only while `threatinc_convertedHulls` is on (settings.json, LunaLib "Converted Hulls"; read once
+  a launch with the archetypes).
+- **Mixes** (`threatinc_fleets.json`): host 15 of 100 converted, vanguard 10, battery 10 (cruisers
+  and capitals), hunter 10 frigates, tide and scout none, and a new **reclaimed** archetype (overseers
+  herding converted hulls of every class, 65 of 100) at weight 2 in the strike and garrison pools.
+
+Untested in-game as of writing: the load (45 skins, 107 variants), the swarm overlay and THREAT
+engines on a converted hull, and the fleet mix. `tools/converted-hulls/preview.png` is the
+recolour beside vanilla's Lasher, Hammerhead, Eagle, Onslaught and two Threat units.
