@@ -187,6 +187,27 @@ public class ThreatFleetComposer {
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				new ThreatFleetCreationParams(), random);
 		beltGuard(fleet);
+		// a fabricator (600 FP) per threatinc_fabricatorPerFP of the budget, at most fabricatorsMax
+		// (the user, 2026-11-08: "above 1500 FP"; nothing had bought one since budding, 2026-10-25),
+		// paid out of the budget before the mix; tagged so a strike re-embodies the swarm with it
+		// (ThreatColonyManager.expeditionSizeFor reads SWARM_FABS_KEY as expedition size 9)
+		int fabricators = fabricatorsFor(fp);
+		if (fabricators > 0) {
+			DisposableThreatFleetManager.addShips(fleet, fabricators, ShipRoles.THREAT_FABRICATOR, random);
+			fleet.getFleetData().setSyncNeeded();
+			fleet.getFleetData().syncIfNeeded();
+			fp = Math.max(0f, fp - fleet.getFleetPoints());
+			// the flagship: every troop break-up spares it (ThreatStrikeFGI.embark,
+			// ThreatGroundFronts.applyFleetLosses), so the 600 FP are never counted as troops
+			for (FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+				if (m.getHullSpec().hasTag(com.fs.starfarer.api.impl.campaign.ids.Tags.THREAT_FABRICATOR)) {
+					fleet.getFleetData().setFlagship(m);
+					break;
+				}
+			}
+			fleet.getMemoryWithoutUpdate().set(ThreatColonyManager.SWARM_TIER_KEY, FabricatorEscortStrength.HIGH.ordinal());
+			fleet.getMemoryWithoutUpdate().set(ThreatColonyManager.SWARM_FABS_KEY, fabricators);
+		}
 		String archetype = pickArchetype(job, random);
 		Archetype a = archetype != null && archetypes != null ? archetypes.get(archetype) : null;
 		if (a != null) {
@@ -200,6 +221,13 @@ public class ThreatFleetComposer {
 		}
 		finish(fleet);
 		return fleet;
+	}
+
+	/** Fabricators a budded fleet of the points carries: one per threatinc_fabricatorPerFP (0 = none), at most threatinc_fabricatorsMax. */
+	public static int fabricatorsFor(float fp) {
+		float per = ThreatIncConfig.fabricatorPerFP();
+		if (per <= 0f || fp < per) return 0;
+		return Math.max(0, Math.min(ThreatIncConfig.fabricatorsMax(), (int) Math.floor(fp / per)));
 	}
 
 	/**

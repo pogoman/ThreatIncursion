@@ -34,6 +34,21 @@ frigate-heavy Hunter pack is ~34 ships at HIGH where vanilla is ~26.
 The variant list per hull is read from the Threat's ship roles at first use, so a new
 variant only needs its `.variant` file and a line in `default_ship_roles.json`.
 
+**Fabricators in budded fleets (2026-11-08).** A fabricator_unit is 600 FP (a hive 20, an overseer
+25, a skirmish unit 7), and from budding (2026-10-25) to this date nothing bought one: `createSized`
+started from vanilla's empty params (0 fabricators) and the mixes name none, and a strike re-embodies
+the garrison swarms it musters, so strikes had none either (the user: "even near size 6 worlds
+fabricators don't spawn ... in v9 i don't think i've seen a single fabricator in strike fleets").
+Now `createSized` adds `fabricatorsFor(fp)` fabricators before the mix - one per
+`threatinc_fabricatorPerFP` (1,500; 0 = never) of the budget, at most `threatinc_fabricatorsMax` (3) -
+pays them out of the budget, and tags the fleet `SWARM_TIER_KEY` HIGH / `SWARM_FABS_KEY` n, so
+`ThreatColonyManager.expeditionSizeFor` reads it as expedition size 9 and a strike re-embodies it with
+a fabricator (`specFor`). A 1,500-2,999 FP Defense or Shifting Swarm carries one; under 1,500, none -
+a swarm, under the swarm doctrine in battle. The fabricator is set as the fleet's
+flagship (`setFlagship`): every troop break-up (`ThreatStrikeFGI.embark`, `ThreatGroundFronts.applyFleetLosses`,
+smallest first, the flagship spared) leaves it whole and never counts its 600 FP as troops; a strike
+down to its fabricator holds its landing back ("nothing left to break up but the flagship").
+
 ## Archetypes and jobs
 
 | Archetype | Mix (share of FP) | Favours |
@@ -206,11 +221,21 @@ alone):
 - a fabricator or hive deployed: nothing - vanilla's defence stands; any ship the plugin touched
   earlier (a fabricator arriving as a reinforcement) has its default `ShipAIConfig` restored.
 - none: the swarm doctrine. Every Threat combat unit (`isCombatUnit`, not an overseer, not under
-  construction, not a fighter) has its `ShipAIConfig.personalityOverride` set to
-  `threatinc_swarmDoctrinePersonality` (aggressive; reckless accepted, anything else falls back),
-  `alwaysStrafeOffensively` on, `backingOffWhileNotVentingAllowed` and `turnToFaceWithUndamagedArmor` off -
-  the block Alex left commented in `ThreatCombatStrategyAI`, with aggressive for his reckless - and is
-  ordered to search and destroy unless it already is. Vanilla's skirmish SND still cancels and
+  construction, not a fighter) gets a NEW default ship AI (`SettingsAPI.createDefaultShipAI` on a
+  `ShipAIConfig` with `personalityOverride` = `threatinc_swarmDoctrinePersonality` - aggressive; reckless
+  accepted, anything else falls back - `alwaysStrafeOffensively` on, `backingOffWhileNotVentingAllowed`
+  and `turnToFaceWithUndamagedArmor` off, then `ship.setShipAI`), once, its old AI kept for restoring,
+  and is ordered to search and destroy unless it already is. Setting those fields on the LIVE AI's
+  config - the block Alex left commented in `ThreatCombatStrategyAI` - does nothing: the ship AI reads
+  its personality when it is built. First test 2026-11-08 20:17 (jar 20:05): the orders took, the swarm
+  encircled the player's fleet, but stood off at range as cautious ships do. Second test (jar 20:23, the
+  AI rebuilt aggressive): still the standoff ring at 2-3k - the ship AI backing off against a heavier
+  enemy, which no personality overrides. So each tick every swarm ship also carries the AI flags
+  vanilla's own aggro mode sets when enemies close on a fabricator - the one recipe in its Threat
+  script that makes these ships attack: `DO_NOT_BACK_OFF`, `DO_NOT_VENT` (off with
+  `threatinc_swarmDoctrineNoVent` false), 2 s each, refreshed every ~1 s; and `MANEUVER_RANGE_FROM_TARGET`
+  when `threatinc_swarmDoctrineRange` is above 0 (default 0: the AI's own weapon range). Third build
+  (jar 20:52), to retest; if the ring persists, try Range 400 in LunaLib (point blank) before another build. Vanilla's skirmish SND still cancels and
   IGNORES_ORDERS half the skirmish hulls for a minute at a time; re-ordering them is harmless.
 
 Overseers keep vanilla's escort logic. Retreat stays off: a swarm presses and dies rather than runs.

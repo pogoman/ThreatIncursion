@@ -604,10 +604,18 @@ public class ThreatIncConfig {
 	public static boolean fleetArchetypes()  { return b("threatinc_fleetArchetypes", true); }
 	/** Converted vanilla hulls (Threat skins, tools/converted-hulls/gen.py) in the archetypes' mixes. */
 	public static boolean convertedHulls()   { return b("threatinc_convertedHulls", true); }
+	/** A budded fleet carries a fabricator (600 FP) per this many fleet points of its budget; 0 = never (ThreatFleetComposer.fabricatorsFor). */
+	public static float fabricatorPerFP()    { return f("threatinc_fabricatorPerFP"); }
+	/** The most fabricators one budded fleet carries. */
+	public static int fabricatorsMax()       { return Math.round(f("threatinc_fabricatorsMax")); }
 	/** Threat fleets with no fabricator or hive deployed fight as a swarm in battle (ThreatSwarmDoctrine). */
 	public static boolean swarmDoctrine()    { return b("threatinc_swarmDoctrine", true); }
 	/** The swarm doctrine's ship personality id: aggressive (default) or reckless. */
 	public static String swarmDoctrinePersonality() { return s("threatinc_swarmDoctrinePersonality", "aggressive"); }
+	/** Swarm-doctrine ships never pull out of the fight to vent (vanilla's aggro recipe); false lets them vent. */
+	public static boolean swarmDoctrineNoVent()  { return b("threatinc_swarmDoctrineNoVent", true); }
+	/** Range in units a swarm-doctrine ship holds from its target; 0 = the ship AI's own weapon range. */
+	public static float swarmDoctrineRange()     { return f("threatinc_swarmDoctrineRange"); }
 	/** Strata a wreck the swarm claims adds, as a share of the hull's fleet points (ThreatReclaimed.strata). */
 	public static float reclaimStrataShare() { return f("threatinc_reclaimStrataShare"); }
 	/** Shapes each hive world of reclaimBackfillMinSize+ gets once, the first time a mid-war save loads with converted hulls (ThreatReclaimed.backfillOnLoad). */

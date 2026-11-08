@@ -364,12 +364,21 @@
 	# - in the archetypes' mixes (the converted_* groups in threatinc_fleets.json); false =
 	# Threat hulls only. Read once per game launch, with the archetypes.
 	"threatinc_convertedHulls": true,
+	# a budded fleet (Defense / Shifting Swarm, occupation garrison) carries a fabricator - 600 FP,
+	# the hive-defence anchor in battle - per this many fleet points of its budget, at most
+	# fabricatorsMax; 0 = never. A strike re-embodies such a swarm with its fabricator.
+	"threatinc_fabricatorPerFP": 1500,
+	"threatinc_fabricatorsMax": 3,
 	# battle doctrine by composition (ThreatSwarmDoctrine): a Threat fleet with no fabricator or
 	# hive deployed fights as a swarm - every combat unit on this personality, strafing, never
 	# backing off, on search and destroy; with one deployed, vanilla's hive defence stands.
 	# aggressive or reckless.
 	"threatinc_swarmDoctrine": true,
 	"threatinc_swarmDoctrinePersonality": "aggressive",
+	# the AI flags vanilla's own aggro mode uses: swarm ships never back off; never pull out to
+	# vent (false lets them vent); hold this range from their target (0 = the AI's own weapon range)
+	"threatinc_swarmDoctrineNoVent": true,
+	"threatinc_swarmDoctrineRange": 0,
 	# strata a wreck the swarm claims adds to the claiming world, as a share of the hull's fleet
 	# points (the user, 2026-11-07: half - a wreck is half a ship); 0 = shapes only, no mass
 	"threatinc_reclaimStrataShare": 0.5,

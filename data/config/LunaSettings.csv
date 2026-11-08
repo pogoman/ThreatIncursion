@@ -24,8 +24,12 @@ threatinc_occupationEnabled,Occupation,Boolean,true,"The swarm never takes a hum
 threatinc_convertDecivWorlds,Swarm Settles Dead Worlds,Boolean,true,Worlds the swarm decivilises become its next colonies.,,
 threatinc_fleetArchetypes,Fleet Archetypes,Boolean,true,"Threat fleets come in types (Host, Vanguard, Battery, Tide, Hunter, Scout) with their own hull mix.",,
 threatinc_convertedHulls,Converted Hulls,Boolean,true,"Threat fleets include the warships they have destroyed and consumed, beside their own units. Read at game launch.",,
+threatinc_fabricatorPerFP,Fabricator Per Fleet Points,Int,1500,"A swarm fleet carries one fabricator (600 FP) per this many fleet points of its budget. 0: never.",0,10000
+threatinc_fabricatorsMax,Fabricators Per Fleet,Int,3,The most fabricators one swarm fleet carries.,0,6
 threatinc_swarmDoctrine,Swarm Doctrine,Boolean,true,"A Threat fleet with no fabricator or hive in the battle attacks as a swarm instead of holding its edge. One with a fabricator defends it, as vanilla.",,
 threatinc_swarmDoctrinePersonality,Swarm Personality,String,aggressive,"How swarm-doctrine ships fight: aggressive or reckless.",,
+threatinc_swarmDoctrineNoVent,Swarm Never Vents,Boolean,true,"Swarm-doctrine ships never pull out of the fight to vent. Off, they vent like any ship.",,
+threatinc_swarmDoctrineRange,Swarm Engagement Range,Int,0,"Range swarm-doctrine ships hold from their target. 0 keeps each ship's own weapon range.",0,3000
 threatinc_raiderEnabled,Hive Raiders,Boolean,true,Hives detach swarms to hunt convoys passing near them.,,
 threatinc_fabricateEnabled,Swarm Breaks Up Ships for Troops,Boolean,true,A swarm fleet over its own losing hive breaks its ships into ground troops.,,
 threatinc_alarmEnabled,Grudge,Boolean,true,The swarm strikes hardest at the factions that hurt it most.,,
