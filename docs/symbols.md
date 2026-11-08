@@ -5504,44 +5504,44 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatincAidCMD.menu(InteractionDialogAPI dialog, MarketAPI market)` :239
 - `ThreatincAidCMD.deliver(InteractionDialogAPI dialog, MarketAPI market, String commodityId, int tier)` :305
 
-## ThreatincMarketCMD (1214 lines)
+## ThreatincMarketCMD (1219 lines)
 - `ThreatincMarketCMD.execute(String ruleId, com.fs.starfarer.api.campaign.InteractionDialogAPI dialog, List<com.fs.starfarer.api.util.Misc.Token> params, Map<String, com.fs.starfarer.api.campaign.rules.MemoryAPI> memoryMap)` :92 - Custom command dispatch.
 - `ThreatincMarketCMD.isThreatTarget()` :118
 - `ThreatincMarketCMD.waiveAtrocity()` :123
 - `ThreatincMarketCMD.threatDefenders()` :149 - The fleets defending a hive, wherever in its system they are:
-- `ThreatincMarketCMD.inLiveBattle(CampaignFleetAPI fleet)` :175 - A battle the fleet is still fighting (a finished one can linger on the fleet).
-- `ThreatincMarketCMD.inReach(CampaignFleetAPI fleet)` :180 - Close enough to the world to be engaged from its orbit (#reach).
-- `ThreatincMarketCMD.reach()` :193 - How far from the world a swarm fleet is a defender the menu lists and Engage can reach:
-- `ThreatincMarketCMD.getInteractionTargetForFIDPI()` :205 - Vanilla's defender pick, taken from threatDefenders for Threat targets:
-- `ThreatincMarketCMD.gateOnDefenders(boolean withText)` :251 - Writes the final state of Engage, raid and bombardment from the swarm fleets defending the world (threatDefenders), not from vanilla's fleet-AI reading of them.
-- `ThreatincMarketCMD.showDefenses(boolean withText)` :382 - The military options of a Threat colony:
-- `ThreatincMarketCMD.engage()` :414 - Backstop on vanilla's engage:
-- `ThreatincMarketCMD.groundOps()` :428 - The ground-operations menu:
-- `ThreatincMarketCMD.marinesToLand(float share)` :576 - Marines a share of the hold lands:
-- `ThreatincMarketCMD.armsToLand(ThreatGroundFronts.GroundFront front, int landing)` :588 - Heavy armaments that go down with a landing of this many marines:
-- `ThreatincMarketCMD.transferLabel(ThreatGroundFronts.GroundFront front, int marines, String which)` :598 - "Transfer all marines (1,200) and 1,200 heavy armaments to the front";
-- `ThreatincMarketCMD.gateLanding(String id, int marines, int minMarines)` :606 - A landing option's state:
-- `ThreatincMarketCMD.groundDeploy(float share)` :619 - The landing, of all (share 1) or half the marines aboard with the armaments they need (#armsToLand).
-- `ThreatincMarketCMD.groundPush()` :657
-- `ThreatincMarketCMD.groundEntrench()` :670
-- `ThreatincMarketCMD.groundResupply(float share)` :682 - All (share 1) or half the marines aboard go down to the front, with the armaments the army then needs (#armsToLand).
-- `ThreatincMarketCMD.groundWithdraw()` :706
-- `ThreatincMarketCMD.tacticalFuel()` :732 - Fuel a day of tactical bombardment by the player's fleet costs:
-- `ThreatincMarketCMD.bombardBonus()` :738 - Vanilla's specialised fleet bombardment capability:
-- `ThreatincMarketCMD.saturationPour()` :743 - Fuel a day of saturation pours:
-- `ThreatincMarketCMD.saturationFuel(float pour)` :749 - What that day costs from the tanks:
-- `ThreatincMarketCMD.pct(float fraction)` :758
-- `ThreatincMarketCMD.bombardReady()` :763 - Whether the player's fleet may organize a bombardment now (the once-a-day lock).
-- `ThreatincMarketCMD.bombardMenu()` :776 - The bombardment menu (docs/suppression-balance.md v2):
-- `ThreatincMarketCMD.bombardTactical()` :841 - Over a hive the tactical bombardment is the strata day (#strataBombardPrompt);
-- `ThreatincMarketCMD.strataBombardMenu()` :855 - The bombardment menu over a hive (phase D, docs/strata-are-the-threat.md 6, v3 docs/suppression-balance.md 10):
-- `ThreatincMarketCMD.satBombPrompt()` :918 - THE SAT BOMB over a hive (the user, 2026-10-27, docs/suppression-balance.md 10):
-- `ThreatincMarketCMD.strataBombardPrompt()` :953
-- `ThreatincMarketCMD.gateConfirm(boolean fuelEnough)` :989 - The confirm's state, set after its shape:
-- `ThreatincMarketCMD.bombardSaturation()` :1008 - A day of saturation bombardment, before it is flown (docs/suppression-balance.md v2 section 4):
-- `ThreatincMarketCMD.bombardConfirm()` :1023
-- `ThreatincMarketCMD.bombardDay(boolean saturation)` :1063 - One day of the player's bombardment (docs/suppression-balance.md v2):
-- `ThreatincMarketCMD.countAtrocity()` :1199 - Vanilla's atrocity bookkeeping, once a campaign rather than once a day:
+- `ThreatincMarketCMD.inLiveBattle(CampaignFleetAPI fleet)` :183 - A battle the fleet is still fighting (a finished one can linger on the fleet).
+- `ThreatincMarketCMD.inReach(CampaignFleetAPI fleet)` :188 - Close enough to the world to be engaged from its orbit (#reach).
+- `ThreatincMarketCMD.reach()` :201 - How far from the world a swarm fleet is a defender the menu lists and Engage can reach:
+- `ThreatincMarketCMD.getInteractionTargetForFIDPI()` :213 - Vanilla's defender pick, taken from threatDefenders for Threat targets:
+- `ThreatincMarketCMD.gateOnDefenders(boolean withText)` :261 - Writes the final state of Engage, raid and bombardment from the swarm fleets defending the world (threatDefenders), not from vanilla's fleet-AI reading of them.
+- `ThreatincMarketCMD.showDefenses(boolean withText)` :387 - The military options of a Threat colony:
+- `ThreatincMarketCMD.engage()` :419 - Backstop on vanilla's engage:
+- `ThreatincMarketCMD.groundOps()` :433 - The ground-operations menu:
+- `ThreatincMarketCMD.marinesToLand(float share)` :581 - Marines a share of the hold lands:
+- `ThreatincMarketCMD.armsToLand(ThreatGroundFronts.GroundFront front, int landing)` :593 - Heavy armaments that go down with a landing of this many marines:
+- `ThreatincMarketCMD.transferLabel(ThreatGroundFronts.GroundFront front, int marines, String which)` :603 - "Transfer all marines (1,200) and 1,200 heavy armaments to the front";
+- `ThreatincMarketCMD.gateLanding(String id, int marines, int minMarines)` :611 - A landing option's state:
+- `ThreatincMarketCMD.groundDeploy(float share)` :624 - The landing, of all (share 1) or half the marines aboard with the armaments they need (#armsToLand).
+- `ThreatincMarketCMD.groundPush()` :662
+- `ThreatincMarketCMD.groundEntrench()` :675
+- `ThreatincMarketCMD.groundResupply(float share)` :687 - All (share 1) or half the marines aboard go down to the front, with the armaments the army then needs (#armsToLand).
+- `ThreatincMarketCMD.groundWithdraw()` :711
+- `ThreatincMarketCMD.tacticalFuel()` :737 - Fuel a day of tactical bombardment by the player's fleet costs:
+- `ThreatincMarketCMD.bombardBonus()` :743 - Vanilla's specialised fleet bombardment capability:
+- `ThreatincMarketCMD.saturationPour()` :748 - Fuel a day of saturation pours:
+- `ThreatincMarketCMD.saturationFuel(float pour)` :754 - What that day costs from the tanks:
+- `ThreatincMarketCMD.pct(float fraction)` :763
+- `ThreatincMarketCMD.bombardReady()` :768 - Whether the player's fleet may organize a bombardment now (the once-a-day lock).
+- `ThreatincMarketCMD.bombardMenu()` :781 - The bombardment menu (docs/suppression-balance.md v2):
+- `ThreatincMarketCMD.bombardTactical()` :846 - Over a hive the tactical bombardment is the strata day (#strataBombardPrompt);
+- `ThreatincMarketCMD.strataBombardMenu()` :860 - The bombardment menu over a hive (phase D, docs/strata-are-the-threat.md 6, v3 docs/suppression-balance.md 10):
+- `ThreatincMarketCMD.satBombPrompt()` :923 - THE SAT BOMB over a hive (the user, 2026-10-27, docs/suppression-balance.md 10):
+- `ThreatincMarketCMD.strataBombardPrompt()` :958
+- `ThreatincMarketCMD.gateConfirm(boolean fuelEnough)` :994 - The confirm's state, set after its shape:
+- `ThreatincMarketCMD.bombardSaturation()` :1013 - A day of saturation bombardment, before it is flown (docs/suppression-balance.md v2 section 4):
+- `ThreatincMarketCMD.bombardConfirm()` :1028
+- `ThreatincMarketCMD.bombardDay(boolean saturation)` :1068 - One day of the player's bombardment (docs/suppression-balance.md v2):
+- `ThreatincMarketCMD.countAtrocity()` :1204 - Vanilla's atrocity bookkeeping, once a campaign rather than once a day:
 
 ## ThreatincNexCMD (57 lines)
 - `ThreatincNexCMD.execute(String ruleId, InteractionDialogAPI dialog, List<Misc.Token> params, Map<String, MemoryAPI> memoryMap)` :34

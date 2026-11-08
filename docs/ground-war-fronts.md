@@ -453,13 +453,13 @@ marines the figure counts.
   ("still N units out"), but only within `defendInboundRange` (3,000 su; 2026-10-13, after three
   engaged reinforcements drawn 13-15,000 su off locked the menu for weeks) - farther out a fleet is
   not in the fight, counts for nothing and the text says so; every defender busy in a battle - raid open, bombardment closed
-  (vanilla's distraction rule); none - vanilla's result stands, raid cooldown included.
+  (the readout only, since 2026-11-08); none - open.
   Whether raid and bombardment CLOSE is then the navy's own question asked the navy's own
   way - `ThreatGroundFronts.orbitContestedFor(player)`, the call `ThreatPurgeFGI.SiegeRaidAction.orbitHeld`
   makes: armed swarm fleets within `ORBIT_HOLD_RANGE` 1,500 su weigh at least
   `orbitContestFraction` 0.5 of the player faction's warships there, the player's own fleet and
-  the navy's fleets alike. Held: raid and bombardment closed. Not held: vanilla's own verdict
-  stands, raid cooldown included, defenders busy or not, and the text adds "Your side holds
+  the navy's fleets alike. Held: raid and bombardment closed. Not held: open (since 2026-11-08; until then
+  vanilla's own verdict stood, raid cooldown included), defenders busy or not, and the text adds "Your side holds
   the orbit: N fleet points against the swarm's M". The user's rule (2026-10-13): if the AI
   navy can bombard, the player can. (Delta Mengryla I again that evening: two Defense Swarm
   scraps of 7 and 12 FP, kept 1,200-3,000 su off by six navy fleets and never arriving, locked
@@ -477,7 +477,17 @@ marines the figure counts.
   Chupi Orco, same Yma system, garrisoned there so not in `threatDefenders` by tag) held the orbit
   and closed bombardment while the menu said "no orbital station or nearby fleets", "nearest
   fleet 5,074 units out: not in the fight" and greyed Engage. Whatever closes raid and bombardment
-  is now listed as near and can be engaged.
+  is now listed as near and can be engaged (`threatDefenders` adds every fleet
+  `ThreatGroundFronts.hostileFleetsNear(player)` weighs). And the verdict is the navy's alone:
+  `temp.canRaid` (the landing) and `temp.canBombard` are `!held`, nothing of vanilla's. Vanilla's
+  `showDefenses` closes bombardment on any defender that "wants to fight", which a Threat fleet
+  always does, so before this a scrap in reach that held nothing by weight still closed the
+  bombardment the navy was flying (the 7 and 12 FP scraps of Delta Mengryla I, 2026-10-13) - and
+  widening the reach to 1,500 su would have brought that back. The history (2026-09-07 custom list;
+  10-13 09:50 far fleets ignored, 21:20 weight, 21:30 the navy's contest; 11-08 one list, one
+  verdict) is one direction, each step removing a closure the navy did not have; the leash
+  (1x the hold range 10-13 09:50, 2x from 21:45, the double-booking loop 10-19) is a separate
+  mechanism this menu never reads.
 
 - **`removeOption` drops the enabled state of the other options (2026-09-07)**: this is why
   the two rewrites above changed nothing in game, and why the sessions before them failed -

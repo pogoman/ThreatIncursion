@@ -168,6 +168,14 @@ public class ThreatincMarketCMD extends MarketCMD {
 			if (!ours && Misc.getDistance(fleet, entity) > radius) continue;
 			result.add(fleet);
 		}
+		// and whatever else the orbit contest weighs (ThreatGroundFronts.hostileFleetsNear:
+		// any armed fleet hostile to the player within ORBIT_HOLD_RANGE, not fleeing), so
+		// a held orbit always lists the fleet holding it, and Engage can reach it
+		for (CampaignFleetAPI fleet : ThreatGroundFronts.hostileFleetsNear(Factions.PLAYER, market)) {
+			if (result.contains(fleet) || fleet.isHidden() || fleet.isStationMode() || fleet.isPlayerFleet()) continue;
+			if (fleet.getFleetData().getNumMembers() <= 0) continue;
+			result.add(fleet);
+		}
 		return result;
 	}
 
@@ -238,9 +246,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 	 * ThreatGroundFronts.orbitContestedFor(player) - armed swarm fleets within
 	 * ORBIT_HOLD_RANGE weigh orbitContestFraction of the player faction's
 	 * warships there, the player's own fleet and the navy alike. Held: raid and
-	 * bombardment closed. Not held: vanilla's own verdict stands, raid cooldown
-	 * included, busy or not (two scraps of 7 and 12 FP kept off by six
-	 * bombarding navy fleets had locked the menu at Delta Mengryla I).
+	 * bombardment closed. Not held: open - the navy's verdict and nothing of
+	 * vanilla's (2026-11-08: vanilla's showDefenses closes bombardment on any
+	 * defender that "wants to fight", and a Threat fleet always does, so a
+	 * scrap in reach that held nothing by weight still closed the bombardment
+	 * the navy was flying - the two 7 and 12 FP scraps of Delta Mengryla I).
 	 * Logs every fleet weighed, so a wrong menu explains itself.
 	 *
 	 * <p>MUST BE CALLED LAST, after every addOption/removeOption on the panel:
@@ -325,25 +335,20 @@ public class ThreatincMarketCMD extends MarketCMD {
 			options.setEnabled(ENGAGE, true);
 			return;
 		}
-		boolean defended = held;
-		if (defended) {
-			temp.canRaid = false;
-			temp.canBombard = false;
-		}
-		options.setEnabled(RAID, temp.canRaid);
-		if (defended) {
-			options.setTooltip(RAID, "The presence of enemy fleets that are willing "
-					+ "to offer battle makes a raid impossible.");
-		}
-		if (isThreatTarget()) {
-			// nothing to raid on a hive (phase D): the strata are its everything, and a landing takes them
-			options.setEnabled(RAID, false);
-			options.setTooltip(RAID, "Nothing to raid: the hive is its strata. Land ground forces to take them.");
-		}
-		options.setEnabled(BOMBARD, temp.canBombard);
-		if (!temp.canBombard) {
-			options.setTooltip(BOMBARD, "All defenses must be defeated to make a "
-					+ "bombardment possible.");
+		// THE NAVY'S VERDICT AND NOTHING ELSE (the user, 2026-10-13: "if my AI navy
+		// can bombard, I should be able to as well"): held closes the landing
+		// (gateLanding and groundDeploy read temp.canRaid) and the bombardment;
+		// not held opens them, whatever vanilla's showDefenses made of the fleet it
+		// found. Only ever called for a hive (showDefenses returns to vanilla for
+		// the rest), and a hive has nothing to raid (phase D).
+		temp.canRaid = !held;
+		temp.canBombard = !held;
+		options.setEnabled(RAID, false);
+		options.setTooltip(RAID, "Nothing to raid: the hive is its strata. Land ground forces to take them.");
+		options.setEnabled(BOMBARD, !held);
+		if (held) {
+			options.setTooltip(BOMBARD, "The swarm holds the orbit: " + Misc.getWithDGS((int) swarmFP)
+					+ " fleet points against our " + Misc.getWithDGS((int) friendlyFP) + ".");
 		}
 		// the same pick vanilla's engage() will make on the click, so the
 		// option is open exactly when there is something to engage
