@@ -24,7 +24,7 @@ threatinc_occupationEnabled,Occupation,Boolean,true,"The swarm never takes a hum
 threatinc_convertDecivWorlds,Swarm Settles Dead Worlds,Boolean,true,Worlds the swarm decivilises become its next colonies.,,
 threatinc_fleetArchetypes,Fleet Archetypes,Boolean,true,"Threat fleets come in types (Host, Vanguard, Battery, Tide, Hunter, Scout) with their own hull mix.",,
 threatinc_convertedHulls,Converted Hulls,Boolean,true,"Threat fleets include the warships they have destroyed and consumed, beside their own units. Read at game launch.",,
-threatinc_fabricatorPerFP,Fabricator Per Fleet Points,Int,1200,"A swarm fleet carries one fabricator (600 FP) per this many fleet points of its budget. 0: never.",0,10000
+threatinc_fabricatorPerFP,Fabricator Threshold (FP),Int,1200,"A swarm fleet carries one fabricator per this many fleet points of its size: one at 1,200, two at 2,400. A fabricator is 600 FP of the fleet. 0: never.",0,10000
 threatinc_fabricatorsMax,Fabricators Per Fleet,Int,3,The most fabricators one swarm fleet carries.,0,6
 threatinc_swarmDoctrine,Swarm Doctrine,Boolean,true,"A Threat fleet with no fabricator or hive in the battle attacks as a swarm instead of holding its edge. One with a fabricator defends it, as vanilla.",,
 threatinc_swarmDoctrinePersonality,Swarm Personality,String,aggressive,"How swarm-doctrine ships fight: aggressive or reckless.",,
