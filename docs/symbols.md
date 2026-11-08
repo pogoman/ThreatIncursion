@@ -1907,7 +1907,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFeeding.shipBases(FactionAPI faction, List<MarketAPI> markets, Random random)` :332 - The faction's logistics pass (ThreatConvoys.planLogistics, before the depots):
 - `ThreatFeeding.absorbed(ThreatConvoys.Convoy c, ThreatBases.Base base, float supplies)` :383 - A feeding convoy landed (ThreatConvoys.arrived, its cargo already in the depot):
 
-## ThreatFleetComposer (548 lines)
+## ThreatFleetComposer (553 lines)
 ### entry points
 - `ThreatFleetComposer.beltGuard(CampaignFleetAPI fleet)` :86 - Vanilla's go-slow trap (found 2026-10-09, hw126/hw127).
 - `ThreatFleetComposer.BeltGuard(CampaignFleetAPI fleet)` :100 - Frames on which the guard met an overshooting brake (read by the overdue line).
@@ -1929,14 +1929,14 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### composition
 - `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random)` :320 - Adds ships until the budget is spent.
 - `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random, MarketAPI ledger)` :330 - As above;
-- `ThreatFleetComposer.isConvertedGroup(String mixKey)` :385
-- `ThreatFleetComposer.pickConverted(MarketAPI ledger, String group, Archetype a, Random random)` :394 - A shape of the group off the ledger, as one of its converted variants (the archetype's favour applies by variant id);
-- `ThreatFleetComposer.variantFP(String variantId)` :410
-- `ThreatFleetComposer.mixKey(com.fs.starfarer.api.combat.ShipHullSpecAPI spec)` :423 - The key an archetype's mix names a hull by:
-- `ThreatFleetComposer.pickVariant(String hull, Archetype a, Random random)` :436
-- `ThreatFleetComposer.finish(CampaignFleetAPI fleet)` :446 - What createThreatFleet does after adding ships.
+- `ThreatFleetComposer.isConvertedGroup(String mixKey)` :390
+- `ThreatFleetComposer.pickConverted(MarketAPI ledger, String group, Archetype a, Random random)` :399 - A shape of the group off the ledger, as one of its converted variants (the archetype's favour applies by variant id);
+- `ThreatFleetComposer.variantFP(String variantId)` :415
+- `ThreatFleetComposer.mixKey(com.fs.starfarer.api.combat.ShipHullSpecAPI spec)` :428 - The key an archetype's mix names a hull by:
+- `ThreatFleetComposer.pickVariant(String hull, Archetype a, Random random)` :441
+- `ThreatFleetComposer.finish(CampaignFleetAPI fleet)` :451 - What createThreatFleet does after adding ships.
 ### loading
-- `ThreatFleetComposer.load()` :459
+- `ThreatFleetComposer.load()` :464
 
 ## ThreatFleetOrders (3310 lines)
 - `ThreatFleetOrders.fightOrbit(CampaignFleetAPI fleet, boolean fighting)` :128 - Stamped each poll by ThreatGroundFronts#tickSupport and ThreatSwarmDefend#tick.
@@ -4469,7 +4469,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReach.num(Object o)` :480
 - `ThreatReach.logMonth()` :487 - The month's reach line for the census log - the spare, the trips flown and how far the hive has spread - and the tallies reset.
 
-## ThreatReclaimed (418 lines)
+## ThreatReclaimed (426 lines)
 - `ThreatReclaimed.ThreatReclaimed()` :48 - THE RECLAIMED-HULL LEDGER (the user, 2026-11-07:
 - `ThreatReclaimed.index()` :56
 - `ThreatReclaimed.enabled()` :69
@@ -4491,17 +4491,17 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReclaimed.strata(MarketAPI world, float fp)` :199 - The strata a claimed wreck adds:
 - `ThreatReclaimed.claim(MarketAPI world, FleetMemberAPI member)` :210 - A destroyed hull the swarm eats:
 - `ThreatReclaimed.claimHull(MarketAPI world, String baseHullId, float fp)` :216
-- `ThreatReclaimed.claimFP(MarketAPI world, String factionId, float fp)` :230 - Fleet points a faction lost with no hulls to name (a route not yet spawned, an expedition's autoresolve damage):
-- `ThreatReclaimed.seed(MarketAPI world, float fp)` :265 - Debug (ThreatDebugWar.pollReclaimed):
-- `ThreatReclaimed.backfillOnLoad()` :294 - Mid-war saves get straight into it (the user, 2026-11-08):
+- `ThreatReclaimed.claimFP(MarketAPI world, String factionId, float fp)` :234 - Fleet points a faction lost with no hulls to name (a route not yet spawned, an expedition's autoresolve damage):
+- `ThreatReclaimed.seed(MarketAPI world, float fp)` :273 - Debug (ThreatDebugWar.pollReclaimed):
+- `ThreatReclaimed.backfillOnLoad()` :302 - Mid-war saves get straight into it (the user, 2026-11-08):
 ### where a claim goes
-- `ThreatReclaimed.homeOf(CampaignFleetAPI fleet)` :331 - The world a swarm's claims go to:
-- `ThreatReclaimed.nearest(StarSystemAPI system)` :342 - A live hive world in the system, else the nearest to it.
-- `ThreatReclaimed.nearest(SectorEntityToken entity)` :349
-- `ThreatReclaimed.nearest(Vector2f hyper)` :354 - The live hive world nearest a hyperspace position, or null with none.
+- `ThreatReclaimed.homeOf(CampaignFleetAPI fleet)` :339 - The world a swarm's claims go to:
+- `ThreatReclaimed.nearest(StarSystemAPI system)` :350 - A live hive world in the system, else the nearest to it.
+- `ThreatReclaimed.nearest(SectorEntityToken entity)` :357
+- `ThreatReclaimed.nearest(Vector2f hyper)` :362 - The live hive world nearest a hyperspace position, or null with none.
 ### fought battles
-- `ThreatReclaimed.Listener()` :379 - Hears every battle a Threat fleet wins and claims the named hulls the other side lost (vanilla's snapshot, Misc.getSnapshotMembersLost), the player's included.
-- `ThreatReclaimed.reportBattleOccurred(CampaignFleetAPI primaryWinner, BattleAPI battle)` :384
+- `ThreatReclaimed.Listener()` :387 - Hears every battle a Threat fleet wins and claims the named hulls the other side lost (vanilla's snapshot, Misc.getSnapshotMembersLost), the player's included.
+- `ThreatReclaimed.reportBattleOccurred(CampaignFleetAPI primaryWinner, BattleAPI battle)` :392
 
 ## ThreatReserves (1484 lines)
 - `ThreatReserves.get(String marketId)` :140
