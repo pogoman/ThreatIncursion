@@ -180,3 +180,44 @@ reclaimed. `ThreatReclaimed`:
   worlds' later buds carry converted hulls too.
 
 Tested in-game 2026-11-08 04:36 (run rl1: Instant War from the Aphelion Dysnomia seed save, 307 war days, debug logging on): the ledger fills by both channels and is drawn down when a world buds. Real battles: "Epsilon Far Salish I claims 33 hulls (314 FP, 19 shapes) from Shifting Swarm's battle" (named hulls, `ThreatReclaimed.Listener`); off-screen fights: "Cilicia books 4 shapes by class from tritachyon's 44 FP lost", "Beta Kalico IV books 24 shapes by class from hegemony's 178 FP lost" (`claimFP`); draws: "First Strike buds 6 converted of 11 hulls off Epsilon Far Salish I's ledger; 45 shapes left" (`fill`), the ledger falling by one a draw (53 -> 37 over eleven strikes) and rising with each claim. 89 `Reclaimed:` lines in 307 war days, no mod exception. Those three log lines (`ThreatIncConfig.log`, debug logging only) were added for the test and stay.
+
+## Battle doctrine by composition (2026-11-08)
+
+Vanilla's `ThreatCombatStrategyAI` (added to every battle by `ThreatHullmod`) mutes the admiral and anchors
+the fleet on its fabricators: fabricators within 1-2k of a point a third of the map back on its own edge,
+hives just ahead of it, two DEFEND waypoints 2,000 short of the enemy's centre of mass, the all-in flags
+(DO_NOT_BACK_OFF / DO_NOT_VENT) only when enemies close within ~2,000 of the anchor, and a one-minute
+search-and-destroy for half the skirmish hulls every 60-90 s. Retreat is off (`ThreatFIDConfig`:
+`aiRetreatAllowed = false`, `fightToTheLast`). The ships carry no officers, so they fly on the faction
+doctrine's aggression 2, cautious.
+
+A fleet with NO fabricator or hive deployed - every small swarm - falls into the branch that drops the
+waypoints and every capture and never reaches the all-in flags: no orders at all, each ship on its own
+cautious AI, unable to retreat, pinned on its own edge by the end (the user, 2026-11-08: "they seem to be
+very cautious ... would expect machines to be a bit more swarmy/aggressive"; "fabricators aren't in the
+smaller fleets, so the doctrine doesn't really make sense. really the doctrine should be chosen based on
+the fleet composition").
+
+`ThreatSwarmDoctrine` (an `EveryFrameCombatPlugin`, registered in settings.json `plugins`, one instance a
+battle) fills that branch. Once a second on the enemy side of a battle against the Threat (the campaign
+context's other fleet is the Threat faction; the simulator and missions are judged by `threat_hullmod`
+alone):
+
+- a fabricator or hive deployed: nothing - vanilla's defence stands; any ship the plugin touched
+  earlier (a fabricator arriving as a reinforcement) has its default `ShipAIConfig` restored.
+- none: the swarm doctrine. Every Threat combat unit (`isCombatUnit`, not an overseer, not under
+  construction, not a fighter) has its `ShipAIConfig.personalityOverride` set to
+  `threatinc_swarmDoctrinePersonality` (aggressive; reckless accepted, anything else falls back),
+  `alwaysStrafeOffensively` on, `backingOffWhileNotVentingAllowed` and `turnToFaceWithUndamagedArmor` off -
+  the block Alex left commented in `ThreatCombatStrategyAI`, with aggressive for his reckless - and is
+  ordered to search and destroy unless it already is. Vanilla's skirmish SND still cancels and
+  IGNORES_ORDERS half the skirmish hulls for a minute at a time; re-ordering them is harmless.
+
+Overseers keep vanilla's escort logic. Retreat stays off: a swarm presses and dies rather than runs.
+The player's side is never touched. Off with `threatinc_swarmDoctrine` (LunaLib, The Hive). Logs
+`Swarm doctrine on/off` once a flip.
+
+To verify in-game: a First/Second Strike without a fabricator closes and keeps pressing instead of
+holding its edge; a Third Strike or hive garrison with fabricators still holds its line as before;
+`starsector.log` shows one `Swarm doctrine on:` line a battle; the player's own converted hulls fight on
+their officers' personalities.

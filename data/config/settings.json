@@ -4,6 +4,11 @@
 	# lets rules.csv resolve this mod's rule commands (ThreatincBombardCMD)
 	"ruleCommandPackages":["threatinc"],
 
+	# every-frame combat plugins, one instance per battle
+	"plugins":{
+		"threatinc_swarmDoctrine":"threatinc.ThreatSwarmDoctrine",
+	},
+
 	# Master switch and clock
 	"threatinc_enabled": true,
 	"threatinc_tickDays": 30,
@@ -357,6 +362,12 @@
 	# - in the archetypes' mixes (the converted_* groups in threatinc_fleets.json); false =
 	# Threat hulls only. Read once per game launch, with the archetypes.
 	"threatinc_convertedHulls": true,
+	# battle doctrine by composition (ThreatSwarmDoctrine): a Threat fleet with no fabricator or
+	# hive deployed fights as a swarm - every combat unit on this personality, strafing, never
+	# backing off, on search and destroy; with one deployed, vanilla's hive defence stands.
+	# aggressive or reckless.
+	"threatinc_swarmDoctrine": true,
+	"threatinc_swarmDoctrinePersonality": "aggressive",
 	# strata a wreck the swarm claims adds to the claiming world, as a share of the hull's fleet
 	# points (the user, 2026-11-07: half - a wreck is half a ship); 0 = shapes only, no mass
 	"threatinc_reclaimStrataShare": 0.5,

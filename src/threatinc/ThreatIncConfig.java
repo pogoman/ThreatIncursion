@@ -604,6 +604,10 @@ public class ThreatIncConfig {
 	public static boolean fleetArchetypes()  { return b("threatinc_fleetArchetypes", true); }
 	/** Converted vanilla hulls (Threat skins, tools/converted-hulls/gen.py) in the archetypes' mixes. */
 	public static boolean convertedHulls()   { return b("threatinc_convertedHulls", true); }
+	/** Threat fleets with no fabricator or hive deployed fight as a swarm in battle (ThreatSwarmDoctrine). */
+	public static boolean swarmDoctrine()    { return b("threatinc_swarmDoctrine", true); }
+	/** The swarm doctrine's ship personality id: aggressive (default) or reckless. */
+	public static String swarmDoctrinePersonality() { return s("threatinc_swarmDoctrinePersonality", "aggressive"); }
 	/** Strata a wreck the swarm claims adds, as a share of the hull's fleet points (ThreatReclaimed.strata). */
 	public static float reclaimStrataShare() { return f("threatinc_reclaimStrataShare"); }
 	/** Shapes each hive world of reclaimBackfillMinSize+ gets once, the first time a mid-war save loads with converted hulls (ThreatReclaimed.backfillOnLoad). */
