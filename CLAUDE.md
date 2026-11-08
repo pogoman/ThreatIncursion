@@ -59,6 +59,9 @@ now and nothing about how the mechanism works - that goes in `docs/`.
   The word "Threat" in a line is coloured automatically.
 - **Never fluoro green** (`Misc.getPositiveHighlightColor`), anywhere - user's rule 2026-09-26.
   A good state or gain uses `ThreatNotice.goodColor()` (the player's UI blue).
+- **No nautical verbs, and the Threat does not paint or refit (the user, 2026-11-08).** Fleets fly, launch, move,
+  are sent; never "sail", "voyage". A converted hull is a warship the swarm destroyed and consumed - strata
+  through it, its weapons in the mounts - never "rebuilt in the hive's colours", "refitted", "shipwright".
 - **Option panels: shape first, state last.** In any dialog menu, do every
   `addOption`/`removeOption`/`clearOptions` first, then every `setEnabled`/`setTooltip`.
   `removeOption` rebuilds the panel and drops every `setEnabled`, `setTooltip`, `setShortcut`

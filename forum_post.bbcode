@@ -35,7 +35,7 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 [li][b]Strata[/b] is a hive's one number. It is the colony's ground defence, its hit points and its troops at once. Fight it on the ground or bomb it from orbit, and the number goes down. Below each size's threshold the colony drops a size; at zero it is destroyed[/li]
 [li]Each size needs twice the strata of the last, so a size 8 hive is a fortress and a size 2 seed is nothing[/li]
 [li][b]Strata is also its fleets.[/b] A hive has no standing garrison. When attacked, or to strike, it turns strata into ships ("budding"); when the ships come home it turns them back into strata ("absorbing"). A hive that buds a defence fleet has that much less on the ground[/li]
-[li][b]Reclaimed hulls.[/b] The swarm sails the warships of the fleets it has destroyed: the original hull rebuilt in the hive's colours, its mounts refitted with the swarm's own guns, a fragment swarm in its voids. Every wreck a hive takes is strata, and a hull the swarm can rebuild is also a shape on that world's ledger. A fleet budded there carries the shapes its world has reclaimed, so a hive that has eaten a Hegemony navy fields Onslaughts and Eagles[/li]
+[li][b]Reclaimed hulls.[/b] The swarm uses the warships it destroys. A wreck it takes is consumed: strata grow through the hull, the swarm's own weapons take its mounts, a fragment swarm fills its voids, and the ship flies again as part of the swarm. Every wreck a hive takes is strata, and a hull the swarm can use is also a shape on that world's ledger. A fleet budded there carries the shapes its world has reclaimed, so a hive that has consumed a Hegemony fleet fields Onslaughts and Eagles[/li]
 [li][b]The Fabrication Core[/b] is the industry that makes strata. It needs metals and fuel, more of each the bigger the colony. Both met in full: the hive grows a size at a time. Short: it holds. Starved: it loses strata daily and shrinks a size at a time until it is gone[/li]
 [li]Hives import from each other like any market. [b]Blockade[/b] a hive (hold its orbit with warships) and it imports nothing; only its own mines, refineries and fuel plants still feed its Core. Saturation bombardment disrupts those for a year[/li]
 [li]A hive's accessibility is how much strata stands nearby ("swarm density"). Dense systems grow; an isolated hive starves[/li]
@@ -47,7 +47,7 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 
 [center][img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-1.png[/img] [img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-2.png[/img]
 [img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-3.png[/img] [img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-4.png[/img]
-[i]Reclaimed warships: the shipwright's lines, the hive's plating and hatches, the swarm's guns, a fragment swarm in their voids.[/i][/center]
+[i]Consumed warships: the hull is the original's, everything in it is the swarm's.[/i][/center]
 
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/hive-growing.png[/img]
 [i]A hive's Core fed in full: metals 3 of 3, fuel 1 of 1, 600 strata a month, the next size in 36 days.[/i][/center]
@@ -92,7 +92,7 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 [list]
 [li]Mobilise puts every colony of yours on War Footing: a market condition that demands hulls, marines, heavy armaments, fuel and supplies, so your industries bank them as the colony's stockpile. The stockpile is the reserve the board spends[/li]
 [li]Domain table: one row a colony with its stockpile, its fleet on station and its status. Levers above it, one per good: None / Med / Max is nothing, half or all of what the colony can spare[/li]
-[li]Deploy raises a fleet from a colony's hulls at the Fleet lever and sails it where you say. Transfer moves stock between your worlds by convoy. Recall brings a fleet home with what it carries. Attack (Threat tab) sends a fleet at a hive system[/li]
+[li]Deploy raises a fleet from a colony's hulls at the Fleet lever and sends it where you say. Transfer moves stock between your worlds by convoy. Recall brings a fleet home with what it carries. Attack (Threat tab) sends a fleet at a hive system[/li]
 [li]Every fleet and convoy pays fuel for the passage and burns supplies while out. It turns home when supplies run out, and its row says why[/li]
 [li]Call for aid on a world under attack: a toggle per good. Factions with a surplus post offers; Accept, Dismiss or Cancel. Their asks of you show the exact figure, the standing it pays and the ETA; Send or ignore[/li]
 [li]Defend an ally's orbit for 30 / 90 / 180 days, or send any good to any faction; standing on arrival, one rate either way[/li]
@@ -136,12 +136,12 @@ The settings menu (LunaLib, Shift+F2) holds the knobs that matter; the rest live
 
 [b]0.9.1 - reclaimed hulls[/b]
 [spoiler]
-[b]The swarm sails what it kills.[/b] Saves from 0.9.0 carry on: on the first load every hive world of size 5 or more is given a handful of shapes to start with, and the ledgers fill from there as the war's losses mount.
+[b]The swarm uses what it kills.[/b] Saves from 0.9.0 carry on: on the first load every hive world of size 5 or more is given a handful of shapes to start with, and the ledgers fill from there as the war's losses mount.
 
 [b]Converted hulls[/b]
 [list]
-[li]45 vanilla warships, frigate to capital - carriers included; no phase, civilian, module or unique hulls - each have a Threat form, "<Hull> (Converted)". The sprite is the original recoloured into the swarm's bone-and-amber palette with its hatches aglow; the engines are the Threat's; the hull carries the automated, Threat and fragment swarm hullmods and is unboardable. Fleet points, ordnance and slots are the original's[/li]
-[li]107 loadouts, cloned from vanilla's own variants and refitted mount by mount with the swarm's weapons: mass drivers and the Neoferric Quadcoil for ballistic mounts, Voltaic Cannon and Voidblaster for energy, Neutron Torpedoes, Kinetic Fragments and Swarm Launchers for missiles, Voltaic Discharge for point defence; large energy, large missile and ballistic point-defence mounts keep the original weapon. Ordnance points are no limit - the swarm fits what the hull can carry, not what the budget allows[/li]
+[li]45 vanilla warships, frigate to capital - carriers included; no phase, civilian, module or unique hulls - each have a consumed form, "<Hull> (Converted)": the original hull grown through with strata, the hive's glow at its hatches, Threat engines, the automated, Threat and fragment swarm hullmods; unboardable. Fleet points, ordnance and slots are the original's[/li]
+[li]107 loadouts, vanilla's own variants of each hull with the swarm's weapons in their mounts: mass drivers and the Neoferric Quadcoil for ballistic mounts, Voltaic Cannon and Voidblaster for energy, Neutron Torpedoes, Kinetic Fragments and Swarm Launchers for missiles, Voltaic Discharge for point defence; large energy, large missile and ballistic point-defence mounts keep the original weapon. Ordnance points are no limit - the swarm fits what the hull can carry, not what the budget allows[/li]
 [li]The Threat's battle coordination counts them as combat units. Vanilla's own abyss fleets never draw them[/li]
 [li]Converted Hulls (LunaLib) turns them off; read at game launch[/li]
 [/list]

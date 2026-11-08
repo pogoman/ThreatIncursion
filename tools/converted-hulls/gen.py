@@ -59,9 +59,9 @@ EXCLUDE_HINTS = {"CIVILIAN", "STATION", "UNBOARDABLE", "HIDE_IN_CODEX", "SHIP_WI
 EXCLUDE_BUILTINS = {"phasefield", "civgrade"}
 
 DESCRIPTION_PREFIX = (
-    "Reclaimed by the Threat from a fleet it destroyed and rebuilt from the inside out. The "
-    "hull and its armament are the original's; the crew spaces are packed with fabricator "
-    "strata, and a fragment swarm roils in its voids. It answers only to the hive."
+    "A warship the Threat destroyed and consumed. The hull is the original's, its spaces grown "
+    "through with fabricator strata; the swarm's own weapons sit in its mounts and a fragment "
+    "swarm roils in its voids. It answers only to the hive."
 )
 
 BUILT_IN_MODS = ["automated", "threat_hullmod", "fragment_swarm"]
