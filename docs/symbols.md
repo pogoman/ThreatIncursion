@@ -1907,7 +1907,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFeeding.shipBases(FactionAPI faction, List<MarketAPI> markets, Random random)` :332 - The faction's logistics pass (ThreatConvoys.planLogistics, before the depots):
 - `ThreatFeeding.absorbed(ThreatConvoys.Convoy c, ThreatBases.Base base, float supplies)` :383 - A feeding convoy landed (ThreatConvoys.arrived, its cargo already in the depot):
 
-## ThreatFleetComposer (546 lines)
+## ThreatFleetComposer (548 lines)
 ### entry points
 - `ThreatFleetComposer.beltGuard(CampaignFleetAPI fleet)` :86 - Vanilla's go-slow trap (found 2026-10-09, hw126/hw127).
 - `ThreatFleetComposer.BeltGuard(CampaignFleetAPI fleet)` :100 - Frames on which the guard met an overshooting brake (read by the overdue line).
@@ -1920,23 +1920,23 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFleetComposer.createSized(String job, float fp, Random random)` :180 - A fleet of about the given fleet points for the job (phase C, 2026-10-25:
 - `ThreatFleetComposer.createSized(String job, float fp, Random random, MarketAPI ledger)` :185 - As above, budded at a hive world whose reclaimed-hull ledger fills the converted_ groups.
 - `ThreatFleetComposer.createArchetype(String archetypeId, float fp, Random random, MarketAPI ledger)` :210 - A fleet of about the given fleet points built as one named archetype (debug:
-- `ThreatFleetComposer.splitOff(CampaignFleetAPI from, float targetFP, float capFP, Random random)` :229 - Carves a fleet of about targetFP off from:
-- `ThreatFleetComposer.compare(FleetMemberAPI a, FleetMemberAPI b)` :235
-- `ThreatFleetComposer.archetypeOf(CampaignFleetAPI fleet)` :263 - The archetype a fleet was built as, or null for a fleet not built here.
-- `ThreatFleetComposer.pickArchetype(String job, Random random)` :270 - Weighted pick from the job's archetype pool;
-- `ThreatFleetComposer.recompose(CampaignFleetAPI fleet, String archetypeId, Random random)` :286 - Strips the hulls the archetype's mix names and spends their fleet points again on its mix.
-- `ThreatFleetComposer.recompose(CampaignFleetAPI fleet, String archetypeId, Random random, MarketAPI ledger)` :291 - As above, with the hive world whose reclaimed-hull ledger fills the converted_ groups (null:
+- `ThreatFleetComposer.splitOff(CampaignFleetAPI from, float targetFP, float capFP, Random random)` :231 - Carves a fleet of about targetFP off from:
+- `ThreatFleetComposer.compare(FleetMemberAPI a, FleetMemberAPI b)` :237
+- `ThreatFleetComposer.archetypeOf(CampaignFleetAPI fleet)` :265 - The archetype a fleet was built as, or null for a fleet not built here.
+- `ThreatFleetComposer.pickArchetype(String job, Random random)` :272 - Weighted pick from the job's archetype pool;
+- `ThreatFleetComposer.recompose(CampaignFleetAPI fleet, String archetypeId, Random random)` :288 - Strips the hulls the archetype's mix names and spends their fleet points again on its mix.
+- `ThreatFleetComposer.recompose(CampaignFleetAPI fleet, String archetypeId, Random random, MarketAPI ledger)` :293 - As above, with the hive world whose reclaimed-hull ledger fills the converted_ groups (null:
 ### composition
-- `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random)` :318 - Adds ships until the budget is spent.
-- `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random, MarketAPI ledger)` :328 - As above;
-- `ThreatFleetComposer.isConvertedGroup(String mixKey)` :383
-- `ThreatFleetComposer.pickConverted(MarketAPI ledger, String group, Archetype a, Random random)` :392 - A shape of the group off the ledger, as one of its converted variants (the archetype's favour applies by variant id);
-- `ThreatFleetComposer.variantFP(String variantId)` :408
-- `ThreatFleetComposer.mixKey(com.fs.starfarer.api.combat.ShipHullSpecAPI spec)` :421 - The key an archetype's mix names a hull by:
-- `ThreatFleetComposer.pickVariant(String hull, Archetype a, Random random)` :434
-- `ThreatFleetComposer.finish(CampaignFleetAPI fleet)` :444 - What createThreatFleet does after adding ships.
+- `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random)` :320 - Adds ships until the budget is spent.
+- `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random, MarketAPI ledger)` :330 - As above;
+- `ThreatFleetComposer.isConvertedGroup(String mixKey)` :385
+- `ThreatFleetComposer.pickConverted(MarketAPI ledger, String group, Archetype a, Random random)` :394 - A shape of the group off the ledger, as one of its converted variants (the archetype's favour applies by variant id);
+- `ThreatFleetComposer.variantFP(String variantId)` :410
+- `ThreatFleetComposer.mixKey(com.fs.starfarer.api.combat.ShipHullSpecAPI spec)` :423 - The key an archetype's mix names a hull by:
+- `ThreatFleetComposer.pickVariant(String hull, Archetype a, Random random)` :436
+- `ThreatFleetComposer.finish(CampaignFleetAPI fleet)` :446 - What createThreatFleet does after adding ships.
 ### loading
-- `ThreatFleetComposer.load()` :457
+- `ThreatFleetComposer.load()` :459
 
 ## ThreatFleetOrders (3310 lines)
 - `ThreatFleetOrders.fightOrbit(CampaignFleetAPI fleet, boolean fighting)` :128 - Stamped each poll by ThreatGroundFronts#tickSupport and ThreatSwarmDefend#tick.

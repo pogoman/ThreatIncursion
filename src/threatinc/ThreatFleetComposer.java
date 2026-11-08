@@ -209,7 +209,9 @@ public class ThreatFleetComposer {
 	 */
 	public static CampaignFleetAPI createArchetype(String archetypeId, float fp, Random random, MarketAPI ledger) {
 		if (random == null) random = new Random();
-		Archetype a = archetypeId != null && archetypes != null ? archetypes.get(archetypeId) : null;
+		// the table loads on first use; a debug switch can fire before any fleet has been built this session
+		if (!ThreatIncConfig.fleetArchetypes() || !load()) return null;
+		Archetype a = archetypeId != null ? archetypes.get(archetypeId) : null;
 		if (a == null) return null;
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				new ThreatFleetCreationParams(), random);
