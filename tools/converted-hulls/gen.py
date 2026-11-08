@@ -268,6 +268,215 @@ def write_json(path, obj, header):
         f.write("\n")
 
 
+# ---------------------------------------------------------------- the Threat refit
+#
+# A converted hull sails with the Threat's own guns where it has one for the mount (the user,
+# 2026-11-08: "they are all loaded with generic vanilla weapon loadouts"): slot by slot, a Threat weapon
+# of the mount's type and the vanilla weapon's size replaces it, a point-defence weapon only by a Threat
+# point-defence weapon, and the swap is kept only while the loadout still fits the hull's ordnance points
+# (vents and capacitors may give up to half of themselves) and its sustained weapon flux stays within
+# the greater of the hull's dissipation and 1.15x what the vanilla loadout drew. Mounts the Threat has
+# no weapon for (large energy, large missile, ballistic point defence) keep their vanilla weapon.
+
+THREAT_GUNS = {
+    ("BALLISTIC", "SMALL"): ["light_mass_driver"],
+    ("BALLISTIC", "MEDIUM"): ["heavy_mass_driver"],
+    ("BALLISTIC", "LARGE"): ["neoferric_quadcoil"],
+    ("ENERGY", "SMALL"): ["voltaic_cannon"],
+    ("ENERGY", "MEDIUM"): ["voidblaster"],
+    ("MISSILE", "SMALL"): ["neutron_torpedo", "kinetic_fragments"],
+    ("MISSILE", "MEDIUM"): ["swarm_launcher"],
+}
+THREAT_PD = {("ENERGY", "SMALL"): ["voltaic_discharge"]}
+MOUNT_TAKES = {
+    "BALLISTIC": ["BALLISTIC"], "ENERGY": ["ENERGY"], "MISSILE": ["MISSILE"],
+    "HYBRID": ["BALLISTIC", "ENERGY"], "SYNERGY": ["ENERGY", "MISSILE"],
+    "COMPOSITE": ["BALLISTIC", "MISSILE"], "UNIVERSAL": ["BALLISTIC", "ENERGY", "MISSILE"],
+}
+HULLMOD_COST = {"FRIGATE": "cost_frigate", "DESTROYER": "cost_dest", "CRUISER": "cost_cruiser",
+                "CAPITAL_SHIP": "cost_capital"}
+FLUX_SLACK = 1.15
+REFIT_STATS = {"swapped": 0, "kept_op": 0, "kept_flux": 0, "kept_none": 0, "variants": 0}
+
+_weapons = _hullmods = _wings = _hull_rows = _ships = None
+
+
+def _num(v, default=0.0):
+    try:
+        return float(v) if str(v).strip() != "" else default
+    except ValueError:
+        return default
+
+
+def weapon_table():
+    """id -> {size, type, op, flux (sustained flux/sec), pd, damage}: csv figures, size and mount type from the .wpn."""
+    global _weapons
+    if _weapons is not None:
+        return _weapons
+    spec = {}
+    for p in glob.glob(os.path.join(CORE, "data/weapons/*.wpn")):
+        t = open(p, encoding="utf-8-sig", errors="replace").read()
+        m = re.search(r'"id"\s*:\s*"([^"]+)"', t)
+        if not m:
+            continue
+        size = re.search(r'"size"\s*:\s*"(\w+)"', t)
+        typ = re.search(r'"type"\s*:\s*"(\w+)"', t)
+        spec[m.group(1)] = (size.group(1) if size else None, typ.group(1) if typ else None)
+    out = {}
+    with open(os.path.join(CORE, "data/weapons/weapon_data.csv"), encoding="utf-8-sig", errors="replace") as f:
+        for r in csv.DictReader(f):
+            wid = (r.get("id") or "").strip()
+            if not wid or wid not in spec:
+                continue
+            size, typ = spec[wid]
+            per_second = _num(r.get("energy/second"))
+            if per_second > 0:
+                flux = per_second
+            else:
+                shot = _num(r.get("energy/shot"))
+                burst = max(1.0, _num(r.get("burst size"), 1.0))
+                cycle = _num(r.get("chargeup")) + _num(r.get("chargedown")) + _num(r.get("burst delay")) * (burst - 1)
+                rate = burst / cycle if cycle > 0 else 0.0
+                regen = _num(r.get("ammo/sec"))
+                if _num(r.get("ammo")) > 0:
+                    rate = min(rate, regen) if regen > 0 else 0.0
+                flux = shot * rate
+            if typ == "MISSILE":
+                flux = 0.0
+            hints = {h.strip() for h in (r.get("hints") or "").split(",") if h.strip()}
+            out[wid] = {"size": size, "type": typ, "op": _num(r.get("OPs")), "flux": flux,
+                        "pd": "PD" in hints, "damage": (r.get("type") or "").strip()}
+    _weapons = out
+    return out
+
+
+def hullmod_costs():
+    global _hullmods
+    if _hullmods is None:
+        _hullmods = {}
+        with open(os.path.join(CORE, "data/hullmods/hull_mods.csv"), encoding="utf-8-sig", errors="replace") as f:
+            for r in csv.DictReader(f):
+                hid = (r.get("id") or "").strip()
+                if hid:
+                    _hullmods[hid] = {k: _num(r.get(v)) for k, v in HULLMOD_COST.items()}
+    return _hullmods
+
+
+def wing_costs():
+    global _wings
+    if _wings is None:
+        _wings = {}
+        with open(os.path.join(CORE, "data/hulls/wing_data.csv"), encoding="utf-8-sig", errors="replace") as f:
+            for r in csv.DictReader(f):
+                wid = (r.get("id") or "").strip()
+                if wid:
+                    _wings[wid] = _num(r.get("op cost"))
+    return _wings
+
+
+def hull_rows():
+    """hullId -> (ordnance points, flux dissipation) from ship_data.csv."""
+    global _hull_rows
+    if _hull_rows is None:
+        _hull_rows = {}
+        with open(os.path.join(CORE, "data/hulls/ship_data.csv"), encoding="utf-8-sig") as f:
+            for r in csv.DictReader(f):
+                hid = (r.get("id") or "").strip()
+                if hid and not hid.startswith("#"):
+                    _hull_rows[hid] = (_num(r.get("ordnance points")), _num(r.get("flux dissipation")))
+    return _hull_rows
+
+
+def ship_specs():
+    global _ships
+    if _ships is None:
+        _ships = {}
+        for p in glob.glob(os.path.join(CORE, "data/hulls/*.ship")):
+            j = load_json(p)
+            _ships[j["hullId"]] = j
+    return _ships
+
+
+def threat_pick(slot_type, orig):
+    """The Threat weapon for a mount holding the vanilla weapon, or None: same size as the vanilla
+    weapon, a type the mount takes (the vanilla weapon's own type first), point defence for point defence,
+    and for the small missile a kinetic one for a kinetic original."""
+    if orig is None or orig["size"] is None:
+        return None
+    types = MOUNT_TAKES.get(slot_type)
+    if not types:
+        return None
+    order = ([orig["type"]] if orig["type"] in types else []) + [t for t in types if t != orig["type"]]
+    table = THREAT_PD if orig["pd"] else THREAT_GUNS
+    for t in order:
+        cands = table.get((t, orig["size"]))
+        if not cands:
+            continue
+        if t == "MISSILE" and orig["size"] == "SMALL" and len(cands) > 1:
+            return "kinetic_fragments" if orig["damage"] == "KINETIC" else "neutron_torpedo"
+        return cands[0]
+    return None
+
+
+def refit_threat(v, hull):
+    """Rewrites the cloned variant's weapon groups in place with Threat weapons where the rules allow."""
+    weapons = weapon_table()
+    ship = ship_specs().get(hull["id"])
+    row = hull_rows().get(hull["id"])
+    if not ship or not row:
+        return
+    op_max, dissipation = row
+    slots = {s["id"]: s for s in ship.get("weaponSlots", [])}
+    mods = sum(hullmod_costs().get(m, {}).get(hull["size"], 0.0) for m in v.get("hullMods", []) if m not in BUILT_IN_MODS)
+    wings = sum(wing_costs().get(w, 0.0) for w in v.get("wings", []) if w)
+    vents0, caps0 = int(v.get("fluxVents", 0)), int(v.get("fluxCapacitors", 0))
+    vents, caps = vents0, caps0
+
+    mounted = []  # (group index, slot id, weapon id)
+    for gi, g in enumerate(v.get("weaponGroups", [])):
+        for sid, wid in g.get("weapons", {}).items():
+            mounted.append((gi, sid, wid))
+    orig_flux = sum(weapons.get(w, {}).get("flux", 0.0) for _, _, w in mounted)
+    flux_cap = max(orig_flux * FLUX_SLACK, dissipation + 10.0 * vents0)
+
+    def weapon_op(current):
+        return sum(weapons.get(w, {}).get("op", 0.0) for w in current.values())
+
+    current = {sid: wid for _, sid, wid in mounted}
+    size_rank = {"LARGE": 0, "MEDIUM": 1, "SMALL": 2}
+    for gi, sid, wid in sorted(mounted, key=lambda m: size_rank.get(weapons.get(m[2], {}).get("size"), 3)):
+        slot = slots.get(sid)
+        orig = weapons.get(wid)
+        if not slot or not orig or slot.get("type") not in MOUNT_TAKES:
+            continue
+        pick = threat_pick(slot["type"], orig)
+        if pick is None or pick == wid:
+            REFIT_STATS["kept_none"] += 1
+            continue
+        trial = dict(current)
+        trial[sid] = pick
+        flux = sum(weapons.get(w, {}).get("flux", 0.0) for w in trial.values())
+        if flux > flux_cap:
+            REFIT_STATS["kept_flux"] += 1
+            continue
+        need = weapon_op(trial) + mods + wings
+        tv, tc = vents, caps
+        # vents and capacitors give up to half of what the vanilla loadout had, capacitors first
+        while need + tv + tc > op_max and tc > caps0 // 2:
+            tc -= 1
+        while need + tv + tc > op_max and tv > vents0 // 2:
+            tv -= 1
+        if need + tv + tc > op_max:
+            REFIT_STATS["kept_op"] += 1
+            continue
+        current, vents, caps = trial, tv, tc
+        REFIT_STATS["swapped"] += 1
+    for gi, sid, wid in mounted:
+        v["weaponGroups"][gi]["weapons"][sid] = current[sid]
+    v["fluxVents"], v["fluxCapacitors"] = vents, caps
+    REFIT_STATS["variants"] += 1
+
+
 def clone_variant(v, hull):
     hid = PREFIX + hull["id"] + SUFFIX
     suffix = v["variantId"]
@@ -277,6 +486,7 @@ def clone_variant(v, hull):
     c["hullId"] = hid
     c["variantId"] = f"{hid}_{suffix}"
     c["goalVariant"] = True
+    refit_threat(c, hull)
     return c
 
 
@@ -363,6 +573,7 @@ def main():
         print(f"{h['size']:12s} {h['id']:14s} fp {h['fp']:3d} engines {h['engines']:2d} variants {n}")
     write_roles(roles)
     print("hulls", len(hulls), "variants", sum(len(v) for v in roles.values()))
+    print("threat refit:", REFIT_STATS)
     if "--preview" in sys.argv:
         preview(hulls, ref)
 

@@ -606,6 +606,9 @@ public class ThreatIncConfig {
 	public static boolean convertedHulls()   { return b("threatinc_convertedHulls", true); }
 	/** Strata a wreck the swarm claims adds, as a share of the hull's fleet points (ThreatReclaimed.strata). */
 	public static float reclaimStrataShare() { return f("threatinc_reclaimStrataShare"); }
+	/** Shapes each hive world of reclaimBackfillMinSize+ gets once, the first time a mid-war save loads with converted hulls (ThreatReclaimed.backfillOnLoad). */
+	public static int reclaimBackfillShapes() { return i("threatinc_reclaimBackfillShapes"); }
+	public static int reclaimBackfillMinSize() { return i("threatinc_reclaimBackfillMinSize"); }
 	public static float playerGraceDays()    { return f("threatinc_playerGraceDays"); }
 
 	// ---- faction reactive defense ----

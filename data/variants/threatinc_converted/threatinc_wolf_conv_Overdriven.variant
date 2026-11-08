@@ -2,7 +2,7 @@
 {
     "displayName": "Overdriven",
     "fluxCapacitors": 0,
-    "fluxVents": 9,
+    "fluxVents": 5,
     "goalVariant": true,
     "hullId": "threatinc_wolf_conv",
     "hullMods": [
@@ -17,22 +17,22 @@
             "autofire": false,
             "mode": "LINKED",
             "weapons": {
-                "WS 004": "heavyblaster"
+                "WS 004": "voidblaster"
             }
         },
         {
             "autofire": false,
             "mode": "ALTERNATING",
             "weapons": {
-                "WS 005": "sabot",
-                "WS 006": "sabot"
+                "WS 005": "kinetic_fragments",
+                "WS 006": "kinetic_fragments"
             }
         },
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "ioncannon"
+                "WS 001": "voltaic_cannon"
             }
         }
     ]

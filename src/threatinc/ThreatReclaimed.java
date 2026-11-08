@@ -280,6 +280,49 @@ public final class ThreatReclaimed {
 		return booked;
 	}
 
+	/** Persistent data: the one-time backfill of mid-war saves has run. */
+	public static final String KEY_BACKFILLED = "threatinc_reclaimedBackfilled";
+
+	/**
+	 * Mid-war saves get straight into it (the user, 2026-11-08): once per save, on the first load with
+	 * this build, every live hive world of reclaimBackfillMinSize or more - the worlds old enough to
+	 * have been striking - is given reclaimBackfillShapes shapes, drawn from every converted hull the
+	 * cheaper the likelier (no strata: nothing was destroyed). A save whose hives are all still small
+	 * gets nothing and never runs again; its ledgers fill as the war's losses mount. Returns the shapes
+	 * booked.
+	 */
+	public static int backfillOnLoad() {
+		Map<String, Object> data = Global.getSector().getPersistentData();
+		if (Boolean.TRUE.equals(data.get(KEY_BACKFILLED))) return 0;
+		if (!ThreatIncData.isStarted()) return 0;
+		data.put(KEY_BACKFILLED, true);
+		if (!enabled()) return 0;
+		int per = ThreatIncConfig.reclaimBackfillShapes();
+		int minSize = ThreatIncConfig.reclaimBackfillMinSize();
+		if (per <= 0) return 0;
+		index();
+		if (convertedByBase.isEmpty()) return 0;
+		Random random = new Random();
+		WeightedRandomPicker<String> p = new WeightedRandomPicker<String>(random);
+		for (String base : convertedByBase.keySet()) p.add(base, 1f / Math.max(1f, hullFP(base)));
+		int booked = 0;
+		int worlds = 0;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (m.getSize() < minSize) continue;
+			for (int i = 0; i < per; i++) bump(m, p.pick(), 1);
+			booked += per;
+			worlds++;
+		}
+		if (booked > 0) {
+			Global.getLogger(ThreatReclaimed.class).info("[ThreatInc] Reclaimed hulls backfilled: " + booked
+					+ " shapes over " + worlds + " hive worlds of size " + minSize + "+");
+			ThreatNotice.titled("Reclaimed Hulls")
+					.line("%s hive worlds hold the shapes of %s reclaimed warships.", worlds, booked)
+					.send();
+		}
+		return booked;
+	}
+
 	// ------------------------------------------------------------------
 	// where a claim goes
 	// ------------------------------------------------------------------

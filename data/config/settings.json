@@ -360,6 +360,10 @@
 	# strata a wreck the swarm claims adds to the claiming world, as a share of the hull's fleet
 	# points (the user, 2026-11-07: half - a wreck is half a ship); 0 = shapes only, no mass
 	"threatinc_reclaimStrataShare": 0.5,
+	# a mid-war save's first load with converted hulls: every live hive world of this size or more
+	# gets this many reclaimed shapes on its ledger, once (ThreatReclaimed.backfillOnLoad)
+	"threatinc_reclaimBackfillShapes": 6,
+	"threatinc_reclaimBackfillMinSize": 5,
 
 	"threatinc_playerGraceDays": 120,
 	# breaking the staging colony's forge (raid/bombardment/destruction) while

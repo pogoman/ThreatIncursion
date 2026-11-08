@@ -146,6 +146,23 @@ reclaimed. `ThreatReclaimed`:
 - **Seen**: the debug board's hive section lists "Reclaimed hulls" (total shapes, FP, each world's
   summary). Nothing on the war board.
 
+- **The Threat refit (2026-11-08, the user: "they are all loaded with generic vanilla weapon loadouts")**:
+  `gen.py refit_threat` rewrites each cloned variant slot by slot. A mount takes the Threat weapon of the
+  vanilla weapon's size and a type the mount accepts (the vanilla weapon's own type first): mass drivers
+  for ballistic small/medium, the Neoferric Quadcoil for large ballistic, Voltaic Cannon / Voidblaster
+  for small/medium energy, Neutron Torpedo (Kinetic Fragments for a kinetic original) and the Swarm
+  Launcher for small/medium missiles. A point-defence weapon is replaced only by the Voltaic Discharge
+  (small energy); ballistic PD, large energy and large missile mounts keep their vanilla weapon. Each
+  swap is kept only while the loadout fits the hull's ordnance points - vents and capacitors may give up
+  to half of what the vanilla loadout had, capacitors first - and its sustained weapon flux stays within
+  the greater of the hull's dissipation and 1.15x the vanilla loadout's. 2026-11-08 run: 559 swaps over
+  107 variants, 195 refused for OP (Threat guns cost more), 10 for flux, 6 variants untouched.
+- **Mid-war saves (2026-11-08, the user: "just want midwar saves to get straight into it")**:
+  `ThreatReclaimed.backfillOnLoad`, from `ThreatIncModPlugin.onGameLoad`, runs once per save
+  (persistent `threatinc_reclaimedBackfilled`): every live hive world of `reclaimBackfillMinSize` (5) or
+  more gets `reclaimBackfillShapes` (6) shapes drawn from every converted hull, the cheaper the likelier,
+  no strata. A save whose hives are all smaller gets nothing and never runs it again. A "Reclaimed
+  Hulls" notice reports the worlds and shapes.
 - **Testing it (debug, 2026-11-08)**: the LunaLib switch "Reclaimed Swarm" (`threatinc_debugReclaimedSwarm`,
   fires once per toggle-on, `ThreatDebugWar.pollReclaimed`) seeds every live hive world's ledger with
   `threatinc_debugReclaimedSeedFP` (3000) of shapes, one of every converted hull in turn, then buds a

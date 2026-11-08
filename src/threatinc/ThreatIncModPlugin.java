@@ -92,6 +92,9 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// sells as market excess for another 120 days
 		ThreatConvoys.stripLandedMods();
 
+		// a mid-war save's hive worlds start with a handful of reclaimed shapes, once (converted hulls)
+		ThreatReclaimed.backfillOnLoad();
+
 		// hive worlds post no vanilla missions (survey, analyze, procurement)
 		ThreatMissionFilter.install();
 		// and vanilla's academy fleets send nothing, rather than fatal, once the
