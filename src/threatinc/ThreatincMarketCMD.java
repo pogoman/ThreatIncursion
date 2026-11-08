@@ -130,8 +130,8 @@ public class ThreatincMarketCMD extends MarketCMD {
 	 * The fleets defending a hive, wherever in its system they are: the
 	 * colony's own garrison (ThreatColonyManager GARRISON_FLAG), reinforcements
 	 * on their way to it (REINFORCE_TARGET_KEY), Defend Swarms stationed over
-	 * it (ThreatSwarmDefend) and any other swarm fleet within defendRadius of
-	 * the world. Live, visible, crewed, not a station, the market's faction.
+	 * it (ThreatSwarmDefend) and any other swarm fleet within reach() of the
+	 * world (defendRadius, never less than the orbit contest's ORBIT_HOLD_RANGE). Live, visible, crewed, not a station, the market's faction.
 	 * One list, one rule, read for the menu draw, for the Engage click and
 	 * for the raid/bombard gates alike.
 	 *
@@ -151,7 +151,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		if (entity == null || market == null || entity.getContainingLocation() == null) {
 			return result;
 		}
-		float radius = ThreatIncConfig.defendRadius();
+		float radius = reach();
 		String marketId = market.getId();
 		for (CampaignFleetAPI fleet : entity.getContainingLocation().getFleets()) {
 			if (fleet == null || !fleet.isAlive() || fleet.isExpired() || fleet.isHidden()) continue;
@@ -176,9 +176,22 @@ public class ThreatincMarketCMD extends MarketCMD {
 		return fleet.getBattle() != null && !fleet.getBattle().isDone();
 	}
 
-	/** Close enough to the world to be engaged from its orbit. */
+	/** Close enough to the world to be engaged from its orbit (#reach). */
 	protected boolean inReach(CampaignFleetAPI fleet) {
-		return Misc.getDistance(fleet, entity) <= ThreatIncConfig.defendRadius();
+		return Misc.getDistance(fleet, entity) <= reach();
+	}
+
+	/**
+	 * How far from the world a swarm fleet is a defender the menu lists and
+	 * Engage can reach: defendRadius, but never less than ORBIT_HOLD_RANGE,
+	 * the range the orbit contest (gateOnDefenders -> orbitContestedFor)
+	 * weighs. The two must agree: with the menu at 1,000 su and the contest at
+	 * 1,500, a 186 FP Defense Swarm of Salamanca, the moon beside Chupi Orco,
+	 * closed bombardment while the menu said "no defenders" and "nearest fleet
+	 * 5,074 units out" and offered nothing to engage (2026-11-08).
+	 */
+	protected static float reach() {
+		return Math.max(ThreatIncConfig.defendRadius(), ThreatFleetOrders.ORBIT_HOLD_RANGE);
 	}
 
 	/**
@@ -274,10 +287,16 @@ public class ThreatincMarketCMD extends MarketCMD {
 		float friendlyFP = ThreatGroundFronts.friendlyPointsNear(Factions.PLAYER, market);
 		float swarmFP = ThreatGroundFronts.hostilePointsNear(Factions.PLAYER, market);
 		boolean held = ThreatGroundFronts.orbitContestedFor(Factions.PLAYER, market);
+		// the fleets the contest weighs, so a "held" with nothing near explains itself
+		StringBuilder weighed = new StringBuilder();
+		for (CampaignFleetAPI fleet : ThreatGroundFronts.hostileFleetsNear(Factions.PLAYER, market)) {
+			weighed.append(" [").append(fleet.getName()).append(" ").append((int) fleet.getFleetPoints())
+					.append(" FP ").append((int) Misc.getDistance(fleet, entity)).append(" su]");
+		}
 		ThreatIncConfig.log("Military options at " + market.getName() + ": near " + near
 				+ ", inbound " + inbound + ", busy " + busy + ", far " + far + why
 				+ " - swarm " + (int) swarmFP + " FP vs ours " + (int) friendlyFP
-				+ " at the orbit: " + (held ? "held" : "not held"));
+				+ " at the orbit: " + (held ? "held" : "not held") + weighed);
 		if (withText) {
 			if (near > 0) {
 				text.addPara("The swarm holds the orbit: %s, %s fleet points.",

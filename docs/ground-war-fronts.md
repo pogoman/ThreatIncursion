@@ -469,7 +469,15 @@ marines the figure counts.
   else nearest busy one), so vanilla's draw and its Engage click agree; `engage()` keeps its
   backstop. Vanilla's defender text is suppressed for hives and replaced by one line (fleets
   in orbit and their fleet points, or fleets inbound and the nearest distance). Every menu
-  draw logs the fleets weighed (`Military options at <world>: near/inbound/busy [...]`).
+  draw logs the fleets weighed (`Military options at <world>: near/inbound/busy [...]`), and
+  after `held/not held` the fleets the orbit contest weighed.
+  **One reach (2026-11-08, Chupi Orco)**: the menu's defender radius is `ThreatincMarketCMD.reach`,
+  `defendRadius` but never less than `ORBIT_HOLD_RANGE` 1,500 su, the contest's range. With the
+  menu at 1,000 su and the contest at 1,500, a 186 FP Defense Swarm of Salamanca (the moon beside
+  Chupi Orco, same Yma system, garrisoned there so not in `threatDefenders` by tag) held the orbit
+  and closed bombardment while the menu said "no orbital station or nearby fleets", "nearest
+  fleet 5,074 units out: not in the fight" and greyed Engage. Whatever closes raid and bombardment
+  is now listed as near and can be engaged.
 
 - **`removeOption` drops the enabled state of the other options (2026-09-07)**: this is why
   the two rewrites above changed nothing in game, and why the sessions before them failed -

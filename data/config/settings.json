@@ -59,7 +59,9 @@
 	# fleet can be engaged from its orbit (the colony's garrison, reinforcements
 	# bound for it and its Defend Swarms count within defendInboundRange,
 	# closing raids and bombardment until engaged; any other swarm fleet counts
-	# while inside this radius; garrisons orbit 400-700 su out)
+	# while inside this radius; garrisons orbit 400-700 su out). Never less
+	# than the orbit contest's 1500 su (ORBIT_HOLD_RANGE): what closes raids
+	# and bombardment is always something the menu lists and can engage
 	"threatinc_defendRadius": 1000,
 	# how far out (su) a swarm fleet bound for the world still counts as a
 	# defender inbound; farther out it is not in the fight and the menu ignores

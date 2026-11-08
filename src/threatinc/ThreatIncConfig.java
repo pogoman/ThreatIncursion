@@ -107,7 +107,7 @@ public class ThreatIncConfig {
 	public static float fabFPPerShipUnit()   { return f("threatinc_fabFPPerShipUnit"); }
 	/** Fraction of a colony's standing fleets' FP its bank pays in upkeep every 30 days (garrison, raiders, inbound reinforcements, its ledger-bound fleets). */
 	public static float garrisonUpkeepPerMonth() { return f("threatinc_garrisonUpkeepPerMonth"); }
-	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
+	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. Never less than ORBIT_HOLD_RANGE (1,500), the range the orbit contest weighs (ThreatincMarketCMD.reach). */
 	public static float defendRadius()      { return f("threatinc_defendRadius"); }
 	/** Units from a hive's world within which a swarm fleet bound for it counts as a defender inbound (military options); farther out it is not in the fight. 0 = any distance. */
 	public static float defendInboundRange() { return f("threatinc_defendInboundRange"); }
