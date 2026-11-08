@@ -49,6 +49,16 @@ flagship (`setFlagship`): every troop break-up (`ThreatStrikeFGI.embark`, `Threa
 smallest first, the flagship spared) leaves it whole and never counts its 600 FP as troops; a strike
 down to its fabricator holds its landing back ("nothing left to break up but the flagship").
 
+The rule only shaped new buds, and a mid-war save's fleets kept their hulls (the user, the same
+evening, a 100-ship swarm and size-6/7 garrisons: "not a single fabricator in sight"; the log since
+launch: nothing budded above 1,344 FP). So `ThreatFleetComposer.anchorFleets` runs once on load
+(`ThreatIncModPlugin`) and daily (`IncursionManager`, before `ThreatFleetOrders.poll`): every Threat
+fleet not in battle whose points want more fabricators than it has trades its smallest plain Threat
+hulls, 600 FP a fabricator, for them (`anchorFleet`) - FP-neutral, so the strata it embodies are
+unchanged; converted hulls (their shapes are a world's ledger), hives and overseers are never traded,
+and a fleet short of tradeable hulls waits. This also reaches fleets grown or packed from smaller
+swarms. Log: "Fabricators: Defense Swarm (2,310 FP) trades 86 hulls, 602 FP, for 1 fabricator(s)".
+
 ## Archetypes and jobs
 
 | Archetype | Mix (share of FP) | Favours |

@@ -95,6 +95,9 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// a mid-war save's hive worlds start with a handful of reclaimed shapes, once (converted hulls)
 		ThreatReclaimed.backfillOnLoad();
 
+		// and its big swarm fleets carry a fabricator from this load, not from their next bud
+		ThreatFleetComposer.anchorFleets();
+
 		// hive worlds post no vanilla missions (survey, analyze, procurement)
 		ThreatMissionFilter.install();
 		// and vanilla's academy fleets send nothing, rather than fatal, once the

@@ -257,6 +257,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatAttackPlanner.poll(random);
 		// the dated line and the simulator's monthly state (docs/war-sim.md 5)
 		ThreatSimDump.poll();
+		// fabricators for the fleets already flying (a save from before the rule, grown or packed
+		// fleets): FP-neutral, a fabricator per threatinc_fabricatorPerFP (2026-11-08)
+		ThreatFleetComposer.anchorFleets();
 		ThreatFleetOrders.poll();
 		// hunting forces muster, move on and break off on the poll, not the monthly tick
 		ThreatSoftening.advanceHunts();

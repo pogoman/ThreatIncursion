@@ -200,7 +200,7 @@ public class ThreatFleetComposer {
 			// the flagship: every troop break-up spares it (ThreatStrikeFGI.embark,
 			// ThreatGroundFronts.applyFleetLosses), so the 600 FP are never counted as troops
 			for (FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
-				if (m.getHullSpec().hasTag(com.fs.starfarer.api.impl.campaign.ids.Tags.THREAT_FABRICATOR)) {
+				if (isFabricator(m)) {
 					fleet.getFleetData().setFlagship(m);
 					break;
 				}
@@ -228,6 +228,108 @@ public class ThreatFleetComposer {
 		float per = ThreatIncConfig.fabricatorPerFP();
 		if (per <= 0f || fp < per) return 0;
 		return Math.max(0, Math.min(ThreatIncConfig.fabricatorsMax(), (int) Math.floor(fp / per)));
+	}
+
+	/** Whether the member is a fabricator hull (Tags.THREAT_FABRICATOR). */
+	public static boolean isFabricator(FleetMemberAPI m) {
+		return m != null && m.getHullSpec() != null
+				&& m.getHullSpec().hasTag(com.fs.starfarer.api.impl.campaign.ids.Tags.THREAT_FABRICATOR);
+	}
+
+	/** A fabricator hull's fleet points (fabricator_unit, 600), from its spec. */
+	private static float fabricatorFP() {
+		try {
+			float fp = Global.getSettings().getHullSpec("fabricator_unit").getFleetPoints();
+			if (fp > 0f) return fp;
+		} catch (Throwable t) {
+			// no such hull: vanilla's figure
+		}
+		return 600f;
+	}
+
+	/**
+	 * Fabricators for the fleets already flying - daily (IncursionManager) and once on load: every
+	 * Threat fleet of fabricatorPerFP points or more with fewer fabricators than fabricatorsFor its
+	 * points gets the rest (anchorFleet). The fleets a save already held when the rule arrived, and
+	 * fleets grown or packed from smaller swarms, are what this reaches (the user, 2026-11-08, a
+	 * mid-war save around size-6 and size-7 worlds: "not a single fabricator in sight"). Returns the
+	 * fleets changed.
+	 */
+	public static int anchorFleets() {
+		if (ThreatIncConfig.fabricatorPerFP() <= 0f) return 0;
+		int done = 0;
+		List<com.fs.starfarer.api.campaign.LocationAPI> locs =
+				new java.util.ArrayList<com.fs.starfarer.api.campaign.LocationAPI>(Global.getSector().getStarSystems());
+		locs.add(Global.getSector().getHyperspace());
+		for (com.fs.starfarer.api.campaign.LocationAPI loc : locs) {
+			if (loc == null) continue;
+			for (CampaignFleetAPI fleet : new java.util.ArrayList<CampaignFleetAPI>(loc.getFleets())) {
+				if (fleet == null || fleet.getFaction() == null
+						|| !com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT.equals(fleet.getFaction().getId())) continue;
+				if (fleet.getBattle() != null || fleet.isDespawning() || !fleet.isAlive()) continue;
+				if (anchorFleet(fleet, null)) done++;
+			}
+		}
+		if (done > 0) ThreatIncConfig.log("Fabricators: " + done + " fleet(s) given theirs");
+		return done;
+	}
+
+	/**
+	 * Trades the fleet's smallest plain Threat hulls, a fabricator's points each, for the fabricators
+	 * fabricatorsFor its points says it lacks: FP-neutral, so the strata the fleet embodies are
+	 * unchanged. Converted hulls (their shapes sit on a world's ledger), hives, overseers and
+	 * fabricators are never traded; a fleet whose tradeable hulls fall short waits. The first
+	 * fabricator becomes the flagship, and the fleet is tagged for a strike to re-embody it with one.
+	 */
+	public static boolean anchorFleet(CampaignFleetAPI fleet, Random random) {
+		if (fleet == null || fleet.getFleetData() == null) return false;
+		float fp = fleet.getFleetPoints();
+		int want = fabricatorsFor(fp);
+		if (want <= 0) return false;
+		int have = 0;
+		List<FleetMemberAPI> pool = new java.util.ArrayList<FleetMemberAPI>();
+		for (FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+			if (isFabricator(m)) { have++; continue; }
+			if (m.getHullSpec() == null || m.isFighterWing()) continue;
+			if (m.getHullSpec().hasTag(CONVERTED_TAG)) continue;
+			if (m.getHullSpec().hasTag(com.fs.starfarer.api.impl.campaign.ids.Tags.THREAT_HIVE)) continue;
+			if (m.getHullSpec().hasTag(com.fs.starfarer.api.impl.campaign.ids.Tags.THREAT_OVERSEER)) continue;
+			pool.add(m);
+		}
+		int add = want - have;
+		if (add <= 0) return false;
+		float need = add * fabricatorFP();
+		float poolFP = 0f;
+		for (FleetMemberAPI m : pool) poolFP += m.getFleetPointCost();
+		if (poolFP < need) return false;
+		java.util.Collections.sort(pool, new java.util.Comparator<FleetMemberAPI>() {
+			public int compare(FleetMemberAPI a, FleetMemberAPI b) {
+				return Float.compare(a.getFleetPointCost(), b.getFleetPointCost());
+			}
+		});
+		float removed = 0f;
+		int hulls = 0;
+		for (FleetMemberAPI m : pool) {
+			if (removed >= need) break;
+			fleet.getFleetData().removeFleetMember(m);
+			removed += m.getFleetPointCost();
+			hulls++;
+		}
+		DisposableThreatFleetManager.addShips(fleet, add, ShipRoles.THREAT_FABRICATOR, random != null ? random : new Random());
+		fleet.getFleetData().setSyncNeeded();
+		fleet.getFleetData().syncIfNeeded();
+		fleet.getFleetData().sort();
+		for (FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+			if (isFabricator(m)) {
+				fleet.getFleetData().setFlagship(m);
+				break;
+			}
+		}
+		fleet.getMemoryWithoutUpdate().set(ThreatColonyManager.SWARM_TIER_KEY, FabricatorEscortStrength.HIGH.ordinal());
+		fleet.getMemoryWithoutUpdate().set(ThreatColonyManager.SWARM_FABS_KEY, want);
+		ThreatIncConfig.log("Fabricators: " + fleet.getName() + " (" + (int) fp + " FP) trades " + hulls + " hulls, "
+				+ (int) removed + " FP, for " + add + " fabricator(s); " + (int) fleet.getFleetPoints() + " FP now");
+		return true;
 	}
 
 	/**
