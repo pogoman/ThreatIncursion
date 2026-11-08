@@ -29,12 +29,10 @@ starving, bombing and invading them, not by killing fleets.
   strata into ships when attacked or to strike (budding) and ships back into
   strata when they return (absorbing). Over your world its ships break up
   into troops and land; landed strata never come home.
-- **Reclaimed hulls.** The swarm uses the warships it destroys. A wreck it
-  takes is consumed: strata grow through the hull, the swarm's weapons take
-  its mounts, a fragment swarm fills its voids, and it flies again as part
-  of the swarm. Every wreck a hive takes is strata and, for a hull the swarm
-  can use, a shape on that world's ledger; a fleet budded there carries the
-  shapes its world has reclaimed.
+- **Reclaimed hulls.** The swarm consumes and repurposes the fleets it
+  destroys. Each hive world keeps a count of the hulls it has taken; a fleet
+  budded there includes those hulls, with Threat weapons, beside its own
+  ships. A wreck also adds strata to the world.
 - **The Fabrication Core** makes strata from metals and fuel, more of each
   the bigger the colony. Both met: it grows a size at a time. Short: it
   holds. Starved: it shrinks until it dies. Blockade a hive and it imports

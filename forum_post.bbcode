@@ -35,7 +35,7 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 [li][b]Strata[/b] is a hive's one number. It is the colony's ground defence, its hit points and its troops at once. Fight it on the ground or bomb it from orbit, and the number goes down. Below each size's threshold the colony drops a size; at zero it is destroyed[/li]
 [li]Each size needs twice the strata of the last, so a size 8 hive is a fortress and a size 2 seed is nothing[/li]
 [li][b]Strata is also its fleets.[/b] A hive has no standing garrison. When attacked, or to strike, it turns strata into ships ("budding"); when the ships come home it turns them back into strata ("absorbing"). A hive that buds a defence fleet has that much less on the ground[/li]
-[li][b]Reclaimed hulls.[/b] The swarm uses the warships it destroys. A wreck it takes is consumed: strata grow through the hull, the swarm's own weapons take its mounts, a fragment swarm fills its voids, and the ship flies again as part of the swarm. Every wreck a hive takes is strata, and a hull the swarm can use is also a shape on that world's ledger. A fleet budded there carries the shapes its world has reclaimed, so a hive that has consumed a Hegemony fleet fields Onslaughts and Eagles[/li]
+[li][b]Reclaimed hulls.[/b] The swarm consumes and repurposes the fleets it destroys. Each hive world keeps a count of the hulls it has taken; a fleet budded there includes those hulls, with Threat weapons, beside its own ships. A wreck also adds strata to the world[/li]
 [li][b]The Fabrication Core[/b] is the industry that makes strata. It needs metals and fuel, more of each the bigger the colony. Both met in full: the hive grows a size at a time. Short: it holds. Starved: it loses strata daily and shrinks a size at a time until it is gone[/li]
 [li]Hives import from each other like any market. [b]Blockade[/b] a hive (hold its orbit with warships) and it imports nothing; only its own mines, refineries and fuel plants still feed its Core. Saturation bombardment disrupts those for a year[/li]
 [li]A hive's accessibility is how much strata stands nearby ("swarm density"). Dense systems grow; an isolated hive starves[/li]
@@ -45,9 +45,11 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 [li][b]Occupation.[/b] The swarm never takes a human world. Each district its army holds lets it eat one industry: the industry stops working, is consumed over its build time and is removed. What it eats becomes strata: troops while the fight is on, then Infestation Swarms in orbit once every district is held. With nothing left to eat the army lifts off and looks for the next world[/li]
 [/list]
 
-[center][img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-1.png[/img] [img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-2.png[/img]
-[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-3.png[/img] [img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-4.png[/img]
-[i]Consumed warships: the hull is the original's, everything in it is the swarm's.[/i][/center]
+[center][table]
+[tr][td][img width=420 height=363]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-1.png?v=2[/img][/td][td][img width=420 height=363]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-2.png?v=2[/img][/td][/tr]
+[tr][td][img width=420 height=363]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-3.png?v=2[/img][/td][td][img width=420 height=363]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/converted-4.png?v=2[/img][/td][/tr]
+[/table]
+[i]Hulls taken from destroyed fleets, in Threat fleets.[/i][/center]
 
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/hive-growing.png[/img]
 [i]A hive's Core fed in full: metals 3 of 3, fuel 1 of 1, 600 strata a month, the next size in 36 days.[/i][/center]
@@ -136,23 +138,23 @@ The settings menu (LunaLib, Shift+F2) holds the knobs that matter; the rest live
 
 [b]0.9.1 - reclaimed hulls[/b]
 [spoiler]
-[b]The swarm uses what it kills.[/b] Saves from 0.9.0 carry on: on the first load every hive world of size 5 or more is given a handful of shapes to start with, and the ledgers fill from there as the war's losses mount.
+The swarm consumes and repurposes the fleets it destroys. Saves from 0.9.0 carry on: on first load every hive world of size 5 or more gets a few hulls to start with.
 
 [b]Converted hulls[/b]
 [list]
-[li]45 vanilla warships, frigate to capital - carriers included; no phase, civilian, module or unique hulls - each have a consumed form, "<Hull> (Converted)": the original hull grown through with strata, the hive's glow at its hatches, Threat engines, the automated, Threat and fragment swarm hullmods; unboardable. Fleet points, ordnance and slots are the original's[/li]
-[li]107 loadouts, vanilla's own variants of each hull with the swarm's weapons in their mounts: mass drivers and the Neoferric Quadcoil for ballistic mounts, Voltaic Cannon and Voidblaster for energy, Neutron Torpedoes, Kinetic Fragments and Swarm Launchers for missiles, Voltaic Discharge for point defence; large energy, large missile and ballistic point-defence mounts keep the original weapon. Ordnance points are no limit - the swarm fits what the hull can carry, not what the budget allows[/li]
-[li]The Threat's battle coordination counts them as combat units. Vanilla's own abyss fleets never draw them[/li]
+[li]45 vanilla warships, frigate to capital (carriers included; no phase, civilian, module or unique hulls) have a Threat version, "<Hull> (Converted)": Threat sprite and engines, the automated, Threat and fragment swarm hullmods, unboardable. Fleet points, ordnance and slots are the original's[/li]
+[li]107 loadouts from vanilla's own variants, with Threat weapons in the mounts: mass drivers and the Neoferric Quadcoil in ballistic mounts, Voltaic Cannon and Voidblaster in energy, Neutron Torpedoes, Kinetic Fragments and Swarm Launchers in missile, Voltaic Discharge for point defence. Large energy, large missile and ballistic point-defence mounts keep the original weapon. Ordnance points are not a limit[/li]
+[li]The Threat's battle coordination counts them as combat units. Vanilla's own abyss fleets never use them[/li]
 [li]Converted Hulls (LunaLib) turns them off; read at game launch[/li]
 [/list]
 
 [b]The reclaimed-hull ledger[/b]
 [list]
-[li]Each hive world keeps a count of the shapes it has reclaimed, per hull. A shape is in exactly one place: on a ledger, or in a fleet[/li]
-[li]A battle the swarm wins books every hull the losers lost - yours included - to the winning swarm's world, or the nearest hive. Off-screen fights count too: the ships the swarm strikes from a fleet are booked by name, and a route's or an expedition's losses as shapes drawn from the losing faction's known hulls, the cheaper the likelier[/li]
-[li]Every wreck claimed is half its fleet points as strata at the world. The swarm's own dead are not reclaimed again[/li]
-[li]A fleet budded or built at a world fills its converted share from that world's ledger, priced by shape. A world with no shapes of a class buds Threat units in their place, so a young hive that has won nothing fields none. Scouts and patrols never carry them[/li]
-[li]A converted hull absorbed back into a world returns its shape; one destroyed, or broken into troops at a landing, is spent[/li]
+[li]Each hive world keeps a count of the hulls it has taken, by type. A hull is in one place: on a ledger, or in a fleet[/li]
+[li]A battle the swarm wins books every hull the losers lost - yours included - to the winning swarm's world, or the nearest hive. Off-screen fights count too: ships the swarm destroys out of a fleet are booked by name; a route's or an expedition's losses are booked by type from the losing faction's known ships, cheaper types more often[/li]
+[li]Every hull taken adds half its fleet points as strata at the world. The swarm's own dead are not taken[/li]
+[li]A fleet budded or built at a world takes its converted share from that world's ledger. A world with no hulls of a class buds Threat units instead, so a young hive that has won nothing has none. Scouts and patrols never carry them[/li]
+[li]A converted hull absorbed back into a world goes back on the ledger; one destroyed, or landed as troops, is gone[/li]
 [/list]
 
 [b]Fleets[/b]
