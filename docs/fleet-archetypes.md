@@ -40,10 +40,10 @@ started from vanilla's empty params (0 fabricators) and the mixes name none, and
 the garrison swarms it musters, so strikes had none either (the user: "even near size 6 worlds
 fabricators don't spawn ... in v9 i don't think i've seen a single fabricator in strike fleets").
 Now `createSized` adds `fabricatorsFor(fp)` fabricators before the mix - one per
-`threatinc_fabricatorPerFP` (1,500; 0 = never) of the budget, at most `threatinc_fabricatorsMax` (3) -
+`threatinc_fabricatorPerFP` (1,200; 0 = never) of the budget, at most `threatinc_fabricatorsMax` (3) -
 pays them out of the budget, and tags the fleet `SWARM_TIER_KEY` HIGH / `SWARM_FABS_KEY` n, so
 `ThreatColonyManager.expeditionSizeFor` reads it as expedition size 9 and a strike re-embodies it with
-a fabricator (`specFor`). A 1,500-2,999 FP Defense or Shifting Swarm carries one; under 1,500, none -
+a fabricator (`specFor`). A 1,200-2,399 FP Defense or Shifting Swarm carries one (the line was 1,500 for an hour; the user: "lower the line to 1200FP"); under 1,200, none -
 a swarm, under the swarm doctrine in battle. The fabricator is set as the fleet's
 flagship (`setFlagship`): every troop break-up (`ThreatStrikeFGI.embark`, `ThreatGroundFronts.applyFleetLosses`,
 smallest first, the flagship spared) leaves it whole and never counts its 600 FP as troops; a strike
