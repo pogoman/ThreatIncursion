@@ -273,10 +273,13 @@ def write_json(path, obj, header):
 # A converted hull sails with the Threat's own guns where it has one for the mount (the user,
 # 2026-11-08: "they are all loaded with generic vanilla weapon loadouts"): slot by slot, a Threat weapon
 # of the mount's type and the vanilla weapon's size replaces it, a point-defence weapon only by a Threat
-# point-defence weapon, and the swap is kept only while the loadout still fits the hull's ordnance points
-# (vents and capacitors may give up to half of themselves) and its sustained weapon flux stays within
-# the greater of the hull's dissipation and 1.15x what the vanilla loadout drew. Mounts the Threat has
-# no weapon for (large energy, large missile, ballistic point defence) keep their vanilla weapon.
+# point-defence weapon, and the swap is kept while the loadout's sustained weapon flux stays within the
+# greater of the hull's dissipation and 1.15x what the vanilla loadout drew. Ordnance points are not a
+# limit (the user, 2026-11-08: "remove the op limits for the threat ... I would rather them having lore
+# appropriate weaponry"): Threat guns cost more OP than vanilla's, the variant may run over the hull's
+# budget, and vents and capacitors stay as vanilla fitted them. The engine enforces OP only in the refit
+# screen; an NPC variant over budget fights as written. Mounts the Threat has no weapon for (large
+# energy, large missile, ballistic point defence) keep their vanilla weapon.
 
 THREAT_GUNS = {
     ("BALLISTIC", "SMALL"): ["light_mass_driver"],
@@ -296,7 +299,7 @@ MOUNT_TAKES = {
 HULLMOD_COST = {"FRIGATE": "cost_frigate", "DESTROYER": "cost_dest", "CRUISER": "cost_cruiser",
                 "CAPITAL_SHIP": "cost_capital"}
 FLUX_SLACK = 1.15
-REFIT_STATS = {"swapped": 0, "kept_op": 0, "kept_flux": 0, "kept_none": 0, "variants": 0}
+REFIT_STATS = {"swapped": 0, "kept_flux": 0, "kept_none": 0, "variants": 0, "over_op": 0, "max_over_op": 0}
 
 _weapons = _hullmods = _wings = _hull_rows = _ships = None
 
@@ -430,7 +433,6 @@ def refit_threat(v, hull):
     mods = sum(hullmod_costs().get(m, {}).get(hull["size"], 0.0) for m in v.get("hullMods", []) if m not in BUILT_IN_MODS)
     wings = sum(wing_costs().get(w, 0.0) for w in v.get("wings", []) if w)
     vents0, caps0 = int(v.get("fluxVents", 0)), int(v.get("fluxCapacitors", 0))
-    vents, caps = vents0, caps0
 
     mounted = []  # (group index, slot id, weapon id)
     for gi, g in enumerate(v.get("weaponGroups", [])):
@@ -459,21 +461,15 @@ def refit_threat(v, hull):
         if flux > flux_cap:
             REFIT_STATS["kept_flux"] += 1
             continue
-        need = weapon_op(trial) + mods + wings
-        tv, tc = vents, caps
-        # vents and capacitors give up to half of what the vanilla loadout had, capacitors first
-        while need + tv + tc > op_max and tc > caps0 // 2:
-            tc -= 1
-        while need + tv + tc > op_max and tv > vents0 // 2:
-            tv -= 1
-        if need + tv + tc > op_max:
-            REFIT_STATS["kept_op"] += 1
-            continue
-        current, vents, caps = trial, tv, tc
+        current = trial
         REFIT_STATS["swapped"] += 1
     for gi, sid, wid in mounted:
         v["weaponGroups"][gi]["weapons"][sid] = current[sid]
-    v["fluxVents"], v["fluxCapacitors"] = vents, caps
+    # OP is not a limit: the figure is kept for the run's report only
+    over = weapon_op(current) + mods + wings + vents0 + caps0 - op_max
+    if over > 0:
+        REFIT_STATS["over_op"] += 1
+        REFIT_STATS["max_over_op"] = max(REFIT_STATS["max_over_op"], int(over))
     REFIT_STATS["variants"] += 1
 
 

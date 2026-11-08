@@ -153,10 +153,15 @@ reclaimed. `ThreatReclaimed`:
   for small/medium energy, Neutron Torpedo (Kinetic Fragments for a kinetic original) and the Swarm
   Launcher for small/medium missiles. A point-defence weapon is replaced only by the Voltaic Discharge
   (small energy); ballistic PD, large energy and large missile mounts keep their vanilla weapon. Each
-  swap is kept only while the loadout fits the hull's ordnance points - vents and capacitors may give up
-  to half of what the vanilla loadout had, capacitors first - and its sustained weapon flux stays within
-  the greater of the hull's dissipation and 1.15x the vanilla loadout's. 2026-11-08 run: 559 swaps over
-  107 variants, 195 refused for OP (Threat guns cost more), 10 for flux, 6 variants untouched.
+  swap is kept while the loadout's sustained weapon flux stays within the greater of the hull's
+  dissipation and 1.15x the vanilla loadout's. Ordnance points are NOT a limit (the user, 2026-11-08
+  evening: "remove the op limits for the threat ... I would rather them having lore appropriate
+  weaponry"): Threat guns cost more OP than vanilla's, the variant may run over the hull's budget, and
+  vents and capacitors stay as vanilla fitted them - the engine enforces OP only in the refit screen, an
+  NPC variant over budget fights as written. The first cut (same day, morning) refused a swap the OP
+  did not cover and let vents/caps give up half: 559 swaps, 195 refused for OP. Without the limit: 747
+  swaps over 107 variants, 17 refused for flux, 100 variants over budget (at most 116 OP over), 6
+  variants untouched.
 - **Mid-war saves (2026-11-08, the user: "just want midwar saves to get straight into it")**:
   `ThreatReclaimed.backfillOnLoad`, from `ThreatIncModPlugin.onGameLoad`, runs once per save
   (persistent `threatinc_reclaimedBackfilled`): every live hive world of `reclaimBackfillMinSize` (5) or

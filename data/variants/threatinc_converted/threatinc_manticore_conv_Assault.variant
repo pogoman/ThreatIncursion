@@ -2,7 +2,7 @@
 {
     "displayName": "Assault",
     "fluxCapacitors": 0,
-    "fluxVents": 8,
+    "fluxVents": 14,
     "goalVariant": true,
     "hullId": "threatinc_manticore_conv",
     "hullMods": [
@@ -24,16 +24,16 @@
             "mode": "ALTERNATING",
             "weapons": {
                 "WS 004": "swarm_launcher",
-                "WS 005": "breachpod"
+                "WS 005": "swarm_launcher"
             }
         },
         {
             "autofire": true,
             "mode": "LINKED",
             "weapons": {
-                "WS 001": "lightneedler",
-                "WS 002": "lightneedler",
-                "WS 003": "lightneedler"
+                "WS 001": "light_mass_driver",
+                "WS 002": "light_mass_driver",
+                "WS 003": "light_mass_driver"
             }
         }
     ]
