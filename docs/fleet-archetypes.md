@@ -178,4 +178,4 @@ reclaimed. `ThreatReclaimed`:
   it fires again on the next save loaded with it on. The seeded shapes stay on the ledgers, so the
   worlds' later buds carry converted hulls too.
 
-Untested in-game beyond a clean load: the switch above is how.
+Tested in-game 2026-11-08 04:36 (run rl1: Instant War from the Aphelion Dysnomia seed save, 307 war days, debug logging on): the ledger fills by both channels and is drawn down when a world buds. Real battles: "Epsilon Far Salish I claims 33 hulls (314 FP, 19 shapes) from Shifting Swarm's battle" (named hulls, `ThreatReclaimed.Listener`); off-screen fights: "Cilicia books 4 shapes by class from tritachyon's 44 FP lost", "Beta Kalico IV books 24 shapes by class from hegemony's 178 FP lost" (`claimFP`); draws: "First Strike buds 6 converted of 11 hulls off Epsilon Far Salish I's ledger; 45 shapes left" (`fill`), the ledger falling by one a draw (53 -> 37 over eleven strikes) and rising with each claim. 89 `Reclaimed:` lines in 307 war days, no mod exception. Those three log lines (`ThreatIncConfig.log`, debug logging only) were added for the test and stay.
