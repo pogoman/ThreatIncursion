@@ -344,7 +344,7 @@ public class ThreatFleetComposer {
 			hullFP.put(hull, sum / variants.size());
 		}
 		float left = budget;
-		int added = 0;
+		int added = 0, converted = 0;
 		while (left > 0f) {
 			WeightedRandomPicker<String> picker = new WeightedRandomPicker<String>(random);
 			for (Map.Entry<String, Float> e : hullFP.entrySet()) {
@@ -364,12 +364,17 @@ public class ThreatFleetComposer {
 				float mean = ThreatReclaimed.meanFP(ledger, key);
 				if (mean > 0f) hullFP.put(key, mean);
 				else hullFP.remove(key);
+				converted++;
 			} else {
 				variant = pickVariant(key, a, random);
 			}
 			fleet.getFleetData().addFleetMember(variant);
 			left -= variantFP(variant);
 			added++;
+		}
+		if (converted > 0 && ledger != null) {
+			ThreatIncConfig.log("Reclaimed: " + fleet.getName() + " buds " + converted + " converted of " + added
+					+ " hulls off " + ledger.getName() + "'s ledger; " + ThreatReclaimed.total(ledger) + " shapes left");
 		}
 		if (added == 0 && budget > 0f) {
 			// too small for any hull at half cost: one of the cheapest Threat hulls

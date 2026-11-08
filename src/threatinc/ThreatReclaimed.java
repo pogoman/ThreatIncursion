@@ -218,6 +218,10 @@ public final class ThreatReclaimed {
 		strata(world, fp);
 		if (!enabled() || convertedHull(baseHullId) == null) return false;
 		bump(world, baseHullId, 1);
+		if (fp > 0f) {
+			ThreatIncConfig.log("Reclaimed: " + world.getName() + " books a " + baseHullId + " (" + (int) fp
+					+ " FP); ledger " + total(world));
+		}
 		return true;
 	}
 
@@ -253,6 +257,10 @@ public final class ThreatReclaimed {
 			bump(world, hull, 1);
 			left -= cost;
 			booked++;
+		}
+		if (booked > 0) {
+			ThreatIncConfig.log("Reclaimed: " + world.getName() + " books " + booked + " shapes by class from "
+					+ factionId + "'s " + (int) fp + " FP lost; ledger " + total(world) + ": " + summary(world));
 		}
 		return booked;
 	}
