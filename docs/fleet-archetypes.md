@@ -107,8 +107,9 @@ Pillow, numpy) regenerates it all from vanilla's files, so change the script, ne
   and capitals), hunter 10 frigates, tide and scout none, and a new **reclaimed** archetype (overseers
   herding converted hulls of every class, 65 of 100) at weight 2 in the strike and garrison pools.
 
-Untested in-game as of writing: the load (45 skins, 107 variants), the swarm overlay and THREAT
-engines on a converted hull, and the fleet mix. `tools/converted-hulls/preview.png` is the
+Seen in-game 2026-11-08 (the user, StarLord save, shipped as 0.9.1): the load (45 skins, 107
+variants), the swarm overlay and THREAT engines on a converted hull, and the fleet mix
+(`forum/converted-1..4.png`). `tools/converted-hulls/preview.png` is the
 recolour beside vanilla's Lasher, Hammerhead, Eagle, Onslaught and two Threat units.
 
 ### The reclaimed-hull ledger (2026-11-07, the user's decisions the same evening)
