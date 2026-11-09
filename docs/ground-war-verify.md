@@ -260,54 +260,16 @@ The rest of the list below was the pre-fix verification plan and still holds:
     troops: it pushes again. With `threatinc_frontAutoPush` off no landing changes stance.
 25. NPC and Threat fronts behave as before (they already pushed on their first tick).
 
-### To verify - the planetary shield (2026-09-07, built, untested)
+### To verify - the planetary shield is vanilla's (2026-11-09, jar 11:05, untested)
 
-- A colony with an intact Planetary Shield, tactically bombarded: the prompt lists the shield
-  as a target with its own %, and says "The shield turns 75% of that away from everything
-  under it; this pass puts N days on the shield itself." The days quoted for the other
-  structures are a quarter of what the same fleet does to an unshielded world.
-- Confirm it. The shield's disruption clock starts; the guns take the reduced figure. Check
-  the log line: `siegeSlice ... shieldThrough=0.25`.
-- Bombard again. `shieldThrough` has risen (the shield is worn, so more gets through) and the
-  guns take more than last time. Repeat until `shieldThrough` reaches 1 (2026-09-28: the
-  orbital floor is gone, so orbit alone gets there eventually).
-- Land a front on that world: further passes take the shield to 0
-  condition and `shieldThrough` to 1 faster than orbit alone.
-- The colony screen's invasion tooltip reads "Planetary shield at N% effect: it absorbs M% of
-  incoming disruption." after "Defences suppressed to: ...", and the shield appears in that
-  suppressed list once it is disrupted.
-- Support / Defend buttons over a shielded world show the shield line under the siege clock,
-  and the disruption-per-day figure they quote is the reduced one.
-- A Threat strike against a shielded player colony takes visibly longer to suppress it than
-  against an unshielded one of the same defence figure.
-- With UPS installed: the FIRST bombardment of an intact shield still shows UPS's "absorbed
-  the brunt" message and its halving; the second and later ones do not (the shield is down).
-- Set `threatinc_shieldAbsorbEnabled` false: the shield is not a bombardment target, quotes no
-  absorption anywhere, and a saturation pass disrupts it like any other structure.
-- A world whose ONLY defence is a shield (no Ground Defenses / Heavy Batteries / Patrol HQ /
-  Military Base / High Command): the tactical option still offers a pass, targets the shield
-  alone, and reports no return fire.
-- **The x3 is gone.** On a colony with a Planetary Shield, the ground-defence breakdown on the
-  colony screen names no Planetary Shield entry at all, and the figure does not change when the
-  shield is disrupted or repaired. Set `threatinc_shieldDefenseBonus` to 2 and it reappears -
-  and then *falls in a straight line* as the shield is bombarded, never dropping to nothing in
-  one step.
-- **The tooltip is ours.** Hovering the Planetary Shield on the colony screen describes
-  absorption in proportion to condition and quotes the live condition / absorb figures - not
-  the old flat-50% text, and no claim about size reduction or decivilization.
-- **Save compatibility.** Save with a shielded colony, disable ThreatIncursion, load: the save
-  must open with a plain vanilla shield rather than a `CannotResolveClassException`. Re-enable
-  and load again: the shield is ours, and a shield that was disrupted still is (the disruption
-  key is pinned to vanilla's).
-- Land a front on a shielded world and hold it: the shield's condition keeps falling,
-  reaching 0 at the same rate the guns fall.
-  While GRINDING rather than HOLDING it should fall at `frontGrindSuppressMult` of that.
-- Balance watch: at LunaLib defaults (`siegeSuppressDaysPerDay` 6, `siegeOrbitDays` 120) a
-  600 FP expedition wears an unshielded size-5 colony's guns down within its orbit budget,
-  but a shielded one takes longer - so from orbit alone it may time out. Landing does not
-  need the guns already worn down (suppression lowers `defenderStrength` continuously), but
-  if the swarm never manages a landing on shielded
-  worlds, `threatinc_shieldAbsorbMax` is the dial; 0.5 roughly halves the penalty.
+- New game with this mod alone: a shielded colony's ground-defence breakdown lists the
+  Planetary Shield at x3 and the industry tooltip is vanilla's.
+- New game with another mod that replaces the shield (the report: `data.scripts.wyv`): sector
+  generation finishes, no `ClassCastException`.
+- Load a 0.9.2 or earlier save with a shielded colony: it opens, the shield is on the spec's
+  plugin, its AI core / improvement / disruption kept. The log says "Planetary Shield on X
+  rebuilt on ..." only where the save held our retired stub.
+- Support / Defend buttons over a shielded world show no shield line.
 
 ### To verify - fabricating troops from the fleet (2026-09-08, built, untested)
 

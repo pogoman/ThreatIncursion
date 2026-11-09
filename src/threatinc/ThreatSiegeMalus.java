@@ -172,20 +172,13 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 		return mult <= 1f ? 0f : 1f - 1f / mult;
 	}
 
-	/** "Heavy Batteries 40%" for every suppressed structure, the planetary shield included. */
+	/** "Heavy Batteries 40%" for every suppressed structure. */
 	public static List<String> suppressedLines(MarketAPI market) {
 		List<String> lines = new ArrayList<String>();
 		if (market != null) return lines; // v3: nothing of ours suppresses a structure
 		for (Industry ind : fortifications(market)) {
 			if (!ind.isDisrupted()) continue;
 			lines.add(ind.getCurrentName() + " " + Math.round(condition(market, ind) * 100f) + "%");
-		}
-		// the shield wears on the same clock but is no fortification (it buys
-		// cover, not ground defence), so it is not in the list above
-		Industry shield = ThreatShield.present(market) ? ThreatShield.get(market) : null;
-		if (shield != null && shield.isDisrupted()) {
-			lines.add(shield.getCurrentName() + " "
-					+ Math.round(condition(market, shield) * 100f) + "%");
 		}
 		return lines;
 	}

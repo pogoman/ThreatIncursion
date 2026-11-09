@@ -93,9 +93,9 @@ public final class ThreatRazing {
 		return Math.max(0f, total - progress(market));
 	}
 
-	/** As {@link #fuelToDestroy}, before the shield's cut: what a fleet must pour. */
+	/** What a fleet must pour: {@link #fuelToDestroy} (nothing cuts it since the shield went back to vanilla's, 2026-11-09). */
 	public static float fuelToDestroyThrough(MarketAPI market) {
-		return fuelToDestroy(market) / Math.max(0.01f, ThreatShield.throughput(market));
+		return fuelToDestroy(market);
 	}
 
 	/**
@@ -109,7 +109,7 @@ public final class ThreatRazing {
 		float fuel = fuelToDestroyThrough(market);
 		if (market == null || razeable(market) <= 0) return fuel;
 		if (ThreatColonyManager.daysToNextSize(market) > days) return fuel;
-		return fuel + levelFuel(enemyLayers(market) + 1) / Math.max(0.01f, ThreatShield.throughput(market));
+		return fuel + levelFuel(enemyLayers(market) + 1);
 	}
 
 	/**
@@ -121,7 +121,7 @@ public final class ThreatRazing {
 	 */
 	public static boolean shortOfALevel(MarketAPI market, float fuel) {
 		if (market == null || razeable(market) <= 0) return false;
-		return Math.max(0f, fuel) * ThreatShield.throughput(market) < fuelForTopLevel(market) - 1f;
+		return Math.max(0f, fuel) < fuelForTopLevel(market) - 1f;
 	}
 
 	/** Fuel still to reach the bar before the top standing level falls. */
@@ -144,7 +144,7 @@ public final class ThreatRazing {
 	}
 
 	/**
-	 * Pours fuel that got past the shield into the bar: each level paid for is
+	 * Pours fuel into the bar: each level paid for is
 	 * a size off, and the last ends the colony
 	 * ({@link ThreatGroundFronts#colonyRazed}). Returns {levels razed, 1 when
 	 * the colony is gone}. A hive has no bar ({@link #razes}): nothing is

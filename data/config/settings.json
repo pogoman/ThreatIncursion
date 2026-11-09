@@ -477,19 +477,6 @@
 	# Saturation presses a hive); a colony is razed where that is the cheaper at
 	# vanilla base prices
 	"threatinc_npcRazeEnabled": true,
-	# a planetary shield is a military structure that wears on the same clock as
-	# any fortification, but what its condition buys is cover: an intact shield
-	# turns this fraction of a bombardment away from everything else on the world,
-	# falling in a straight line as its own disruption days pile up. The shield
-	# itself has no cover and takes every pass at full weight (soak mult).
-	"threatinc_shieldAbsorbEnabled": true,
-	"threatinc_shieldAbsorbMax": 0.75,
-	"threatinc_shieldSoakMult": 1.0,
-	# vanilla's shield multiplies the garrison by three and does nothing about
-	# bombardment; here it is the other way round, so the ground-defense bonus is
-	# off by default and cover is what the shield buys. Set to 2.0 for vanilla's
-	# x3 - applied in proportion to the shield's condition, never on/off.
-	"threatinc_shieldDefenseBonus": 0,
 	# days an expedition holds orbit over each world before it gives the siege up
 	"threatinc_siegeOrbitDays": 120,
 	# the ledger's Days lever (2026-10-31): the player's Attack holds each world this long at its first / third setting (siegeOrbitDays at the second)

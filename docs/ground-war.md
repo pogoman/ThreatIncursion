@@ -22,7 +22,7 @@ Split by topic on 2026-10-01; the sections are unchanged and keep their headings
 | Sieges against human factions (built 2026-09-06, untested) | [ground-war-defenders.md](ground-war-defenders.md) |
 | Marines defend, and they die | [ground-war-defenders.md](ground-war-defenders.md) |
 | Veterancy | [ground-war-defenders.md](ground-war-defenders.md) |
-| The planetary shield (2026-09-07, built, untested) | [ground-war-defenders.md](ground-war-defenders.md) |
+| The planetary shield (vanilla's again, 2026-11-09) | [ground-war-defenders.md](ground-war-defenders.md) |
 | How the defender fights back | [ground-war-defenders.md](ground-war-defenders.md) |
 | Blockade (2026-09-27, built, untested) | [ground-war-defenders.md](ground-war-defenders.md) |
 | When the colony falls | [ground-war-defenders.md](ground-war-defenders.md) |
@@ -46,7 +46,7 @@ Split by topic on 2026-10-01; the sections are unchanged and keep their headings
 | To verify - the landing fleet defends, and the Defend order (2026-09-07, built, untested) | [ground-war-verify.md](ground-war-verify.md) |
 | Verified - military options on a hive (2026-09-07, tested in game, works) | [ground-war-verify.md](ground-war-verify.md) |
 | To verify - troops push on landing (2026-09-07, built, untested) | [ground-war-verify.md](ground-war-verify.md) |
-| To verify - the planetary shield (2026-09-07, built, untested) | [ground-war-verify.md](ground-war-verify.md) |
+| To verify - the planetary shield is vanilla's (2026-11-09, jar 11:05, untested) | [ground-war-verify.md](ground-war-verify.md) |
 | To verify - fabricating troops from the fleet (2026-09-08, built, untested) | [ground-war-verify.md](ground-war-verify.md) |
 | To verify - a station that comes back (2026-09-08, built, untested) | [ground-war-verify.md](ground-war-verify.md) |
 | To verify - the swarm off armaments, and paying on the assault (2026-09-08, built, untested) | [ground-war-verify.md](ground-war-verify.md) |

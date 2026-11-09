@@ -5,7 +5,6 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.SpecialItemData;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
-import com.fs.starfarer.api.impl.campaign.econ.impl.PlanetaryShield;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.intel.AnalyzeEntityIntelCreator;
 import com.fs.starfarer.api.impl.campaign.intel.ProcurementMissionCreator;
@@ -15,28 +14,15 @@ import com.thoughtworks.xstream.XStream;
 public class ThreatIncModPlugin extends BaseModPlugin {
 
 	/**
-	 * Keeps the Planetary Shield swap out of the save file.
+	 * Keeps our plugin swaps out of the save file: a class of ours that stands in for one of
+	 * vanilla's is aliased to vanilla's name, so a save never names it and still loads with
+	 * this mod removed. That holds only while the subclass declares no instance fields.
 	 *
-	 * <p>{@link ThreatPlanetaryShield} replaces vanilla's plugin through
-	 * industries.csv, and without this alias every save would store the industry
-	 * under its real name - so loading that save with this mod disabled would die
-	 * with {@code CannotResolveClassException: threatinc.ThreatPlanetaryShield}.
-	 * Aliasing our class to vanilla's name makes XStream write it as
-	 * {@code com.fs.starfarer.api.impl.campaign.econ.impl.PlanetaryShield}: the
-	 * save never mentions a threatinc class for the shield and loads without this
-	 * mod as a plain vanilla shield. Reading is the mirror image, so shields in an
-	 * existing save are picked up on load with no migration at all.
-	 *
-	 * <p>This holds only while {@link ThreatPlanetaryShield} declares no instance
-	 * fields - a field vanilla's class does not have would break loading without
-	 * the mod just as badly.
-	 *
-	 * <p>The filtering mission creators ({@link ThreatMissionFilter}) take the same
-	 * alias, on the same no-fields condition.
+	 * <p>The Planetary Shield is no longer one of them (2026-11-09, {@link #retireShields}):
+	 * with no alias, a shield an older jar wrote under vanilla's class name loads as vanilla's.
 	 */
 	@Override
 	public void configureXStream(XStream x) {
-		x.alias(PlanetaryShield.class.getName(), ThreatPlanetaryShield.class);
 		// the producing industries: ours over vanilla's for the occupation's image (2026-10-27)
 		ThreatOccupation.aliasPlugins(x);
 		x.alias(AnalyzeEntityIntelCreator.class.getName(), ThreatMissionFilter.AnalyzeEntity.class);
@@ -62,9 +48,8 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// before anything reads a market: a save taken with the map veil on
 		ThreatMapFog.onGameLoad();
 
-		// the alias above normally covers this; this is the fallback for a shield
-		// still on the vanilla plugin after load
-		migrateExistingShields();
+		// the Planetary Shield is vanilla's again (2026-11-09): a shield still on our retired stub is rebuilt
+		retireShields();
 
 		// before the first merc spawns: routes to links dismantled by older builds
 		ThreatFrontlines.repairMercRoutes();
@@ -173,21 +158,18 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 	}
 
 	/**
-	 * Rebuilds any Planetary Shield still on the vanilla plugin class so it uses
-	 * {@link ThreatPlanetaryShield}, carrying over AI core, improvement, special
-	 * item and disruption state. The shield's disruption key is pinned to
-	 * vanilla's ({@code ThreatPlanetaryShield.getDisruptedKey}), so the clock
-	 * survives the swap on its own; it is re-set here anyway because
-	 * removeIndustry/addIndustry builds a fresh instance.
+	 * Rebuilds any Planetary Shield a save still holds on the retired {@link ThreatPlanetaryShield}
+	 * stub on the spec's plugin - vanilla's, or another mod's - carrying over AI core, improvement,
+	 * special item and disruption. The user, 2026-11-09: the disruption mechanics the swap existed
+	 * for went on 2026-10-27, and it crashed any other mod that replaces the shield.
 	 *
-	 * <p>A shield still under construction is left alone - the in-progress
-	 * instance cannot be swapped without losing build progress - and is picked up
-	 * by this same check on the next load after it finishes.
+	 * <p>A shield still under construction is left alone - the in-progress instance cannot be
+	 * swapped without losing build progress - and is picked up on the load after it finishes.
 	 */
-	private void migrateExistingShields() {
+	private void retireShields() {
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			Industry old = market.getIndustry(Industries.PLANETARYSHIELD);
-			if (old == null || old instanceof ThreatPlanetaryShield) continue;
+			if (!(old instanceof ThreatPlanetaryShield)) continue;
 			if (old.isBuilding()) continue;
 
 			String aiCore = old.getAICoreId();
@@ -204,8 +186,8 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 			if (special != null) fresh.setSpecialItem(special);
 			if (disrupted > 0f) fresh.setDisrupted(disrupted, false);
 			market.reapplyIndustries();
-			ThreatIncConfig.log("Migrated the Planetary Shield on " + market.getName()
-					+ " to this mod's plugin.");
+			ThreatIncConfig.log("Planetary Shield on " + market.getName() + " rebuilt on "
+					+ fresh.getClass().getName() + " (was this mod's retired plugin).");
 		}
 	}
 }

@@ -3238,10 +3238,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (days > 0f) Global.getSector().getMemoryWithoutUpdate().set(BOMBARD_LOCK_KEY, true, days);
 	}
 
-	/** Whether orbit has anything to bombard here: a fortification, or a shield. */
+	/** Whether orbit has anything to bombard here: a fortification. */
 	public static boolean bombardable(MarketAPI market) {
 		if (market == null) return false;
-		return !Theatre.of(market).fortifications(market).isEmpty() || ThreatShield.present(market);
+		return !Theatre.of(market).fortifications(market).isEmpty();
 	}
 
 	/** The defence the guns add: the figure times the batteries' share, D x (1 - 1 / their multiplier). */
@@ -3455,20 +3455,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * The most a day of bombardment by fp still adds anywhere on the world: on
-	 * the least-worn fortification under the shield's cover, or on the shield.
+	 * the least-worn fortification.
 	 */
 	public static float dailyGain(MarketAPI market, float fp) {
 		if (market == null) return 0f;
 		Theatre theatre = Theatre.of(market);
 		float rate = suppressionRate(market, fp, MarketCMD.getDefenderStr(market, true));
-		float through = ThreatShield.throughput(market);
 		float best = 0f;
 		for (Industry ind : theatre.fortifications(market)) {
-			best = Math.max(best, rate * theatre.condition(market, ind) * through);
-		}
-		if (ThreatShield.present(market)) {
-			best = Math.max(best, rate * ThreatShield.integrity(market)
-					* Math.max(0f, ThreatIncConfig.shieldSoakMult()));
+			best = Math.max(best, rate * theatre.condition(market, ind));
 		}
 		return best;
 	}
@@ -3598,8 +3593,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * As {@link #bombardPlan(MarketAPI, float)}, for at most {@code budget}
-	 * days. A forward run of the same day the slice delivers - the shield
-	 * wearing with the rest, the unrest it raises taking the stability down,
+	 * days. A forward run of the same day the slice delivers - the unrest it
+	 * raises taking the stability down,
 	 * the guns taking their fleet points off the fleet - with the garrison and
 	 * any station left as they are. A day is flown only while it is worth its
 	 * hulls (docs/suppression-balance.md v2, principle 1): it must add more
@@ -3649,8 +3644,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (start <= 0f) return new float[] { 0f, 1f, start, lands0, 0f };
 		Theatre theatre = Theatre.of(market);
 		List<Industry> forts = theatre.fortifications(market);
-		boolean shield = ThreatShield.present(market);
-		if (forts.isEmpty() && !shield) return new float[] { 0f, 1f, start, lands0, 0f };
+		if (forts.isEmpty()) return new float[] { 0f, 1f, start, lands0, 0f };
 		int n = forts.size();
 		float[] cond = new float[n];
 		float[] next = new float[n];
@@ -3665,9 +3659,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			fortMult *= 1f + bonus[i] * cond[i];
 		}
 		PlanFigure fig = new PlanFigure(market, d0 / Math.max(0.01f, fortMult), bonus);
-		float s = shield ? ThreatShield.integrity(market) : 0f;
-		float absorbMax = Math.max(0f, Math.min(1f, ThreatIncConfig.shieldAbsorbMax()));
-		float soak = Math.max(0f, ThreatIncConfig.shieldSoakMult());
 		float wear = theatre.wearDays();
 		float rate = theatre.suppressDaysPerDay();
 		float perPoint = Math.max(0f, ThreatIncConfig.siegeFPWeight());
@@ -3681,13 +3672,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		while (day < budget) {
 			float weighted = fleet * perPoint;
 			float ratio = weighted / Math.max(1f, weighted + d);
-			float through = shield ? 1f - absorbMax * s : 1f;
 			float gain = 0f;
-			for (int i = 0; i < n; i++) gain = Math.max(gain, rate * ratio * cond[i] * through);
-			if (shield) gain = Math.max(gain, rate * ratio * s * soak);
+			for (int i = 0; i < n; i++) gain = Math.max(gain, rate * ratio * cond[i]);
 			if (gain < 1f) break;
 			for (int i = 0; i < n; i++) {
-				next[i] = Math.max(0f, cond[i] - rate * ratio * cond[i] * through / wear);
+				next[i] = Math.max(0f, cond[i] - rate * ratio * cond[i] / wear);
 			}
 			// the guns answer with what they had when the day began; the day's
 			// worth is what it takes off the figure, its unrest at full weight
@@ -3696,7 +3685,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			boolean shortHanded = troops > 0f && troops < troopsToLand(market, d, d0, beachhead);
 			if ((taken < fire * worth && !shortHanded) || fleet - fire < floor) break;
 			System.arraycopy(next, 0, cond, 0, n);
-			if (shield) s = Math.max(0f, s - rate * ratio * s * soak / wear);
 			fleet -= fire;
 			down += gain;
 			day++;
@@ -3715,14 +3703,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * siegeOrbitDays: {days, fuel spent, fleet points left, 1 when the razing
 	 * is finished, the days the least-worn structure is then down for}. The
 	 * same day saturationSlice delivers - every structure worn, the fuel
-	 * through the shield into the bar, never less spent than a tactical day -
+	 * into the bar, never less spent than a tactical day -
 	 * and the unrest raised at once, so after the first day the guns fire with
 	 * the figure a stability of what is left allows.
 	 *
 	 * <p>A hive has no bar (ThreatRazing.razes): its saturation is finished at
 	 * the commander's stop ({@link #bombardPlan}'s first test) - when a day
 	 * would add less than the day of repair the world makes on its own to
-	 * every structure it falls on, the shield included - and the fuel it burns
+	 * every structure it falls on - and the fuel it burns
 	 * to get there is its price.
 	 */
 	public static float[] razePlan(MarketAPI market, float fp, float fuel) {
@@ -3754,7 +3742,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float top = 0f;
 		for (Industry ind : saturationTargets(market)) top = Math.max(top, theatre.condition(market, ind));
 		List<Industry> forts = theatre.fortifications(market);
-		boolean shield = ThreatShield.present(market);
 		float d0 = Math.max(1f, MarketCMD.getDefenderStr(market, true));
 		int n = forts.size();
 		float[] cond = new float[n];
@@ -3770,9 +3757,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		}
 		PlanFigure fig = new PlanFigure(market, d0 / Math.max(0.01f, fortMult), bonus);
 		float unrestMax = Math.max(0f, ThreatIncConfig.bombardUnrestMax());
-		float s = shield ? ThreatShield.integrity(market) : 0f;
-		float absorbMax = Math.max(0f, Math.min(1f, ThreatIncConfig.shieldAbsorbMax()));
-		float soak = Math.max(0f, ThreatIncConfig.shieldSoakMult());
 		float wear = theatre.wearDays();
 		float rate = theatre.suppressDaysPerDay();
 		float perPoint = Math.max(0f, ThreatIncConfig.siegeFPWeight());
@@ -3796,26 +3780,24 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			}
 			float fire = firePer * d * gunShare(cond, bonus, gun);
 			if (fleet - fire < floor) break;
-			float through = shield ? 1f - absorbMax * s : 1f;
 			float weighted = fleet * perPoint;
 			float ratio = weighted / Math.max(1f, weighted + d);
-			if (!bar && Math.max(rate * ratio * top * through, shield ? rate * ratio * s * soak : 0f) < 1f) {
+			if (!bar && rate * ratio * top < 1f) {
 				stopped = true;
 				break;
 			}
 			float pour = Math.min(pourPer * fleet, left);
-			if (bar) pour = Math.min(pour, (need - reached) / Math.max(0.01f, through));
+			if (bar) pour = Math.min(pour, need - reached);
 			// the day that finishes it pours what it takes and no more
-			boolean finishes = bar && reached + pour * through >= need - 0.5f;
+			boolean finishes = bar && reached + pour >= need - 0.5f;
 			float burn = Math.min(left, finishes ? pour : Math.max(pour, bombardFuelPerDay(fleet)));
 			left -= burn;
 			spent += burn;
-			reached += pour * through;
+			reached += pour;
 			for (int i = 0; i < n; i++) {
-				cond[i] = Math.max(0f, cond[i] - rate * ratio * cond[i] * through / wear);
+				cond[i] = Math.max(0f, cond[i] - rate * ratio * cond[i] / wear);
 			}
-			top = Math.max(0f, top - rate * ratio * top * through / wear);
-			if (shield) s = Math.max(0f, s - rate * ratio * s * soak / wear);
+			top = Math.max(0f, top - rate * ratio * top / wear);
 			fleet -= fire;
 			day++;
 			d = fig.defence(cond, unrestMax, true);
@@ -3995,19 +3977,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/**
 	 * Whether saturation by fp has done what it usefully can over a hive (no
 	 * bar, ThreatRazing.razes): a day would add less than the day of repair
-	 * the world makes on its own to every structure it falls on and to the
-	 * shield - {@link #razePlan}'s stop, read now. Nothing to fall on: done.
+	 * the world makes on its own to every structure it falls on -
+	 * {@link #razePlan}'s stop, read now. Nothing to fall on: done.
 	 */
 	public static boolean saturationSpent(MarketAPI market, float fp) {
 		if (market == null || fp <= 0f) return true;
 		Theatre theatre = Theatre.of(market);
 		float rate = suppressionRate(market, fp, MarketCMD.getDefenderStr(market, true));
-		float through = ThreatShield.throughput(market);
 		for (Industry ind : saturationTargets(market)) {
-			if (rate * theatre.condition(market, ind) * through >= 1f) return false;
+			if (rate * theatre.condition(market, ind) >= 1f) return false;
 		}
-		return !ThreatShield.present(market)
-				|| rate * ThreatShield.integrity(market) * Math.max(0f, ThreatIncConfig.shieldSoakMult()) < 1f;
+		return true;
 	}
 
 	/** The figure a plan reads for the fortifications' conditions: the base under them, times what stands, at the stability the bombardment's unrest leaves. */
@@ -4119,7 +4099,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * {@code days} of tactical bombardment by {@code fp} fleet points unopposed
 	 * over a world (docs/suppression-balance.md v2): each fortification's clock
 	 * gains the theatre's rate x fleet / (fleet + defence) x its condition a
-	 * day, the shield soaks its share, and the world's unrest is raised to
+	 * day, and the world's unrest is raised to
 	 * bombardUnrestMax x what is suppressed. The guns answer with
 	 * bombardReturnFirePerGunDefence x the defence they add, a day - whatever
 	 * the fleet's size. The defence figure is the bombard-facing one (no cargo
@@ -4176,13 +4156,12 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return 0f;
 	}
 
-	/** What saturation falls on: every building vanilla does not spare, bar the shield (it soaks on its own). */
+	/** What saturation falls on: every building vanilla does not spare. */
 	public static List<Industry> saturationTargets(MarketAPI market) {
 		List<Industry> list = new ArrayList<Industry>();
 		if (market == null) return list;
-		Industry shield = ThreatShield.present(market) ? ThreatShield.get(market) : null;
 		for (Industry ind : market.getIndustries()) {
-			if (ind == null || ind.getSpec() == null || ind == shield) continue;
+			if (ind == null || ind.getSpec() == null) continue;
 			if (ind.getSpec().hasTag(Industries.TAG_NO_SATURATION_BOMBARDMENT)) continue;
 			if (!ind.canBeDisrupted()) continue;
 			if (ind.isBuilding() && !ind.isUpgrading()) continue;
@@ -4196,7 +4175,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * {@code fuel} to pour (docs/suppression-balance.md v2 section 4): the
 	 * tactical rule on every building, the guns' answer, the world's unrest
 	 * raised to what it has suppressed (as tactical), its growth paused, and the fuel poured into
-	 * the razing bar ({@link ThreatRazing}) less what the shield turns aside.
+	 * the razing bar ({@link ThreatRazing}).
 	 * Returns {fleet points the guns take, fuel spent, levels razed, 1 when the
 	 * colony is gone}. Once it is gone nothing else on it is touched. A hive
 	 * has no bar (ThreatRazing.razes): the fuel is burnt at the rate for the
@@ -4232,8 +4211,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		public float defence;
 		/** Disruption days the day adds to a structure still whole. */
 		public float rate;
-		/** The shield's throughput: the share of the day that reaches what is under it. */
-		public float through = 1f;
 		/** Fleet points the guns take. */
 		public float returnFire;
 		/** Fuel a day of tactical bombardment burns. */
@@ -4241,9 +4218,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		/** The fortifications' mean condition now and after the day. */
 		public float conditionNow = 1f;
 		public float conditionAfter = 1f;
-		/** The shield's integrity now and after the day; -1 with no shield. */
-		public float shieldNow = -1f;
-		public float shieldAfter = -1f;
 		/** The unrest the day raises the world to; 0 when it raises nothing. */
 		public int unrest;
 		/** Over a hive (phase D): the strata the day razes, the strata standing now, and the size they leave. */
@@ -4259,7 +4233,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		Theatre theatre = Theatre.of(market);
 		day.defence = Math.max(0f, MarketCMD.getDefenderStr(market, true));
 		day.rate = suppressionRate(market, fp, day.defence);
-		day.through = ThreatShield.throughput(market);
 		day.returnFire = returnFirePerDay(market, day.defence);
 		day.fuel = bombardFuelPerDay(market, fp);
 		if (strataTarget(market)) {
@@ -4276,15 +4249,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			float after = 0f;
 			for (Industry ind : forts) {
 				now += theatre.condition(market, ind);
-				after += conditionAfterDay(market, ind, day.rate, day.through);
+				after += conditionAfterDay(market, ind, day.rate, 1f);
 			}
 			day.conditionNow = now / forts.size();
 			day.conditionAfter = after / forts.size();
-		}
-		if (ThreatShield.present(market)) {
-			day.shieldNow = ThreatShield.integrity(market);
-			day.shieldAfter = Math.max(0f, day.shieldNow - day.rate * day.shieldNow
-					* Math.max(0f, ThreatIncConfig.shieldSoakMult()) / theatre.wearDays());
 		}
 		float unrestMax = Math.max(0f, ThreatIncConfig.bombardUnrestMax());
 		int unrest = Math.round(unrestMax * (1f - day.conditionAfter)); // both kinds, since 2026-10-13

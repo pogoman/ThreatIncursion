@@ -105,7 +105,7 @@ public class ThreatOccupation {
 	/**
 	 * The alias's fallback: a claimed industry still on vanilla's plugin (loaded before the
 	 * alias held, or built while it did not) is rebuilt on ours, the planetary-shield recipe
-	 * (ThreatIncModPlugin.migrateExistingShields) - AI core, improvement, special item and
+	 * (ThreatIncModPlugin.retireShields, which now runs it the other way) - AI core, improvement, special item and
 	 * disruption carried over, a build in progress left for a later day. Whether any was swapped.
 	 */
 	protected static boolean ensurePlugins(MarketAPI market, List<String> claims) {

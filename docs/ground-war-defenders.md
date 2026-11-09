@@ -322,84 +322,33 @@ let it mature.
 to exactly 0.25 arrives Experienced/Adapting with no room to grow into the tier. 0.15 lands
 inside Regular/Fresh.
 
-### The planetary shield (2026-09-07, built, untested)
+### The planetary shield (vanilla's again, 2026-11-09)
 
-The mod owns the `planetaryshield` industry outright (`ThreatPlanetaryShield`, swapped in
-through `data/campaign/industries.csv`). Vanilla's shield multiplies the garrison by three and
-does nothing about bombardment; that is backwards here on both counts, so the ground-defence
-bonus is off (`threatinc_shieldDefenseBonus`, default 0) and cover is what the shield buys
-instead. Set the knob to 2 for vanilla's figure and it is applied in proportion to the
-shield's condition, never as vanilla's on/off switch - nothing in this mod gets a cliff.
+The Planetary Shield is vanilla's structure on vanilla's plugin: x3 ground defence while it
+runs, nothing about bombardment, raidable and improvable as in vanilla. Nothing in this mod
+reads it, and `data/campaign/industries.csv` no longer carries a `planetaryshield` row.
 
-`ThreatIncModPlugin.configureXStream` aliases the plugin to vanilla's class name, so a save
-never mentions `threatinc.ThreatPlanetaryShield` and still loads with this mod removed; the
-class therefore carries **no instance fields**, and `getDisruptedKey` is pinned to vanilla's
-key so a shield's disruption clock survives the swap in both directions.
+**History.** From 2026-09-07 the mod owned the industry (`ThreatPlanetaryShield` through the
+csv row, `ThreatShield` for the maths): the shield was a bombardment target whose condition
+bought cover - 0.75 x its condition of every disruption turned aside - with the x3 ground
+defence off. v3 (2026-10-27, `suppression-balance.md` 10) took the disruption mechanics out
+and left the swap behind: the x3 still stripped, a tooltip describing cover that no longer
+happened, the plan functions still reading it. Removed 2026-11-09 (the user: "why are we still
+modifying planetary shield class?") after a player's crash at sector generation: any other mod
+that replaces the shield and casts the industry to its own class died with
+`ClassCastException: threatinc.ThreatPlanetaryShield cannot be cast to ...`
+(`data.scripts.wyv.PSModPlugin.onEnabled`), because our csv row won the merge.
 
-A planetary shield is a fortification that protects structures instead of the garrison. It
-wears on the theatre's own clock - `fortificationDisruptDays` on a colony, `defenseWearDays`
-on a hive - through the same `Theatre.condition` curve every battery uses, so its state is
-read exactly as a suppressed gun's is. What its condition buys is **cover**:
+**What is left.** `ThreatPlanetaryShield` is an empty subclass kept so a save that names it
+still loads; `ThreatIncModPlugin.retireShields` rebuilds any shield still on it on the spec's
+plugin (vanilla's, or another mod's) at load. The XStream alias is gone: an older jar wrote our
+shield under vanilla's full class name, which now loads as vanilla's. `ThreatShield` is deleted
+(static only, never in a save). Knobs removed: `threatinc_shieldAbsorbEnabled`,
+`threatinc_shieldAbsorbMax`, `threatinc_shieldSoakMult`, `threatinc_shieldDefenseBonus`.
 
-    absorb     = shieldAbsorbMax x condition(shield)        // 0.75 x 1.0 intact
-    throughput = 1 - absorb                                 // what still gets through
-
-Every disruption a bombardment would write on anything else is multiplied by `throughput`
-(`ThreatShield.throughput`). The shield itself has no cover and takes each pass at full
-weight times `shieldSoakMult` (`soak` for the orbital slice, `soakTo` for a raise-to pass).
-So a bombardment spends itself twice: an intact shield turns most of a strike aside, and
-each pass buys less cover for the next. Grind it down and the world is bare.
-
-The shield wears from orbit like any other fortification, all the way to 0 by the theatre's
-wear days (2026-09-28: the orbital floor that used to stop it at 50% condition is gone) -
-`siegeSlice` spends it the same way it spends the guns. `tickFront`'s
-suppression grinds the shield at exactly the rate it grinds the guns too (`suppressShield`, full
-the front's advantage-set rate while HOLDING or GRINDING, capped at `wearDays x 1.2` like
-any other structure), so a ground front finishes what orbit alone only approaches. From orbit
-the shield wears under the same diminishing returns as the guns (x its own condition).
-
-The shield is deliberately NOT in `keyStructures` / `defenseStructures`; those lists also
-answer "are this colony's defences held", which the shield does not speak to. It is suppressed
-by its own call beside them.
-
-**The ground-defence cliff, and why owning the plugin is the fix.** Vanilla's
-`PlanetaryShield.apply()` multiplies the garrison by three (x1.5 more with an alpha core,
-x1.25 improved) and drops *all* of it the instant the shield is disrupted, because
-`BaseIndustry.isFunctional()` is false and `apply()` then calls `unapply()`. Nothing tripped
-that before, since no bombardment could disrupt a shield. Left alone it inverts the whole
-mechanic: one pass would cut a shielded world's defence by two thirds, so a shielded colony
-would be *easier* to besiege than an unshielded one - cheaper fuel, a better ratio on every
-later slice, and `holdRequirement` cut by the same two thirds. This was briefly patched from
-`ThreatSiegeMalus`; owning the plugin removed the need, because `ThreatPlanetaryShield.apply`
-never writes the cliff in the first place. Worth remembering as a general rule: **making
-anything a new disruption target in this mod means checking what vanilla's plugin does when
-`isFunctional()` goes false.**
-
-Where it hooks - every write, no exceptions:
-
-| Site | What changes |
-| --- | --- |
-| `ThreatGroundFronts.bombardStructures` (every slice, tactical and saturation, 2026-09-28) | each day the structures take `rate x condition x throughput`, `throughput` re-read each day; the shield takes `rate x shieldSoakMult x its integrity` |
-| `ThreatGroundFronts.saturationSlice` | the day's fuel reaches a colony's razing bar x `throughput` (`ThreatRazing`; a hive has no bar) |
-| `ThreatGroundFronts.bombardDay` | the prompt and tooltip figures, already cut by the shield |
-| `ThreatincMarketCMD.applyDangerClose` | the deep organs are under the shield too |
-| `ThreatincMarketCMD.bombardTactical` | the shield is a bombardment target in its own right (`bombardable` fires for a shielded world with no guns at all), printed on its own line |
-| `ThreatGroundFronts.tickFront` | `suppressShield` - boots grind it at the same rate as the guns |
-| `ThreatPlanetaryShield.apply` | vanilla's x3 ground defence never written; the knob's value applied in proportion to condition when set |
-
-Knobs: `threatinc_shieldAbsorbEnabled` (true), `threatinc_shieldAbsorbMax` (0.75),
-`threatinc_shieldSoakMult` (1.0). With the mechanic off the shield is an ordinary structure
-again - not a target, no cover, disrupted by saturation as vanilla does it.
-
-**Useful Planetary Shield.** Nothing is overridden and nothing needs to be. UPS gates its own
-mitigation on `prev.shieldFunctional` - the shield's state at its *previous* ~0.1-day poll -
-so the first strike on an intact shield still gets UPS's binary absorb (halved disruption,
-halved unrest, no pollution, no size loss, and a 60-day floor on the shield's own clock), and
-that same strike is what starts the shield's clock. From then on UPS is inert and the
-proportional cover above is the whole story, until the clock runs out and the shield comes
-back up. The two layers stack in the right order without either knowing about the other, so
-UPS's no-size-loss and no-deciv guarantees can never stall a ground take: by the time a front
-lands, the siege has long since put the shield down.
+The rule the swap taught still holds: **making anything a new disruption target in this mod
+means checking what vanilla's plugin does when `isFunctional()` goes false** - vanilla's shield
+drops its whole x3 the instant it is disrupted.
 
 ### How the defender fights back
 

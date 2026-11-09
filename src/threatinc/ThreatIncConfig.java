@@ -360,15 +360,6 @@ public class ThreatIncConfig {
 		return b("threatinc_npcRazeEnabled", true);
 	}
 
-	/** Whether a planetary shield absorbs part of the disruption a bombardment lands on everything else. */
-	public static boolean shieldAbsorbEnabled() { return b("threatinc_shieldAbsorbEnabled", true); }
-	/** Fraction of incoming disruption a fully intact planetary shield turns aside; scales down with its own disruption clock. */
-	public static float shieldAbsorbMax()     { return f("threatinc_shieldAbsorbMax"); }
-	/** Disruption a planetary shield takes itself, as a multiple of what a fortification would take from the same pass. */
-	public static float shieldSoakMult()      { return f("threatinc_shieldSoakMult"); }
-	/** What a planetary shield adds to the garrison at full condition; 0 removes vanilla's x3 outright. */
-	public static float shieldDefenseBonus()  { return f("threatinc_shieldDefenseBonus"); }
-
 	/** Fleet points are multiplied by this before being weighed against the ground-defence figure. */
 	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
 	/** Days a strike expedition holds orbit over a system before giving its siege up. */

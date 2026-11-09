@@ -2318,7 +2318,6 @@ public class ThreatFleetOrders {
 		sb.append("Holds the orbit for ").append((int) ThreatIncConfig.supportDays())
 				.append(" days; fights anything contesting it.");
 		sb.append("\n").append(ThreatGroundFronts.siegeClockLine(world));
-		if (ThreatShield.present(world)) sb.append("\n").append(ThreatShield.line(world));
 		bombardLines(sb, world, fp, fleet, "Bombards whether or not the front holds");
 		return sb.toString();
 	}
@@ -2334,7 +2333,6 @@ public class ThreatFleetOrders {
 		sb.append("Holds the orbit for ").append((int) ThreatIncConfig.defendDays())
 				.append(" days; fights anything contesting it.");
 		sb.append("\n").append(ThreatGroundFronts.siegeClockLine(world));
-		if (ThreatShield.present(world)) sb.append("\n").append(ThreatShield.line(world));
 		bombardLines(sb, world, fp, fleet, "Bombards only while the front cannot hold");
 		return sb.toString();
 	}
