@@ -1,11 +1,11 @@
 [center][size=20pt][b]The Abyssal War[/b][/size]
-[i]v0.9.2 - swarm doctrine - for Starsector 0.98a-RC8[/i][/center]
+[i]v0.9.3 - vanilla planetary shield - for Starsector 0.98a-RC8[/i][/center]
 
 [hr]
 
 [size=14pt][b]Download[/b][/size]
 
-[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.9.2/AbyssalWar-0.9.2.zip]AbyssalWar-0.9.2.zip[/url]
+[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.9.3/AbyssalWar-0.9.3.zip]AbyssalWar-0.9.3.zip[/url]
 
 Extract into your Starsector mods/ folder and enable it in the launcher. It extracts to mods/ThreatIncursion - overwrite your existing folder rather than keeping both. Saves from 0.8 and 0.9 carry on; removing the mod mid-war breaks the save.
 
@@ -135,6 +135,19 @@ The settings menu (LunaLib, Shift+F2) holds the knobs that matter; the rest live
 [hr]
 
 [size=14pt][b]Changelog[/b][/size]
+
+[b]0.9.3 - vanilla planetary shield[/b]
+[spoiler]
+The Planetary Shield is vanilla's again, which fixes a crash at sector generation alongside other mods that change it. Saves from 0.9 carry on.
+
+[b]Planetary Shield[/b]
+[list]
+[li]Fixed a crash when starting a new game with another mod that replaces the Planetary Shield (ClassCastException: threatinc.ThreatPlanetaryShield cannot be cast)[/li]
+[li]The Planetary Shield is vanilla's structure again: x3 ground defence while it runs, open to raids, improvable with a story point, vanilla's tooltip. This mod had kept its own version from the old disruption rules, which removed the ground defence bonus and described bombardment cover that no longer applied[/li]
+[li]Support and Defend order tooltips no longer show a shield absorption line[/li]
+[li]Removed from settings.json: threatinc_shieldAbsorbEnabled, threatinc_shieldAbsorbMax, threatinc_shieldSoakMult, threatinc_shieldDefenseBonus[/li]
+[/list]
+[/spoiler]
 
 [b]0.9.2 - swarm doctrine[/b]
 [spoiler]
